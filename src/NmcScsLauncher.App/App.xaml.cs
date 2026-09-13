@@ -20,7 +20,15 @@ public partial class App : Application
         services.AddSingleton<IAppLogger, FileAppLogger>();
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
-        services.AddSingleton<IGameLaunchService, ScsGameLaunchService>();
+
+        services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment());
+        services.AddSingleton<HttpClient>();
+        services.AddSingleton<IMachineIdentityProvider, WindowsMachineIdentityProvider>();
+        services.AddSingleton<ILicenseCredentialStore, WindowsCredentialManagerLicenseStore>();
+        services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
+        services.AddSingleton<ScsGameLaunchService>();
+        services.AddSingleton<IGameLaunchService, LicensedGameLaunchService>();
+
         services.AddSingleton<IModsetInspector, ScsModsetInspector>();
         services.AddSingleton<IModsetStore, JsonModsetStore>();
         services.AddSingleton<IModsetManager, ModsetManager>();
@@ -41,6 +49,7 @@ public partial class App : Application
 
         var logger = _serviceProvider.GetRequiredService<IAppLogger>();
         var settingsStore = _serviceProvider.GetRequiredService<ISettingsStore>();
+        var licenseRuntime = _serviceProvider.GetRequiredService<ILicenseRuntimeService>();
         var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         viewModel.ConfigureDuplicationServices(
             _serviceProvider.GetRequiredService<IModsetDuplicationService>(),
@@ -53,6 +62,11 @@ public partial class App : Application
         try
         {
             await logger.WriteAsync("INFO", "NMC SCS LAUNCHER started.");
+            var licenseState = await licenseRuntime.InitializeAsync(AppVersionInfo.Current);
+            await logger.WriteAsync(
+                "INFO",
+                $"LicenseHub runtime initialized. State={licenseState.State}; Enforcement={licenseState.EnforcementEnabled}; AllowsUse={licenseState.AllowsUse}");
+
             var settings = await settingsStore.LoadAsync();
             await viewModel.InitializeAsync(settings);
         }
