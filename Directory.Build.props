@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0-dev</Version>
+    <Authors>NMC Network / Onkel_Robby</Authors>
+    <Product>NMC SCS LAUNCHER</Product>
+    <Copyright>Copyright © 2026 NMC Network / Onkel_Robby</Copyright>
+  </PropertyGroup>
+</Project>

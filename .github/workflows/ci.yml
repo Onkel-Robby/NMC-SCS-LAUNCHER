@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore NMC-SCS-LAUNCHER.sln
+
+      - name: Build
+        run: dotnet build NMC-SCS-LAUNCHER.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test NMC-SCS-LAUNCHER.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish WPF app
+        run: dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMC-SCS-LAUNCHER-win
+          path: artifacts/publish
+          if-no-files-found: error

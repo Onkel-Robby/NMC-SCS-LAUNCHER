@@ -1,0 +1,49 @@
+using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using NmcScsLauncher.App.ViewModels;
+using NmcScsLauncher.Core;
+using NmcScsLauncher.Infrastructure;
+
+namespace NmcScsLauncher.App;
+
+public partial class App : Application
+{
+    private ServiceProvider? _serviceProvider;
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<ISettingsStore, JsonSettingsStore>();
+        services.AddSingleton<IAppLogger, FileAppLogger>();
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<MainWindow>();
+
+        _serviceProvider = services.BuildServiceProvider();
+
+        var logger = _serviceProvider.GetRequiredService<IAppLogger>();
+        var settingsStore = _serviceProvider.GetRequiredService<ISettingsStore>();
+        var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
+
+        try
+        {
+            await logger.WriteAsync("INFO", "NMC SCS LAUNCHER started.");
+            var settings = await settingsStore.LoadAsync();
+            viewModel.SetSettingsLoaded(settings);
+        }
+        catch (Exception ex)
+        {
+            viewModel.SetStartupError("Die lokalen Einstellungen konnten nicht geladen werden.");
+            await logger.WriteAsync("ERROR", "Startup initialization failed.", ex);
+        }
+
+        _serviceProvider.GetRequiredService<MainWindow>().Show();
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _serviceProvider?.Dispose();
+        base.OnExit(e);
+    }
+}

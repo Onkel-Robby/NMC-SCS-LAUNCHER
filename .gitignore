@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local launcher data
+*.local.json
+logs/
+cache/
+
+# OS files
+Thumbs.db
+.DS_Store
