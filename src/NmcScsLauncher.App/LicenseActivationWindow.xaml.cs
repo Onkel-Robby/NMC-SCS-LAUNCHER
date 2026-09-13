@@ -1,5 +1,6 @@
 using System.Windows;
 using NmcScsLauncher.Core;
+using NmcScsLauncher.Infrastructure;
 
 namespace NmcScsLauncher.App;
 
