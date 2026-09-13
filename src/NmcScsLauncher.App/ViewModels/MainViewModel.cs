@@ -13,25 +13,18 @@ public partial class MainViewModel : ObservableObject
     private readonly IAppLogger _logger;
     private readonly IFolderPicker _folderPicker;
     private readonly IModsetManager _modsetManager;
+    private readonly IModsetEditorService _modsetEditor;
+    private readonly IConfirmationService _confirmationService;
+    private readonly IExplorerService _explorerService;
     private LauncherSettings _settings = new();
 
-    [ObservableProperty]
-    private string _statusText = "Lokale Konfiguration wird initialisiert …";
-
-    [ObservableProperty]
-    private string _ets2Status = "Noch nicht geprüft";
-
-    [ObservableProperty]
-    private string _ets2InstallPath = "–";
-
-    [ObservableProperty]
-    private string _atsStatus = "Noch nicht geprüft";
-
-    [ObservableProperty]
-    private string _atsInstallPath = "–";
-
-    [ObservableProperty]
-    private bool _isBusy;
+    [ObservableProperty] private string _statusText = "Lokale Konfiguration wird initialisiert …";
+    [ObservableProperty] private string _ets2Status = "Noch nicht geprüft";
+    [ObservableProperty] private string _ets2InstallPath = "–";
+    [ObservableProperty] private string _atsStatus = "Noch nicht geprüft";
+    [ObservableProperty] private string _atsInstallPath = "–";
+    [ObservableProperty] private bool _isBusy;
+    [ObservableProperty] private Modset? _selectedModset;
 
     public ObservableCollection<Modset> Modsets { get; } = new();
 
@@ -44,13 +37,19 @@ public partial class MainViewModel : ObservableObject
         ISettingsStore settingsStore,
         IAppLogger logger,
         IFolderPicker folderPicker,
-        IModsetManager modsetManager)
+        IModsetManager modsetManager,
+        IModsetEditorService modsetEditor,
+        IConfirmationService confirmationService,
+        IExplorerService explorerService)
     {
         _gameDetector = gameDetector ?? throw new ArgumentNullException(nameof(gameDetector));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
         _modsetManager = modsetManager ?? throw new ArgumentNullException(nameof(modsetManager));
+        _modsetEditor = modsetEditor ?? throw new ArgumentNullException(nameof(modsetEditor));
+        _confirmationService = confirmationService ?? throw new ArgumentNullException(nameof(confirmationService));
+        _explorerService = explorerService ?? throw new ArgumentNullException(nameof(explorerService));
     }
 
     public async Task InitializeAsync(LauncherSettings settings, CancellationToken cancellationToken = default)
@@ -60,25 +59,162 @@ public partial class MainViewModel : ObservableObject
         await LoadModsetsAsync(cancellationToken);
     }
 
-    [RelayCommand]
-    private Task DetectEts2Async() => DetectAndPersistAsync(GameType.Ets2, useSavedPath: false);
+    [RelayCommand] private Task DetectEts2Async() => DetectAndPersistAsync(GameType.Ets2, useSavedPath: false);
+    [RelayCommand] private Task DetectAtsAsync() => DetectAndPersistAsync(GameType.Ats, useSavedPath: false);
+    [RelayCommand] private Task BrowseEts2Async() => BrowseAndPersistAsync(GameType.Ets2);
+    [RelayCommand] private Task BrowseAtsAsync() => BrowseAndPersistAsync(GameType.Ats);
 
     [RelayCommand]
-    private Task DetectAtsAsync() => DetectAndPersistAsync(GameType.Ats, useSavedPath: false);
-
-    [RelayCommand]
-    private Task BrowseEts2Async() => BrowseAndPersistAsync(GameType.Ets2);
-
-    [RelayCommand]
-    private Task BrowseAtsAsync() => BrowseAndPersistAsync(GameType.Ats);
-
-    public void SetStartupError(string message)
+    private async Task CreateModsetAsync()
     {
-        StatusText = message;
+        var result = _modsetEditor.Show(ModsetEditorMode.Create, new ModsetEditorData(
+            GameType.Ets2,
+            "Neues Modset",
+            null,
+            BuildSuggestedHomePath(GameType.Ets2, "Neues Modset"),
+            null,
+            null));
+
+        if (result is null)
+        {
+            return;
+        }
+
+        await ExecuteModsetChangeAsync(
+            () => _modsetManager.CreateAsync(ToDraft(result)),
+            "Modset wurde erstellt.");
     }
 
-    private async Task LoadModsetsAsync(CancellationToken cancellationToken)
+    [RelayCommand]
+    private async Task ImportModsetAsync()
     {
+        var result = _modsetEditor.Show(ModsetEditorMode.Import, new ModsetEditorData(
+            GameType.Ets2,
+            "Importiertes Modset",
+            null,
+            string.Empty,
+            null,
+            null));
+
+        if (result is null)
+        {
+            return;
+        }
+
+        await ExecuteModsetChangeAsync(
+            () => _modsetManager.ImportAsync(ToDraft(result)),
+            "Bestehendes Modset wurde importiert.");
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private async Task EditModsetAsync()
+    {
+        var selected = SelectedModset;
+        if (selected is null)
+        {
+            return;
+        }
+
+        var result = _modsetEditor.Show(ModsetEditorMode.Edit, new ModsetEditorData(
+            selected.Game,
+            selected.Name,
+            selected.Description,
+            selected.HomeBasePath,
+            selected.PreferredProfile,
+            selected.AdditionalLaunchArguments));
+
+        if (result is null)
+        {
+            return;
+        }
+
+        await ExecuteModsetChangeAsync(
+            () => _modsetManager.UpdateAsync(selected.Id, ToDraft(result)),
+            "Modset wurde aktualisiert.");
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private async Task RemoveModsetAsync()
+    {
+        var selected = SelectedModset;
+        if (selected is null || !_confirmationService.ConfirmRemoveFromLauncher(selected))
+        {
+            return;
+        }
+
+        try
+        {
+            await _modsetManager.RemoveAsync(selected.Id);
+            await _logger.WriteAsync("INFO", $"Removed modset {selected.Id} from launcher without deleting files.");
+            SelectedModset = null;
+            await LoadModsetsAsync();
+            StatusText = "Modset wurde aus dem Launcher entfernt. Dateien wurden nicht gelöscht.";
+        }
+        catch (Exception ex)
+        {
+            await HandleModsetErrorAsync("Das Modset konnte nicht entfernt werden.", ex);
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private async Task OpenModsetHomeAsync()
+    {
+        var selected = SelectedModset;
+        if (selected is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _explorerService.OpenFolder(selected.HomeBasePath);
+        }
+        catch (Exception ex)
+        {
+            await HandleModsetErrorAsync("Das Home-Verzeichnis konnte nicht geöffnet werden.", ex);
+        }
+    }
+
+    partial void OnSelectedModsetChanged(Modset? value)
+    {
+        EditModsetCommand.NotifyCanExecuteChanged();
+        RemoveModsetCommand.NotifyCanExecuteChanged();
+        OpenModsetHomeCommand.NotifyCanExecuteChanged();
+    }
+
+    public void SetStartupError(string message) => StatusText = message;
+
+    private bool HasSelectedModset() => SelectedModset is not null;
+
+    private async Task ExecuteModsetChangeAsync(Func<Task<Modset>> operation, string successMessage)
+    {
+        try
+        {
+            var modset = await operation();
+            await _logger.WriteAsync("INFO", $"Modset change persisted: {modset.Id} / {modset.Name}");
+            await LoadModsetsAsync();
+            SelectedModset = Modsets.FirstOrDefault(item => item.Id == modset.Id);
+            StatusText = successMessage;
+        }
+        catch (ModsetValidationException ex)
+        {
+            StatusText = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            await HandleModsetErrorAsync("Die Modset-Änderung konnte nicht gespeichert werden.", ex);
+        }
+    }
+
+    private async Task HandleModsetErrorAsync(string userMessage, Exception exception)
+    {
+        StatusText = userMessage + " Details wurden protokolliert.";
+        await _logger.WriteAsync("ERROR", userMessage, exception);
+    }
+
+    private async Task LoadModsetsAsync(CancellationToken cancellationToken = default)
+    {
+        var selectedId = SelectedModset?.Id;
         var modsets = await _modsetManager.GetAllAsync(cancellationToken);
         Modsets.Clear();
         foreach (var modset in modsets)
@@ -86,22 +222,39 @@ public partial class MainViewModel : ObservableObject
             Modsets.Add(modset);
         }
 
+        SelectedModset = selectedId is null ? null : Modsets.FirstOrDefault(item => item.Id == selectedId);
         OnPropertyChanged(nameof(ModsetCountText));
     }
+
+    private string BuildSuggestedHomePath(GameType game, string name)
+    {
+        var root = _settings.DefaultModsetRoot;
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            root = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "NMC SCS Launcher",
+                "Homes");
+        }
+
+        return Path.Combine(root, game == GameType.Ets2 ? "ETS2" : "ATS", name);
+    }
+
+    private static ModsetDraft ToDraft(ModsetEditorData data) => new(
+        data.Game,
+        data.Name,
+        data.Description,
+        data.HomeBasePath,
+        data.PreferredProfile,
+        data.AdditionalLaunchArguments);
 
     private async Task DetectAllAsync(bool useSavedPaths, CancellationToken cancellationToken)
     {
         IsBusy = true;
         try
         {
-            var ets2 = await _gameDetector.DetectAsync(
-                GameType.Ets2,
-                useSavedPaths ? _settings.Ets2InstallPath : null,
-                cancellationToken);
-            var ats = await _gameDetector.DetectAsync(
-                GameType.Ats,
-                useSavedPaths ? _settings.AtsInstallPath : null,
-                cancellationToken);
+            var ets2 = await _gameDetector.DetectAsync(GameType.Ets2, useSavedPaths ? _settings.Ets2InstallPath : null, cancellationToken);
+            var ats = await _gameDetector.DetectAsync(GameType.Ats, useSavedPaths ? _settings.AtsInstallPath : null, cancellationToken);
 
             ApplyInstallation(GameType.Ets2, ets2);
             ApplyInstallation(GameType.Ats, ats);
@@ -166,10 +319,7 @@ public partial class MainViewModel : ObservableObject
     private async Task BrowseAndPersistAsync(GameType gameType)
     {
         var definition = GameDefinition.For(gameType);
-        var selectedPath = _folderPicker.PickFolder(
-            $"Installationsordner für {definition.DisplayName} auswählen",
-            GetSavedPath(gameType));
-
+        var selectedPath = _folderPicker.PickFolder($"Installationsordner für {definition.DisplayName} auswählen", GetSavedPath(gameType));
         if (selectedPath is null)
         {
             return;
@@ -177,7 +327,6 @@ public partial class MainViewModel : ObservableObject
 
         var installation = _gameDetector.Validate(gameType, selectedPath, GameInstallationSource.ManualSelection);
         ApplyInstallation(gameType, installation);
-
         if (installation is null)
         {
             StatusText = $"Ungültiger Installationsordner: {definition.ExecutableRelativePath} wurde nicht gefunden.";
@@ -192,15 +341,13 @@ public partial class MainViewModel : ObservableObject
 
     private void ApplyInstallation(GameType gameType, GameInstallation? installation)
     {
-        var status = installation is null
-            ? "Nicht gefunden"
-            : installation.Source switch
-            {
-                GameInstallationSource.SavedPath => "Gefunden · gespeicherter Pfad",
-                GameInstallationSource.SteamAutoDetection => "Gefunden · Steam",
-                GameInstallationSource.ManualSelection => "Gefunden · manuell",
-                _ => "Gefunden"
-            };
+        var status = installation is null ? "Nicht gefunden" : installation.Source switch
+        {
+            GameInstallationSource.SavedPath => "Gefunden · gespeicherter Pfad",
+            GameInstallationSource.SteamAutoDetection => "Gefunden · Steam",
+            GameInstallationSource.ManualSelection => "Gefunden · manuell",
+            _ => "Gefunden"
+        };
         var path = installation?.InstallPath ?? "–";
 
         if (gameType == GameType.Ets2)
@@ -215,34 +362,18 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private string? GetSavedPath(GameType gameType) => gameType == GameType.Ets2
-        ? _settings.Ets2InstallPath
-        : _settings.AtsInstallPath;
+    private string? GetSavedPath(GameType gameType) => gameType == GameType.Ets2 ? _settings.Ets2InstallPath : _settings.AtsInstallPath;
 
     private void SetSavedPath(GameType gameType, string path)
     {
-        if (gameType == GameType.Ets2)
-        {
-            _settings.Ets2InstallPath = path;
-        }
-        else
-        {
-            _settings.AtsInstallPath = path;
-        }
+        if (gameType == GameType.Ets2) _settings.Ets2InstallPath = path;
+        else _settings.AtsInstallPath = path;
     }
 
     private static string BuildSummary(GameInstallation? ets2, GameInstallation? ats)
     {
-        if (ets2 is not null && ats is not null)
-        {
-            return "ETS2 und ATS wurden erkannt. Phase 1 – Game Detection ist bereit.";
-        }
-
-        if (ets2 is not null || ats is not null)
-        {
-            return "Ein SCS-Spiel wurde erkannt. Fehlende Installation kann manuell ausgewählt werden.";
-        }
-
+        if (ets2 is not null && ats is not null) return "ETS2 und ATS wurden erkannt. Phase 1 – Game Detection ist bereit.";
+        if (ets2 is not null || ats is not null) return "Ein SCS-Spiel wurde erkannt. Fehlende Installation kann manuell ausgewählt werden.";
         return "ETS2 und ATS wurden nicht automatisch gefunden. Installationsordner können manuell ausgewählt werden.";
     }
 }

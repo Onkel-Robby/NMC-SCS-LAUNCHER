@@ -10,7 +10,10 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Sichere Create-, Import-, Update- und Remove-Fachlogik.
 - Importierte Modsets werden beim Entfernen niemals vom Datenträger gelöscht.
 - Duplikatschutz für Modset-Namen pro Spiel.
-- Read-only-Modset-Anzeige in der Startoberfläche.
+- Modset-Tabelle mit Auswahl und Verwaltungsaktionen.
+- Dialoge für Erstellen, Importieren und Bearbeiten.
+- Explizite Entfernen-Bestätigung mit Hinweis, dass Dateien erhalten bleiben.
+- Öffnen des Home-Verzeichnisses über Windows Explorer.
 - Tests für Persistenz, Managed-Verzeichnisse und sichere Entfernung.
 
 ## 0.1.0-dev

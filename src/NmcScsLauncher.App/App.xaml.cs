@@ -23,6 +23,9 @@ public partial class App : Application
         services.AddSingleton<IModsetStore, JsonModsetStore>();
         services.AddSingleton<IModsetManager, ModsetManager>();
         services.AddSingleton<IFolderPicker, FolderPicker>();
+        services.AddSingleton<IModsetEditorService, ModsetEditorService>();
+        services.AddSingleton<IConfirmationService, ConfirmationService>();
+        services.AddSingleton<IExplorerService, ExplorerService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 

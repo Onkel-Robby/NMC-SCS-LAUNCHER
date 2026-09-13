@@ -1,0 +1,63 @@
+<Window x:Class="NmcScsLauncher.App.ModsetEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Modset"
+        Width="650"
+        Height="620"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackgroundBrush}"
+        Foreground="{StaticResource PrimaryTextBrush}">
+    <Grid Margin="28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock x:Name="HeadingTextBlock" FontSize="25" FontWeight="Bold" />
+            <TextBlock x:Name="SubtitleTextBlock" Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Margin="0,24,0,20" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="Spiel" Foreground="{StaticResource SecondaryTextBrush}" />
+                <ComboBox x:Name="GameComboBox" Margin="0,5,0,15" Height="34" />
+
+                <TextBlock Text="Name" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBox x:Name="NameTextBox" Margin="0,5,0,15" Height="34" Padding="8,5" />
+
+                <TextBlock Text="Beschreibung" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBox x:Name="DescriptionTextBox" Margin="0,5,0,15" Height="70" Padding="8,5" TextWrapping="Wrap" AcceptsReturn="True" />
+
+                <TextBlock Text="Home-Verzeichnis" Foreground="{StaticResource SecondaryTextBrush}" />
+                <Grid Margin="0,5,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="HomePathTextBox" Height="34" Padding="8,5" />
+                    <Button Grid.Column="1" Content="Durchsuchen …" Margin="8,0,0,0" Padding="12,5" Click="BrowseHome_Click" />
+                </Grid>
+
+                <TextBlock Text="Bevorzugtes Profil (optional)" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBox x:Name="PreferredProfileTextBox" Margin="0,5,0,15" Height="34" Padding="8,5" />
+
+                <TextBlock Text="Zusätzliche Startparameter (optional)" Foreground="{StaticResource SecondaryTextBrush}" />
+                <TextBox x:Name="LaunchArgumentsTextBox" Margin="0,5,0,0" Height="34" Padding="8,5" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="ValidationTextBlock" VerticalAlignment="Center" Foreground="#FFB454" />
+            <Button Grid.Column="1" Content="Abbrechen" Padding="16,8" Margin="0,0,8,0" Click="Cancel_Click" />
+            <Button Grid.Column="2" x:Name="SaveButton" Content="Speichern" Padding="16,8" Click="Save_Click" />
+        </Grid>
+    </Grid>
+</Window>

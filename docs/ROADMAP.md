@@ -25,14 +25,13 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] Modset-Datenmodell
 - [x] atomare JSON-Persistenz
 - [x] sichere Create-/Import-/Update-/Remove-Fachlogik
-- [x] Entfernen ohne Dateilöschung
+- [x] Modset-Liste und Auswahl in der UI
+- [x] Erstellen-Dialog
+- [x] Importieren-Dialog
+- [x] Bearbeiten-Dialog
+- [x] Entfernen-Bestätigung ohne Dateilöschung
+- [x] Home-Verzeichnis im Explorer öffnen
 - [x] Tests für Persistenz und Sicherheitsregeln
-- [~] Modset-Liste in der UI
-- [ ] Erstellen-Dialog
-- [ ] Importieren-Dialog
-- [ ] Bearbeiten-Dialog
-- [ ] Entfernen-Bestätigung
-- [ ] Explorer-Aktionen
 
 ## Phase 3 – Game Launch
 - [ ] SCS-Home-Auflösung
