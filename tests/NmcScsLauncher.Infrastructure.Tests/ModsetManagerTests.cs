@@ -1,0 +1,76 @@
+using NmcScsLauncher.Core;
+using NmcScsLauncher.Infrastructure;
+using Xunit;
+
+namespace NmcScsLauncher.Infrastructure.Tests;
+
+public sealed class ModsetManagerTests
+{
+    [Fact]
+    public async Task CreateCreatesManagedHomeAndPersistsEntry()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            var home = Path.Combine(root, "homes", "MapCombo");
+
+            var created = await manager.CreateAsync(new ModsetDraft(GameType.Ets2, "Map Combo", null, home));
+            var stored = await manager.GetAllAsync();
+
+            Assert.True(Directory.Exists(home));
+            Assert.True(created.IsManagedDirectory);
+            Assert.Equal(created.Id, Assert.Single(stored).Id);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RemovingImportedModsetNeverDeletesImportedDirectory()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var importedHome = Directory.CreateDirectory(Path.Combine(root, "existing-home")).FullName;
+            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+
+            var imported = await manager.ImportAsync(new ModsetDraft(GameType.Ats, "Existing ATS", null, importedHome));
+            await manager.RemoveAsync(imported.Id);
+
+            Assert.True(Directory.Exists(importedHome));
+            Assert.Empty(await manager.GetAllAsync());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DuplicateNameForSameGameIsRejected()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            await manager.CreateAsync(new ModsetDraft(GameType.Ets2, "ProMods", null, Path.Combine(root, "one")));
+
+            await Assert.ThrowsAsync<ModsetValidationException>(() =>
+                manager.CreateAsync(new ModsetDraft(GameType.Ets2, "promods", null, Path.Combine(root, "two"))));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static string CreateTemporaryDirectory()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(path);
+        return path;
+    }
+}

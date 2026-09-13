@@ -22,12 +22,16 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] Tests für Erkennungslogik
 
 ## Phase 2 – Modsets
-- [ ] Modset-Datenmodell
-- [ ] JSON-Persistenz
-- [ ] Erstellen
-- [ ] Importieren
-- [ ] Bearbeiten
-- [ ] Entfernen ohne Dateilöschung
+- [x] Modset-Datenmodell
+- [x] atomare JSON-Persistenz
+- [x] sichere Create-/Import-/Update-/Remove-Fachlogik
+- [x] Entfernen ohne Dateilöschung
+- [x] Tests für Persistenz und Sicherheitsregeln
+- [~] Modset-Liste in der UI
+- [ ] Erstellen-Dialog
+- [ ] Importieren-Dialog
+- [ ] Bearbeiten-Dialog
+- [ ] Entfernen-Bestätigung
 - [ ] Explorer-Aktionen
 
 ## Phase 3 – Game Launch

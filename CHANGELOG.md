@@ -2,6 +2,17 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 0.2.0-dev
+
+### Added
+- Modset-Datenmodell mit stabilen GUIDs und Spielzuordnung.
+- Atomare lokale `modsets.json`-Persistenz.
+- Sichere Create-, Import-, Update- und Remove-Fachlogik.
+- Importierte Modsets werden beim Entfernen niemals vom Datenträger gelöscht.
+- Duplikatschutz für Modset-Namen pro Spiel.
+- Read-only-Modset-Anzeige in der Startoberfläche.
+- Tests für Persistenz, Managed-Verzeichnisse und sichere Entfernung.
+
 ## 0.1.0-dev
 
 ### Added

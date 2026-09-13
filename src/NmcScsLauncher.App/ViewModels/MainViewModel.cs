@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NmcScsLauncher.App.Services;
@@ -11,6 +12,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ISettingsStore _settingsStore;
     private readonly IAppLogger _logger;
     private readonly IFolderPicker _folderPicker;
+    private readonly IModsetManager _modsetManager;
     private LauncherSettings _settings = new();
 
     [ObservableProperty]
@@ -31,24 +33,31 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
-    public string VersionText => "Version 0.1.0-dev";
+    public ObservableCollection<Modset> Modsets { get; } = new();
+
+    public string ModsetCountText => Modsets.Count == 1 ? "1 Modset" : $"{Modsets.Count} Modsets";
+
+    public string VersionText => "Version 0.2.0-dev";
 
     public MainViewModel(
         IGameInstallationDetector gameDetector,
         ISettingsStore settingsStore,
         IAppLogger logger,
-        IFolderPicker folderPicker)
+        IFolderPicker folderPicker,
+        IModsetManager modsetManager)
     {
         _gameDetector = gameDetector ?? throw new ArgumentNullException(nameof(gameDetector));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
+        _modsetManager = modsetManager ?? throw new ArgumentNullException(nameof(modsetManager));
     }
 
     public async Task InitializeAsync(LauncherSettings settings, CancellationToken cancellationToken = default)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         await DetectAllAsync(useSavedPaths: true, cancellationToken);
+        await LoadModsetsAsync(cancellationToken);
     }
 
     [RelayCommand]
@@ -66,6 +75,18 @@ public partial class MainViewModel : ObservableObject
     public void SetStartupError(string message)
     {
         StatusText = message;
+    }
+
+    private async Task LoadModsetsAsync(CancellationToken cancellationToken)
+    {
+        var modsets = await _modsetManager.GetAllAsync(cancellationToken);
+        Modsets.Clear();
+        foreach (var modset in modsets)
+        {
+            Modsets.Add(modset);
+        }
+
+        OnPropertyChanged(nameof(ModsetCountText));
     }
 
     private async Task DetectAllAsync(bool useSavedPaths, CancellationToken cancellationToken)

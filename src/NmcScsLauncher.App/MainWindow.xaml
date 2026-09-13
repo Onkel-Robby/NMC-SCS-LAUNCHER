@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="NMC SCS LAUNCHER"
         Width="1180"
-        Height="720"
+        Height="760"
         MinWidth="980"
-        MinHeight="620"
+        MinHeight="640"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource WindowBackgroundBrush}"
         Foreground="{StaticResource PrimaryTextBrush}">
@@ -40,63 +40,68 @@
             </Grid.RowDefinitions>
 
             <StackPanel>
-                <TextBlock Text="Spiele erkennen" FontSize="30" FontWeight="Bold" />
-                <TextBlock Text="Steam-Installationen werden automatisch erkannt. Manuelle Pfade bleiben möglich."
+                <TextBlock Text="NMC SCS LAUNCHER" FontSize="30" FontWeight="Bold" />
+                <TextBlock Text="Steam-Erkennung und sichere, getrennte Modset-Verwaltung."
                            Margin="0,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
             </StackPanel>
 
             <ScrollViewer Grid.Row="1" Margin="0,30,0,24" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <Border Padding="26" Background="{StaticResource CardBrush}" CornerRadius="14" Margin="0,0,0,16">
+                    <TextBlock Text="Spiele" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <Border Padding="22" Background="{StaticResource CardBrush}" CornerRadius="14" Margin="0,0,0,12">
                         <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Euro Truck Simulator 2" FontSize="21" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding Ets2Status}" Margin="0,6,0,0" Foreground="#67D391" />
+                                <TextBlock Text="Euro Truck Simulator 2" FontSize="19" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding Ets2Status}" Margin="0,5,0,0" Foreground="#67D391" />
+                                <TextBlock Text="{Binding Ets2InstallPath}" Margin="0,9,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="Automatisch erkennen" Command="{Binding DetectEts2Command}" Padding="14,8" Margin="0,0,8,0" />
-                                <Button Content="Ordner auswählen" Command="{Binding BrowseEts2Command}" Padding="14,8" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Automatisch erkennen" Command="{Binding DetectEts2Command}" Padding="12,7" Margin="0,0,8,0" />
+                                <Button Content="Ordner auswählen" Command="{Binding BrowseEts2Command}" Padding="12,7" />
                             </StackPanel>
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Installationspfad" Margin="0,20,0,4" Foreground="{StaticResource SecondaryTextBrush}" />
-                            <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#151E29" CornerRadius="7" Padding="12">
-                                <TextBlock Text="{Binding Ets2InstallPath}" TextWrapping="Wrap" />
-                            </Border>
                         </Grid>
                     </Border>
 
-                    <Border Padding="26" Background="{StaticResource CardBrush}" CornerRadius="14">
+                    <Border Padding="22" Background="{StaticResource CardBrush}" CornerRadius="14" Margin="0,0,0,22">
                         <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="American Truck Simulator" FontSize="21" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding AtsStatus}" Margin="0,6,0,0" Foreground="#67D391" />
+                                <TextBlock Text="American Truck Simulator" FontSize="19" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding AtsStatus}" Margin="0,5,0,0" Foreground="#67D391" />
+                                <TextBlock Text="{Binding AtsInstallPath}" Margin="0,9,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="Automatisch erkennen" Command="{Binding DetectAtsCommand}" Padding="14,8" Margin="0,0,8,0" />
-                                <Button Content="Ordner auswählen" Command="{Binding BrowseAtsCommand}" Padding="14,8" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Automatisch erkennen" Command="{Binding DetectAtsCommand}" Padding="12,7" Margin="0,0,8,0" />
+                                <Button Content="Ordner auswählen" Command="{Binding BrowseAtsCommand}" Padding="12,7" />
                             </StackPanel>
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Installationspfad" Margin="0,20,0,4" Foreground="{StaticResource SecondaryTextBrush}" />
-                            <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#151E29" CornerRadius="7" Padding="12">
-                                <TextBlock Text="{Binding AtsInstallPath}" TextWrapping="Wrap" />
-                            </Border>
                         </Grid>
+                    </Border>
+
+                    <Grid Margin="0,0,0,12">
+                        <TextBlock Text="Modsets" FontSize="20" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ModsetCountText}" HorizontalAlignment="Right" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </Grid>
+                    <Border Padding="22" Background="{StaticResource CardBrush}" CornerRadius="14">
+                        <StackPanel>
+                            <TextBlock Text="Phase 2 – Modset-Basis" FontWeight="SemiBold" FontSize="17" />
+                            <TextBlock Text="Persistenz und sichere Verwaltung sind aktiv. Editor und Import-Dialog folgen im nächsten Paket."
+                                       Margin="0,6,0,14" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                            <ItemsControl ItemsSource="{Binding Modsets}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#151E29" CornerRadius="7" Padding="12" Margin="0,0,0,7">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="100"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Game}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                                <TextBlock Grid.Column="2" Text="{Binding HomeBasePath}" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </Border>
 
                     <Border Margin="0,18,0,0" Padding="16,10" Background="#1A2633" CornerRadius="8">
