@@ -2,6 +2,22 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 0.5.0-dev
+
+### Added
+- Vollständige Sidebar-Navigation mit separaten Bereichen für Übersicht, ETS2, ATS, Modsets, Einstellungen und Info.
+- Dashboard mit Spielstatus, Modset-Zahlen und zuletzt verwendeten Modsets.
+- Eigene ETS2-/ATS-Seiten mit Installationsstatus und spielbezogenen Modsets.
+- Erweiterte Modset-Verwaltungsseite mit Start-, Bearbeitungs- und Inspektionsaktionen.
+- Einstellungen für Standard-Modset-Pfad, Startprüfung, Modanzahl und Merken des letzten Modsets.
+- Wiederherstellung des zuletzt ausgewählten Modsets nach Neustart, wenn aktiviert.
+- Info-Seite mit Produkt-/Markenhinweisen.
+- Konsistenteres Dark-Theme für Navigation, Buttons, Eingaben und Tabellen.
+
+### Changed
+- Kritische Startfehler blockieren den Start auch bei deaktiviertem Startprüfungsdialog.
+- Modanzahl kann über die Launcher-Einstellungen ausgeblendet werden.
+
 ## 0.4.0-dev
 
 ### Added

@@ -57,10 +57,14 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] Explorer-Aktionen für Mod-/Profilordner
 
 ## Phase 5 – UI-Ausbau
-- [ ] vollständiges Dashboard
-- [ ] Navigation
-- [ ] Modset-Karten und Detailseiten
-- [ ] Einstellungen
+- [x] echte Sidebar-Navigation
+- [x] Dashboard/Übersicht
+- [x] getrennte ETS2- und ATS-Seiten
+- [x] Modset-Verwaltungsseite mit Detailbereich
+- [x] Einstellungen-Seite
+- [x] Info-Seite und Disclaimer
+- [x] Startprüfung/Modanzahl/letztes Modset über Settings steuerbar
+- [~] visuelles Feintuning zum finalen Mockup
 
 ## Danach
 - [ ] Modset-Duplizierung
