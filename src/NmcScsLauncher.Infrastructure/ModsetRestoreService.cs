@@ -217,7 +217,7 @@ public sealed class ModsetRestoreService : IModsetRestoreService
         {
             if (string.Equals(entry.FullName, ManifestEntryName, StringComparison.Ordinal))
                 continue;
-            if (!entry.FullName.StartsWith("data/", StringComparison.Ordinal) || entry.FullName.EndsWith('/', StringComparison.Ordinal))
+            if (!entry.FullName.StartsWith("data/", StringComparison.Ordinal) || entry.FullName.EndsWith("/", StringComparison.Ordinal))
                 throw new ModsetBackupValidationException($"Unerwarteter Eintrag im Backup: {entry.FullName}");
 
             var portablePath = ValidatePortableRelativePath(entry.FullName[5..]);
@@ -244,7 +244,7 @@ public sealed class ModsetRestoreService : IModsetRestoreService
             throw new ModsetBackupValidationException("Das Backup enthält einen leeren Dateipfad.");
 
         var normalized = path.Replace('\\', '/');
-        if (normalized.StartsWith('/', StringComparison.Ordinal) || normalized.Contains(':', StringComparison.Ordinal))
+        if (normalized.StartsWith("/", StringComparison.Ordinal) || normalized.Contains(":", StringComparison.Ordinal))
             throw new ModsetBackupValidationException($"Absoluter oder ungültiger Dateipfad im Backup: {path}");
 
         var segments = normalized.Split('/');
