@@ -25,9 +25,12 @@ public partial class App : Application
         services.AddSingleton<IModsetStore, JsonModsetStore>();
         services.AddSingleton<IModsetManager, ModsetManager>();
         services.AddSingleton<IModsetDuplicationService, ModsetDuplicationService>();
+        services.AddSingleton<IModsetBackupService, ModsetBackupService>();
+        services.AddSingleton<IModsetRestoreService, ModsetRestoreService>();
         services.AddSingleton<IFolderPicker, FolderPicker>();
         services.AddSingleton<IModsetEditorService, ModsetEditorService>();
         services.AddSingleton<IModsetDuplicationDialogService, ModsetDuplicationDialogService>();
+        services.AddSingleton<IModsetBackupDialogService, ModsetBackupDialogService>();
         services.AddSingleton<IConfirmationService, ConfirmationService>();
         services.AddSingleton<IExplorerService, ExplorerService>();
         services.AddSingleton<IStartCheckDialogService, StartCheckDialogService>();
@@ -42,6 +45,10 @@ public partial class App : Application
         viewModel.ConfigureDuplicationServices(
             _serviceProvider.GetRequiredService<IModsetDuplicationService>(),
             _serviceProvider.GetRequiredService<IModsetDuplicationDialogService>());
+        viewModel.ConfigureBackupServices(
+            _serviceProvider.GetRequiredService<IModsetBackupService>(),
+            _serviceProvider.GetRequiredService<IModsetRestoreService>(),
+            _serviceProvider.GetRequiredService<IModsetBackupDialogService>());
 
         try
         {
