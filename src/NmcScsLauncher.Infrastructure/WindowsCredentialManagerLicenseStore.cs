@@ -33,8 +33,9 @@ public sealed class WindowsCredentialManagerLicenseStore : ILicenseCredentialSto
             if (credential.CredentialBlob == IntPtr.Zero || credential.CredentialBlobSize == 0)
                 return Task.FromResult<string?>(null);
 
-            var bytes = new byte[credential.CredentialBlobSize];
-            Marshal.Copy(credential.CredentialBlob, bytes, 0, bytes.Length);
+            var blobLength = checked((int)credential.CredentialBlobSize);
+            var bytes = new byte[blobLength];
+            Marshal.Copy(credential.CredentialBlob, bytes, 0, blobLength);
             var value = Encoding.UTF8.GetString(bytes).Trim();
             return Task.FromResult<string?>(value.Length == 0 ? null : value);
         }
