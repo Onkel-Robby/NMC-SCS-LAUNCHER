@@ -52,10 +52,50 @@ public sealed record ModsetBackupResult(
     ModsetBackupManifest Manifest,
     IReadOnlyList<string> Warnings);
 
+public sealed record ModsetRestorePreview(
+    string ArchivePath,
+    ModsetBackupManifest Manifest,
+    int FilesInArchive,
+    long BytesInArchive,
+    int ExistingTargetFiles,
+    int NewTargetFiles);
+
+public sealed record ModsetRestoreRequest(
+    Guid TargetModsetId,
+    string ArchivePath,
+    bool OverwriteExisting);
+
+public sealed record ModsetRestoreResult(
+    int FilesRestored,
+    long BytesRestored,
+    int FilesOverwritten,
+    ModsetBackupManifest Manifest);
+
+public sealed class ModsetBackupValidationException : Exception
+{
+    public ModsetBackupValidationException(string message) : base(message)
+    {
+    }
+
+    public ModsetBackupValidationException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}
+
 public interface IModsetBackupService
 {
     Task<ModsetBackupResult> CreateAsync(
         ModsetBackupRequest request,
+        IProgress<ModsetBackupProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ModsetRestorePreview> InspectRestoreAsync(
+        Guid targetModsetId,
+        string archivePath,
+        CancellationToken cancellationToken = default);
+
+    Task<ModsetRestoreResult> RestoreAsync(
+        ModsetRestoreRequest request,
         IProgress<ModsetBackupProgress>? progress = null,
         CancellationToken cancellationToken = default);
 }
