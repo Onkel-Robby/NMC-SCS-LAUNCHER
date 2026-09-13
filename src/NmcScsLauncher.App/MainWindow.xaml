@@ -1,6 +1,7 @@
 <Window x:Class="NmcScsLauncher.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:NmcScsLauncher.App"
         Title="NMC SCS LAUNCHER"
         Width="1280" Height="820" MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen"
@@ -174,6 +175,7 @@
                                     <TextBlock Text="{Binding DuplicationProgressText}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="11" />
                                 </StackPanel>
                             </Border>
+                            <local:ModsetBackupPanel />
                             <DataGrid ItemsSource="{Binding Modsets}" SelectedItem="{Binding SelectedModset}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="210">
                                 <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180"/><DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="90"/><DataGridTextColumn Header="Home-Verzeichnis" Binding="{Binding HomeBasePath}" Width="*"/><DataGridTextColumn Header="Letzter Start" Binding="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="140"/><DataGridCheckBoxColumn Header="Verwaltet" Binding="{Binding IsManagedDirectory}" Width="80"/></DataGrid.Columns>
                             </DataGrid>
