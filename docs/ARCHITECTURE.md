@@ -1,38 +1,37 @@
-# Architektur – NMC SCS LAUNCHER
+# Architektur
 
 ## Ziel
 
-Der Launcher trennt UI, Fachlogik und Windows-/Dateisystemintegration. Kritische SCS- und Steam-Annahmen werden nicht in der UI hartcodiert.
+NMC SCS LAUNCHER ist eine Windows-Desktop-Anwendung zur sicheren Verwaltung voneinander getrennter ETS2-/ATS-Modset-Umgebungen.
 
-## Komponenten
+## Projekte
 
-### `NmcScsLauncher.Core`
-Enthält Domänenmodelle, Game-Typen und Abstraktionen. Der Core kennt weder WPF noch Steam- oder Windows-spezifische Implementierungsdetails.
+### NmcScsLauncher.Core
+Enthält technologieunabhängige Modelle und Verträge. Aktuell: Spieltypen, Spieldefinitionen, Installationsmodelle, Einstellungen sowie Interfaces für Persistenz, Logging und Game Detection.
 
-### `NmcScsLauncher.Infrastructure`
-Implementiert lokale JSON-Persistenz, Dateisystempfade, Logging und später Steam-/SCS-Erkennung sowie Prozessstart.
+### NmcScsLauncher.Infrastructure
+Implementiert Dateisystem- und Windows-nahe Funktionen. Aktuell: App-Pfade, JSON-Persistenz, Dateilogging, Steam-Library-Erkennung und Steam-basierte ETS2-/ATS-Installationserkennung.
 
-### `NmcScsLauncher.App`
-WPF-Oberfläche mit MVVM. Code-behind bleibt auf reine View-Aufgaben beschränkt; Fachlogik gehört in Core/Services.
+### NmcScsLauncher.App
+WPF/MVVM-Oberfläche. Die UI greift über Interfaces auf Fach- und Infrastrukturservices zu. Dateisystem- oder Erkennungslogik gehört nicht in Code-Behind.
 
-### Tests
-Core- und Infrastructure-Tests sind getrennt. Dateisystemtests verwenden ausschließlich temporäre Verzeichnisse.
+## Game Detection
+
+Steam wird best-effort über Benutzer-/Maschinen-Registry und den üblichen Steam-Pfad gesucht. Zusätzliche Bibliotheken werden aus `steamapps/libraryfolders.vdf` gelesen. Spielinstallationen werden anhand des passenden `appmanifest_<appid>.acf`, `installdir` und der vorhandenen x64-Executable validiert.
+
+Gespeicherte Installationspfade werden beim Start zuerst validiert. Eine automatische Neuerkennung ignoriert den gespeicherten Pfad und durchsucht Steam erneut. Manuell ausgewählte Pfade werden nur gespeichert, wenn die erwartete x64-Executable existiert.
 
 ## Persistenz
 
-Launcher-Einstellungen liegen unter `%LOCALAPPDATA%\NMC Network\NMC SCS Launcher`. JSON ist für die frühen Versionen ausreichend. Eine Datenbank wird erst eingeführt, wenn ein konkreter Bedarf besteht.
-
-## Spielstart
-
-Die spätere Startlogik erhält eine eigene Abstraktion. `-homedir`, Executable-Pfade und Steam-Verhalten werden vor produktiver Implementierung gegen reale ETS2-/ATS-Installationen bzw. belastbare Quellen verifiziert.
+Launcher-Einstellungen werden atomar als JSON unter `%LOCALAPPDATA%\NMC Network\NMC SCS Launcher\settings.json` gespeichert. Keine Datenbank ist für den aktuellen Umfang erforderlich.
 
 ## Sicherheitsregeln
 
-- Savegames und SCS-Profildateien werden nicht ungefragt verändert.
-- Importierte Verzeichnisse werden niemals automatisch rekursiv gelöscht.
-- Steam Cloud und Workshop-Abonnements werden in frühen Versionen nur gelesen, nicht verändert.
-- Pfade und Prozessargumente werden strukturiert statt über unsichere Stringverkettung verarbeitet.
+- Keine Savegame-Manipulation.
+- Keine Steam-Cloud-Manipulation.
+- Keine automatischen Löschvorgänge an Benutzerdateien.
+- Externe Pfade werden validiert, bevor sie persistiert oder später für Starts verwendet werden.
 
-## UI
+## Tests
 
-Dark-Mode, linke Navigation und Modset-Karten bilden die Designrichtung. Fake-Fachdaten werden nicht als reale Daten angezeigt.
+Core- und Infrastructure-Tests verwenden temporäre Verzeichnisse und künstliche Steam-Strukturen. Es werden keine realen Benutzerprofile oder echten Steam-Installationen verändert.

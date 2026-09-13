@@ -5,13 +5,16 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 ## 0.1.0-dev
 
 ### Added
+- Initiale .NET-10-/WPF-Projektstruktur mit Core, Infrastructure und App.
+- Dependency Injection, lokale JSON-Einstellungen und dateibasiertes Logging.
+- GitHub-Actions-CI mit Restore, Build, Tests und Windows-Publish-Artefakt.
+- Dark-Mode-App-Shell für die spätere Launcher-Oberfläche.
+- Steam-Library-Erkennung über Registry, Standardpfad und `libraryfolders.vdf`.
+- Automatische ETS2-/ATS-Erkennung über Steam-App-Manifeste.
+- Validierung der 64-Bit-Executables von ETS2 und ATS.
+- Manuelle Auswahl und persistente Speicherung von Spielinstallationspfaden.
+- Game-Detection-Ansicht für ETS2 und ATS.
+- Unit Tests für Spieldefinitionen, Steam-Libraries und Installationserkennung.
 
-- initiale .NET-10/WPF-Solution
-- Core-, Infrastructure- und App-Projekt
-- MVVM-Basis mit Dependency Injection
-- lokale JSON-Einstellungen unter `%LOCALAPPDATA%`
-- lokales Datei-Logging
-- erste Dark-Mode-App-Shell
-- getrennte Core- und Infrastructure-Tests
-- GitHub-Actions-Workflow für Restore, Build, Tests und Publish
-- Architektur- und Roadmap-Dokumentation
+### Fixed
+- Fehlende xUnit-Namespace-Imports in den initialen Tests.

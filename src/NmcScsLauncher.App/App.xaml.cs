@@ -1,5 +1,6 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using NmcScsLauncher.App.Services;
 using NmcScsLauncher.App.ViewModels;
 using NmcScsLauncher.Core;
 using NmcScsLauncher.Infrastructure;
@@ -17,6 +18,9 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<IAppLogger, FileAppLogger>();
+        services.AddSingleton<SteamLibraryLocator>();
+        services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
+        services.AddSingleton<IFolderPicker, FolderPicker>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
@@ -30,11 +34,11 @@ public partial class App : Application
         {
             await logger.WriteAsync("INFO", "NMC SCS LAUNCHER started.");
             var settings = await settingsStore.LoadAsync();
-            viewModel.SetSettingsLoaded(settings);
+            await viewModel.InitializeAsync(settings);
         }
         catch (Exception ex)
         {
-            viewModel.SetStartupError("Die lokalen Einstellungen konnten nicht geladen werden.");
+            viewModel.SetStartupError("Die Initialisierung konnte nicht vollständig abgeschlossen werden.");
             await logger.WriteAsync("ERROR", "Startup initialization failed.", ex);
         }
 

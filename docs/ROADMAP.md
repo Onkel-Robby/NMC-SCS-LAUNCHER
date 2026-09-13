@@ -1,58 +1,57 @@
-# Roadmap – NMC SCS LAUNCHER
+# Roadmap
 
 Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 
-## 0.1.x – Projektbasis und Game Detection
-
-- [x] Solution mit App/Core/Infrastructure
-- [x] WPF-App-Shell und MVVM-Basis
-- [x] lokale Settings-Persistenz
+## Phase 0 – Projektbasis
+- [x] Solution und Projekttrennung
+- [x] WPF-App-Shell
+- [x] Dependency Injection
+- [x] lokale JSON-Einstellungen
 - [x] lokales Logging
-- [x] Unit-Test-Projekte
-- [x] GitHub Actions CI
-- [ ] Steam-Installation erkennen
-- [ ] Steam-Libraries erkennen
-- [ ] ETS2 erkennen
-- [ ] ATS erkennen
-- [ ] manuelle Spielpfade
+- [x] GitHub Actions
+- [x] initiale Tests
 
-## 0.2.x – Modsets
+## Phase 1 – Game Detection
+- [x] `GameType` und Spieldefinitionen
+- [x] Steam-Root-Erkennung
+- [x] zusätzliche Steam-Libraries aus `libraryfolders.vdf`
+- [x] ETS2-Erkennung
+- [x] ATS-Erkennung
+- [x] manuelle Installationspfade
+- [x] Persistenz erkannter/manueller Pfade
+- [x] Tests für Erkennungslogik
 
-- [ ] Modset-Modell
-- [ ] Modset-Persistenz
-- [ ] erstellen und importieren
-- [ ] bearbeiten und sicher entfernen
+## Phase 2 – Modsets
+- [ ] Modset-Datenmodell
+- [ ] JSON-Persistenz
+- [ ] Erstellen
+- [ ] Importieren
+- [ ] Bearbeiten
+- [ ] Entfernen ohne Dateilöschung
+- [ ] Explorer-Aktionen
 
-## 0.3.x – Game Launch
-
-- [ ] SCS-Home-Auflösung verifizieren
-- [ ] `-homedir`-Startlogik
+## Phase 3 – Game Launch
+- [ ] SCS-Home-Auflösung
 - [ ] Startprüfung
-- [ ] zusätzliche Startargumente
+- [ ] `-homedir`
+- [ ] zusätzliche Startparameter
+- [ ] sicherer Prozessstart
 
-## 0.4.x – Profile und Mods
+## Phase 4 – Profile und Mods
+- [ ] `profiles`
+- [ ] `steam_profiles`
+- [ ] Mod-Verzeichnis
+- [ ] Modzählung
 
-- [ ] Profile erkennen
-- [ ] Steam-Profile erkennen
-- [ ] Mods zählen
-- [ ] Modset-Details
+## Phase 5 – UI-Ausbau
+- [ ] vollständiges Dashboard
+- [ ] Navigation
+- [ ] Modset-Karten und Detailseiten
+- [ ] Einstellungen
 
-## 0.5.x – Modset-Duplizierung
-
-- [ ] Kopierdialog
-- [ ] asynchrone Dateioperationen
-- [ ] Fortschrittsanzeige
-
-## 0.6.x – Backup
-
-- [ ] Profil-/Konfigurationsbackup
-- [ ] ZIP-Backup
-- [ ] sicherer Restore
-
-## Später
-
+## Danach
+- [ ] Modset-Duplizierung
+- [ ] Backup
 - [ ] Workshop-Grundlage
 - [ ] Installer
-- [ ] Launcher-Updates
-- [ ] erweiterte Modanalyse
-- [ ] Version 1.0.0
+- [ ] Update-Mechanismus
