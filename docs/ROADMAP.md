@@ -35,13 +35,14 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 
 ## Phase 3 – Game Launch
 - [x] SCS-Home-Auflösung und `-homedir`-Semantik
-- [x] Startprüfungs-Fachlogik
+- [x] Startprüfung
 - [x] sichere Argumenterzeugung ohne Shell-Stringverkettung
 - [x] Schutz vor überschriebenem `-homedir`
 - [x] Warnung bei bereits laufendem Spielprozess
-- [x] `LastStartedAt`-Persistenzbasis
-- [~] Startprüfung in der UI
-- [ ] Start-Button und bestätigter Prozessstart
+- [x] Startprüfungsdialog
+- [x] Start-Button und Prozessstart
+- [x] `LastStartedAt`-Persistenz
+- [ ] Praxistest mit realer ETS2-/ATS-Installation
 
 ## Phase 4 – Profile und Mods
 - [ ] `profiles`

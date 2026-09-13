@@ -7,10 +7,15 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 ### Added
 - SCS-konforme `-homedir`-Startlogik mit Home-Basis oberhalb des spielbezogenen Datenordners.
 - Startprüfung für Spielzuordnung, x64-Executable, Home-Pfad, Schreibrechte und bereits laufende Prozesse.
-- Sichere zusätzliche Startparameter über `ProcessStartInfo.ArgumentList` statt Shell-Stringverkettung.
+- Eigener Startprüfungsdialog mit Sperre bei kritischen Fehlern und ausdrücklicher Warnungsbestätigung.
+- Sicherer Prozessstart über `ProcessStartInfo.ArgumentList` statt Shell-Stringverkettung.
 - Blockierung eines benutzerdefinierten `-homedir`, da dieser Parameter vom Launcher verwaltet wird.
-- Persistenzbasis für `LastStartedAt`.
+- Start-Button für das ausgewählte Modset.
+- Persistenz und Anzeige von `LastStartedAt` nach erfolgreicher Prozesserzeugung.
 - Tests für SCS-Home-Auflösung, Argumentparser und Startprüfungen.
+
+### Verification pending
+- Realer Praxistest mit installierter Steam-Version von ETS2 und/oder ATS.
 
 ## 0.2.0-dev
 

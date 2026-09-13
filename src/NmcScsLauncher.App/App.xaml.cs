@@ -20,12 +20,14 @@ public partial class App : Application
         services.AddSingleton<IAppLogger, FileAppLogger>();
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
+        services.AddSingleton<IGameLaunchService, ScsGameLaunchService>();
         services.AddSingleton<IModsetStore, JsonModsetStore>();
         services.AddSingleton<IModsetManager, ModsetManager>();
         services.AddSingleton<IFolderPicker, FolderPicker>();
         services.AddSingleton<IModsetEditorService, ModsetEditorService>();
         services.AddSingleton<IConfirmationService, ConfirmationService>();
         services.AddSingleton<IExplorerService, ExplorerService>();
+        services.AddSingleton<IStartCheckDialogService, StartCheckDialogService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
 
