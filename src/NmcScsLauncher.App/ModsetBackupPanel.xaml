@@ -1,0 +1,31 @@
+<UserControl x:Class="NmcScsLauncher.App.ModsetBackupPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Margin="0,0,0,12" Padding="12" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
+        <StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Backup &amp; Wiederherstellung" FontWeight="SemiBold" />
+                    <TextBlock Text="Profile und Konfiguration sichern; Mods optional." Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Backup erstellen" Command="{Binding CreateSelectedModsetBackupCommand}" Margin="0,0,7,0" />
+                    <Button Content="Wiederherstellen" Command="{Binding RestoreSelectedModsetBackupCommand}" />
+                </StackPanel>
+            </Grid>
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding BackupProgress}" Height="7" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding BackupProgress, StringFormat={}{0:F0}%}" Margin="10,0,0,0" Foreground="{StaticResource SecondaryTextBrush}" />
+            </Grid>
+            <TextBlock Text="{Binding BackupProgressText}" Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="11" />
+        </StackPanel>
+    </Border>
+</UserControl>
