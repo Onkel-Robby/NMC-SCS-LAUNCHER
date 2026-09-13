@@ -1,5 +1,6 @@
 using NmcScsLauncher.Core;
 using NmcScsLauncher.Infrastructure;
+using Xunit;
 
 namespace NmcScsLauncher.Infrastructure.Tests;
 
