@@ -2,6 +2,34 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 0.7.0-dev
+
+### Added
+- Read-only Steam-Workshop-Grundlage für ETS2 und ATS.
+- Erkennung lokaler Workshop-Content-Roots über alle erkannten Steam-Libraries.
+- Erfassung numerischer Workshop-/PublishedFileId-Verzeichnisse ohne Änderung von Steam-Abonnements.
+- Tests für getrennte ETS2-/ATS-Workshop-Inhalte und fehlende Workshop-Verzeichnisse.
+
+### Changed
+- Installer ist jetzt ausdrücklich hinter LicenseHub-Lizenzschutz und LicenseHub-Updateintegration blockiert.
+- Der geplante generische Update-Mechanismus wird durch eine LicenseHub-basierte Release-/Updateintegration ersetzt.
+
+## 0.6.0-dev
+
+### Added
+- ZIP-Backups pro Modset mit `nmc-backup.json`-Manifest.
+- Standardbackup für Konfiguration und lokale/Steam-Profile; Mods optional.
+- Sichere Restore-Vorschau mit Quell-Modset, Spiel, Datum, Dateizahlen und vorhandenen Zieldateien.
+- Restore-Validierung für NMC-Manifest, Spieltyp, ZIP-Einträge, Dateigrößen und sichere relative Pfade.
+- Explizite Benutzerfreigabe vor dem Überschreiben vorhandener Dateien.
+- Backup-/Restore-Dialoge und Fortschrittsanzeige in der Modset-Verwaltung.
+- Tests für Backup-Inhalte, Manifest, Restore-Bestätigung und Spielisolation.
+
+### Security
+- Backup/Restore folgt keinen Links oder Junctions.
+- Restore entfernt keine zusätzlichen Dateien aus dem Ziel-Modset.
+- Unbestätigte Restore-Vorgänge überschreiben keine vorhandenen Dateien.
+
 ## 0.5.0-dev
 
 ### Added
