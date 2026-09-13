@@ -9,6 +9,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Zählung von `.scs`-Paketen und entpackten Mod-Verzeichnissen ohne rekursive Vollanalyse.
 - Erkennung lokaler Profile unter `profiles` und Steam-Profile unter `steam_profiles`.
 - Fehlertolerante Inspektion bei fehlenden oder nicht lesbaren Ordnern.
+- Detailbereich mit Mod-/Profilzahlen für das ausgewählte Modset.
+- Manuelle Aktualisierung sowie Explorer-Aktionen für Mod-, lokale Profil- und Steam-Profilordner.
 - Tests, die sicherstellen, dass die Inspektion keine fehlenden SCS-Datenordner erzeugt oder SII-Dateien verändert.
 
 ## 0.3.0-dev

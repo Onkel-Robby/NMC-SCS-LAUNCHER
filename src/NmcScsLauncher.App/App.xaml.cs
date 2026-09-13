@@ -21,6 +21,7 @@ public partial class App : Application
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
         services.AddSingleton<IGameLaunchService, ScsGameLaunchService>();
+        services.AddSingleton<IModsetInspector, ScsModsetInspector>();
         services.AddSingleton<IModsetStore, JsonModsetStore>();
         services.AddSingleton<IModsetManager, ModsetManager>();
         services.AddSingleton<IFolderPicker, FolderPicker>();

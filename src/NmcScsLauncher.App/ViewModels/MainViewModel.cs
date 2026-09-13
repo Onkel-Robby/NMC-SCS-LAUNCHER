@@ -10,6 +10,7 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IGameInstallationDetector _gameDetector;
     private readonly IGameLaunchService _gameLaunchService;
+    private readonly IModsetInspector _modsetInspector;
     private readonly ISettingsStore _settingsStore;
     private readonly IAppLogger _logger;
     private readonly IFolderPicker _folderPicker;
@@ -19,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IExplorerService _explorerService;
     private readonly IStartCheckDialogService _startCheckDialogService;
     private LauncherSettings _settings = new();
+    private ModsetInspection? _selectedInspection;
 
     [ObservableProperty] private string _statusText = "Lokale Konfiguration wird initialisiert …";
     [ObservableProperty] private string _ets2Status = "Noch nicht geprüft";
@@ -27,16 +29,23 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _atsInstallPath = "–";
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private Modset? _selectedModset;
+    [ObservableProperty] private string _selectedModCountText = "–";
+    [ObservableProperty] private string _selectedProfileCountText = "–";
+    [ObservableProperty] private string _selectedInspectionStatus = "Modset auswählen, um Mods und Profile zu prüfen.";
+    [ObservableProperty] private string _selectedModDirectory = "–";
+    [ObservableProperty] private string _selectedLocalProfilesDirectory = "–";
+    [ObservableProperty] private string _selectedSteamProfilesDirectory = "–";
 
     public ObservableCollection<Modset> Modsets { get; } = new();
 
     public string ModsetCountText => Modsets.Count == 1 ? "1 Modset" : $"{Modsets.Count} Modsets";
 
-    public string VersionText => "Version 0.3.0-dev";
+    public string VersionText => "Version 0.4.0-dev";
 
     public MainViewModel(
         IGameInstallationDetector gameDetector,
         IGameLaunchService gameLaunchService,
+        IModsetInspector modsetInspector,
         ISettingsStore settingsStore,
         IAppLogger logger,
         IFolderPicker folderPicker,
@@ -48,6 +57,7 @@ public partial class MainViewModel : ObservableObject
     {
         _gameDetector = gameDetector ?? throw new ArgumentNullException(nameof(gameDetector));
         _gameLaunchService = gameLaunchService ?? throw new ArgumentNullException(nameof(gameLaunchService));
+        _modsetInspector = modsetInspector ?? throw new ArgumentNullException(nameof(modsetInspector));
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _folderPicker = folderPicker ?? throw new ArgumentNullException(nameof(folderPicker));
@@ -71,24 +81,27 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand] private Task BrowseAtsAsync() => BrowseAndPersistAsync(GameType.Ats);
 
     [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private Task RefreshSelectedInspectionAsync() => InspectSelectedModsetAsync(SelectedModset);
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private Task OpenModDirectoryAsync() => OpenInspectionDirectoryAsync(_selectedInspection?.ModDirectory, "Mod-Ordner");
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private Task OpenLocalProfilesDirectoryAsync() => OpenInspectionDirectoryAsync(_selectedInspection?.LocalProfilesDirectory, "Ordner der lokalen Profile");
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
+    private Task OpenSteamProfilesDirectoryAsync() => OpenInspectionDirectoryAsync(_selectedInspection?.SteamProfilesDirectory, "Ordner der Steam-Profile");
+
+    [RelayCommand(CanExecute = nameof(HasSelectedModset))]
     private async Task LaunchSelectedModsetAsync()
     {
         var selected = SelectedModset;
-        if (selected is null)
-        {
-            return;
-        }
-
+        if (selected is null) return;
         IsBusy = true;
         try
         {
             var installation = await _gameDetector.DetectAsync(selected.Game, GetSavedPath(selected.Game));
-            if (installation is null)
-            {
-                StatusText = $"{GameDefinition.For(selected.Game).DisplayName} wurde nicht gefunden. Prüfe zuerst den Installationspfad.";
-                return;
-            }
-
+            if (installation is null) { StatusText = $"{GameDefinition.For(selected.Game).DisplayName} wurde nicht gefunden. Prüfe zuerst den Installationspfad."; return; }
             if (!string.Equals(GetSavedPath(selected.Game), installation.InstallPath, StringComparison.OrdinalIgnoreCase))
             {
                 SetSavedPath(selected.Game, installation.InstallPath);
@@ -104,8 +117,7 @@ public partial class MainViewModel : ObservableObject
             }
 
             var processId = await _gameLaunchService.LaunchAsync(plan);
-            var startedAt = DateTimeOffset.UtcNow;
-            await _modsetManager.MarkStartedAsync(selected.Id, startedAt);
+            await _modsetManager.MarkStartedAsync(selected.Id, DateTimeOffset.UtcNow);
             await _logger.WriteAsync("INFO", $"Started {selected.Game} with modset {selected.Id}. ProcessId={processId}; HomeBase={selected.HomeBasePath}");
             await LoadModsetsAsync();
             SelectedModset = Modsets.FirstOrDefault(item => item.Id == selected.Id);
@@ -116,10 +128,7 @@ public partial class MainViewModel : ObservableObject
             StatusText = "Das Spiel konnte nicht gestartet werden. Details wurden protokolliert.";
             await _logger.WriteAsync("ERROR", $"Game launch failed for modset {selected.Id}.", ex);
         }
-        finally
-        {
-            IsBusy = false;
-        }
+        finally { IsBusy = false; }
     }
 
     [RelayCommand]
@@ -179,10 +188,76 @@ public partial class MainViewModel : ObservableObject
         EditModsetCommand.NotifyCanExecuteChanged();
         RemoveModsetCommand.NotifyCanExecuteChanged();
         OpenModsetHomeCommand.NotifyCanExecuteChanged();
+        RefreshSelectedInspectionCommand.NotifyCanExecuteChanged();
+        OpenModDirectoryCommand.NotifyCanExecuteChanged();
+        OpenLocalProfilesDirectoryCommand.NotifyCanExecuteChanged();
+        OpenSteamProfilesDirectoryCommand.NotifyCanExecuteChanged();
+        _ = InspectSelectedModsetAsync(value);
     }
 
     public void SetStartupError(string message) => StatusText = message;
     private bool HasSelectedModset() => SelectedModset is not null;
+
+    private async Task InspectSelectedModsetAsync(Modset? modset)
+    {
+        if (modset is null)
+        {
+            ClearInspection();
+            return;
+        }
+
+        try
+        {
+            var inspection = await _modsetInspector.InspectAsync(modset);
+            if (SelectedModset?.Id != modset.Id) return;
+
+            _selectedInspection = inspection;
+            SelectedModCountText = $"{inspection.TotalModCount} ({inspection.PackageModCount} .scs + {inspection.ExtractedModCount} Ordner)";
+            SelectedProfileCountText = $"{inspection.TotalProfileCount} ({inspection.LocalProfileCount} lokal + {inspection.SteamProfileCount} Steam)";
+            SelectedModDirectory = inspection.ModDirectory;
+            SelectedLocalProfilesDirectory = inspection.LocalProfilesDirectory;
+            SelectedSteamProfilesDirectory = inspection.SteamProfilesDirectory;
+            SelectedInspectionStatus = inspection.GameDataDirectoryExists
+                ? inspection.Warnings.Count == 0 ? "SCS-Datenordner erfolgreich gelesen." : string.Join(" ", inspection.Warnings)
+                : inspection.Warnings.FirstOrDefault() ?? "SCS-Datenordner ist noch nicht vorhanden.";
+        }
+        catch (Exception ex)
+        {
+            if (SelectedModset?.Id != modset.Id) return;
+            ClearInspection();
+            SelectedInspectionStatus = "Mods und Profile konnten nicht gelesen werden.";
+            await _logger.WriteAsync("ERROR", $"Modset inspection failed for {modset.Id}.", ex);
+        }
+    }
+
+    private async Task OpenInspectionDirectoryAsync(string? path, string description)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            _explorerService.OpenFolder(path);
+            StatusText = $"{description} geöffnet.";
+        }
+        catch (DirectoryNotFoundException)
+        {
+            StatusText = $"{description} ist noch nicht vorhanden.";
+        }
+        catch (Exception ex)
+        {
+            await HandleModsetErrorAsync($"{description} konnte nicht geöffnet werden.", ex);
+        }
+    }
+
+    private void ClearInspection()
+    {
+        _selectedInspection = null;
+        SelectedModCountText = "–";
+        SelectedProfileCountText = "–";
+        SelectedModDirectory = "–";
+        SelectedLocalProfilesDirectory = "–";
+        SelectedSteamProfilesDirectory = "–";
+        SelectedInspectionStatus = "Modset auswählen, um Mods und Profile zu prüfen.";
+    }
 
     private async Task ExecuteModsetChangeAsync(Func<Task<Modset>> operation, string successMessage)
     {

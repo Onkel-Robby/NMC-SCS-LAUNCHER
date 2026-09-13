@@ -52,7 +52,9 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] `steam_profiles` erkennen
 - [x] fehlende Ordner ohne Schreibzugriff behandeln
 - [x] Tests für Inspektion
-- [~] Anzeige und Explorer-Aktionen in der UI
+- [x] Anzeige für Mods und Profile
+- [x] manuelles Aktualisieren
+- [x] Explorer-Aktionen für Mod-/Profilordner
 
 ## Phase 5 – UI-Ausbau
 - [ ] vollständiges Dashboard
