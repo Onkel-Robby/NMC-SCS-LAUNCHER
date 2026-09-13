@@ -45,10 +45,14 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [ ] Praxistest mit realer ETS2-/ATS-Installation
 
 ## Phase 4 – Profile und Mods
-- [ ] `profiles`
-- [ ] `steam_profiles`
-- [ ] Mod-Verzeichnis
-- [ ] Modzählung
+- [x] read-only SCS-Datenordner-Auflösung
+- [x] `.scs`-Modzählung
+- [x] entpackte Mod-Verzeichnisse zählen
+- [x] `profiles` erkennen
+- [x] `steam_profiles` erkennen
+- [x] fehlende Ordner ohne Schreibzugriff behandeln
+- [x] Tests für Inspektion
+- [~] Anzeige und Explorer-Aktionen in der UI
 
 ## Phase 5 – UI-Ausbau
 - [ ] vollständiges Dashboard

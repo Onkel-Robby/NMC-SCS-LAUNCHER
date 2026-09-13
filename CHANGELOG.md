@@ -2,6 +2,15 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 0.4.0-dev
+
+### Added
+- Read-only Inspektion des spielbezogenen SCS-Datenordners pro Modset.
+- Zählung von `.scs`-Paketen und entpackten Mod-Verzeichnissen ohne rekursive Vollanalyse.
+- Erkennung lokaler Profile unter `profiles` und Steam-Profile unter `steam_profiles`.
+- Fehlertolerante Inspektion bei fehlenden oder nicht lesbaren Ordnern.
+- Tests, die sicherstellen, dass die Inspektion keine fehlenden SCS-Datenordner erzeugt oder SII-Dateien verändert.
+
 ## 0.3.0-dev
 
 ### Added
