@@ -12,20 +12,15 @@ public sealed class ModsetManagerTests
         var root = CreateTemporaryDirectory();
         try
         {
-            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
             var home = Path.Combine(root, "homes", "MapCombo");
-
             var created = await manager.CreateAsync(new ModsetDraft(GameType.Ets2, "Map Combo", null, home));
             var stored = await manager.GetAllAsync();
-
             Assert.True(Directory.Exists(home));
             Assert.True(created.IsManagedDirectory);
             Assert.Equal(created.Id, Assert.Single(stored).Id);
         }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
@@ -35,18 +30,13 @@ public sealed class ModsetManagerTests
         try
         {
             var importedHome = Directory.CreateDirectory(Path.Combine(root, "existing-home")).FullName;
-            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
-
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
             var imported = await manager.ImportAsync(new ModsetDraft(GameType.Ats, "Existing ATS", null, importedHome));
             await manager.RemoveAsync(imported.Id);
-
             Assert.True(Directory.Exists(importedHome));
             Assert.Empty(await manager.GetAllAsync());
         }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [Fact]
@@ -55,16 +45,30 @@ public sealed class ModsetManagerTests
         var root = CreateTemporaryDirectory();
         try
         {
-            var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
             await manager.CreateAsync(new ModsetDraft(GameType.Ets2, "ProMods", null, Path.Combine(root, "one")));
+            await Assert.ThrowsAsync<ModsetValidationException>(() => manager.CreateAsync(new ModsetDraft(GameType.Ets2, "promods", null, Path.Combine(root, "two"))));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 
-            await Assert.ThrowsAsync<ModsetValidationException>(() =>
-                manager.CreateAsync(new ModsetDraft(GameType.Ets2, "promods", null, Path.Combine(root, "two"))));
-        }
-        finally
+    [Fact]
+    public async Task MarkStartedPersistsTimestampWithoutChangingIdentity()
+    {
+        var root = CreateTemporaryDirectory();
+        try
         {
-            Directory.Delete(root, recursive: true);
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            var created = await manager.CreateAsync(new ModsetDraft(GameType.Ets2, "Start Test", null, Path.Combine(root, "home")));
+            var startedAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+
+            var updated = await manager.MarkStartedAsync(created.Id, startedAt);
+
+            Assert.Equal(created.Id, updated.Id);
+            Assert.Equal(startedAt, updated.LastStartedAt);
+            Assert.Equal(startedAt, Assert.Single(await manager.GetAllAsync()).LastStartedAt);
         }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     private static string CreateTemporaryDirectory()

@@ -2,6 +2,16 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 0.3.0-dev
+
+### Added
+- SCS-konforme `-homedir`-Startlogik mit Home-Basis oberhalb des spielbezogenen Datenordners.
+- Startprüfung für Spielzuordnung, x64-Executable, Home-Pfad, Schreibrechte und bereits laufende Prozesse.
+- Sichere zusätzliche Startparameter über `ProcessStartInfo.ArgumentList` statt Shell-Stringverkettung.
+- Blockierung eines benutzerdefinierten `-homedir`, da dieser Parameter vom Launcher verwaltet wird.
+- Persistenzbasis für `LastStartedAt`.
+- Tests für SCS-Home-Auflösung, Argumentparser und Startprüfungen.
+
 ## 0.2.0-dev
 
 ### Added

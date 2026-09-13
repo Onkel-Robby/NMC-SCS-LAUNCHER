@@ -3,7 +3,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.2.0-dev</Version>
+    <Version>0.3.0-dev</Version>
     <Authors>NMC Network / Onkel_Robby</Authors>
     <Product>NMC SCS LAUNCHER</Product>
     <Copyright>Copyright © 2026 NMC Network / Onkel_Robby</Copyright>

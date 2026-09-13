@@ -17,5 +17,7 @@ public interface IModsetManager
 
     Task<Modset> UpdateAsync(Guid id, ModsetDraft draft, CancellationToken cancellationToken = default);
 
+    Task<Modset> MarkStartedAsync(Guid id, DateTimeOffset startedAt, CancellationToken cancellationToken = default);
+
     Task RemoveAsync(Guid id, CancellationToken cancellationToken = default);
 }

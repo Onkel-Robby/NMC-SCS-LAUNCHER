@@ -34,11 +34,14 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] Tests für Persistenz und Sicherheitsregeln
 
 ## Phase 3 – Game Launch
-- [ ] SCS-Home-Auflösung
-- [ ] Startprüfung
-- [ ] `-homedir`
-- [ ] zusätzliche Startparameter
-- [ ] sicherer Prozessstart
+- [x] SCS-Home-Auflösung und `-homedir`-Semantik
+- [x] Startprüfungs-Fachlogik
+- [x] sichere Argumenterzeugung ohne Shell-Stringverkettung
+- [x] Schutz vor überschriebenem `-homedir`
+- [x] Warnung bei bereits laufendem Spielprozess
+- [x] `LastStartedAt`-Persistenzbasis
+- [~] Startprüfung in der UI
+- [ ] Start-Button und bestätigter Prozessstart
 
 ## Phase 4 – Profile und Mods
 - [ ] `profiles`
