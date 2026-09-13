@@ -26,6 +26,7 @@ public partial class App : Application
         services.AddSingleton<IMachineIdentityProvider, WindowsMachineIdentityProvider>();
         services.AddSingleton<ILicenseCredentialStore, WindowsCredentialManagerLicenseStore>();
         services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
+        services.AddSingleton<ILicenseActivationDialogService, LicenseActivationDialogService>();
         services.AddSingleton<ScsGameLaunchService>();
         services.AddSingleton<IGameLaunchService, LicensedGameLaunchService>();
 
@@ -50,6 +51,7 @@ public partial class App : Application
         var logger = _serviceProvider.GetRequiredService<IAppLogger>();
         var settingsStore = _serviceProvider.GetRequiredService<ISettingsStore>();
         var licenseRuntime = _serviceProvider.GetRequiredService<ILicenseRuntimeService>();
+        var activationDialog = _serviceProvider.GetRequiredService<ILicenseActivationDialogService>();
         var viewModel = _serviceProvider.GetRequiredService<MainViewModel>();
         viewModel.ConfigureDuplicationServices(
             _serviceProvider.GetRequiredService<IModsetDuplicationService>(),
@@ -66,6 +68,15 @@ public partial class App : Application
             await logger.WriteAsync(
                 "INFO",
                 $"LicenseHub runtime initialized. State={licenseState.State}; Enforcement={licenseState.EnforcementEnabled}; AllowsUse={licenseState.AllowsUse}");
+
+            if (licenseState.EnforcementEnabled && !licenseState.AllowsUse)
+            {
+                _ = activationDialog.Show(licenseRuntime, licenseState, AppVersionInfo.Current);
+                licenseState = licenseRuntime.Current;
+                await logger.WriteAsync(
+                    "INFO",
+                    $"LicenseHub activation dialog closed. State={licenseState.State}; AllowsUse={licenseState.AllowsUse}");
+            }
 
             var settings = await settingsStore.LoadAsync();
             await viewModel.InitializeAsync(settings);
