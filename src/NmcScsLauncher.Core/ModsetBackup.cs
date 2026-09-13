@@ -88,8 +88,11 @@ public interface IModsetBackupService
         ModsetBackupRequest request,
         IProgress<ModsetBackupProgress>? progress = null,
         CancellationToken cancellationToken = default);
+}
 
-    Task<ModsetRestorePreview> InspectRestoreAsync(
+public interface IModsetRestoreService
+{
+    Task<ModsetRestorePreview> InspectAsync(
         Guid targetModsetId,
         string archivePath,
         CancellationToken cancellationToken = default);
