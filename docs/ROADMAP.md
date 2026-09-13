@@ -66,9 +66,48 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] Startprüfung/Modanzahl/letztes Modset über Settings steuerbar
 - [~] visuelles Feintuning zum finalen Mockup
 
+## Phase 6 – Backup / Restore
+- [x] ZIP-Backup mit NMC-Manifest
+- [x] Konfiguration und Profile standardmäßig sichern
+- [x] Mods optional sichern
+- [x] sichere Restore-Vorschau
+- [x] Restore nur für passendes Spiel
+- [x] explizite Freigabe vor Überschreiben vorhandener Dateien
+- [x] Pfad-/ZIP-Sicherheitsprüfung
+- [x] Backup-/Restore-UI mit Fortschritt
+
+## Phase 7 – Workshop-Grundlage
+- [x] lokale Steam-Workshop-Content-Roots pro Spiel erkennen
+- [x] numerische Workshop-/PublishedFileId-Verzeichnisse read-only erfassen
+- [x] mehrere Steam-Libraries berücksichtigen
+- [x] Links/Junctions nicht verfolgen
+- [x] keine Workshop-Abonnements verändern
+- [x] keinen Subscription-Status aus bloßer Ordnerexistenz ableiten
+- [ ] spätere Workshop-UI / bestätigte SteamUGC-Integration bei Bedarf
+
+## Vor Installer verpflichtend
+
+### LicenseHub – Lizenzschutz
+- [~] reale LicenseHub-Contract-Basis für Desktop-Lizenzprüfung bestimmen
+- [ ] LicenseHub als alleinige Lizenz-/Entitlement-Autorität anbinden
+- [ ] sichere lokale Credential-/Aktivierungsablage definieren
+- [ ] Lizenzstatus im Launcher anzeigen
+- [ ] Start-/Nutzungs-Gates für ungültige bzw. widerrufene Lizenz
+- [ ] Fehler-/Offline-/INDETERMINATE-Verhalten nach realem LicenseHub-Contract implementieren
+- [ ] Tests und CI
+
+### LicenseHub – Updates
+- [~] reale `releases.read`-Contract-Basis bestimmen
+- [ ] verfügbare Launcher-Versionen über LicenseHub abfragen
+- [ ] Release-Metadaten/Digest/Signatur nach LicenseHub-Contract verifizieren
+- [ ] Update herunterladen, prüfen und kontrolliert anwenden
+- [ ] Update-Fehler-/Rollback-Strategie
+- [ ] Tests und CI
+
 ## Danach
-- [x] Modset-Duplizierung
-- [~] Backup
-- [ ] Workshop-Grundlage
 - [ ] Installer
-- [ ] Update-Mechanismus
+- [ ] visuelles Release-Finishing
+- [ ] Praxistest auf echter ETS2-/ATS-Installation abschließen
+- [ ] Release Candidate / 1.0.0
+
+**Installer-Blocker:** Installer-Arbeit beginnt erst, wenn LicenseHub-Lizenzschutz und LicenseHub-Updateintegration technisch definiert, implementiert und CI-verifiziert sind.
