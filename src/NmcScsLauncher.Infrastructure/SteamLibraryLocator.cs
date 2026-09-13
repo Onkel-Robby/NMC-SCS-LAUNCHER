@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
@@ -60,6 +61,7 @@ public sealed partial class SteamLibraryLocator
         return candidates;
     }
 
+    [SupportedOSPlatform("windows")]
     private static void TryReadRegistryValue(RegistryKey root, string subKeyPath, string valueName, ISet<string> candidates)
     {
         try
@@ -70,7 +72,7 @@ public sealed partial class SteamLibraryLocator
                 candidates.Add(path.Replace('/', Path.DirectorySeparatorChar));
             }
         }
-        catch (Exception) when (OperatingSystem.IsWindows())
+        catch (Exception)
         {
             // Registry discovery is best-effort. Other candidates remain available.
         }
