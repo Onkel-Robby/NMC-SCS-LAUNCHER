@@ -13,10 +13,17 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Wiederherstellung des zuletzt ausgewählten Modsets nach Neustart, wenn aktiviert.
 - Info-Seite mit Produkt-/Markenhinweisen.
 - Konsistenteres Dark-Theme für Navigation, Buttons, Eingaben und Tabellen.
+- Modset-Duplizierung mit frei wählbarer Kopie von Konfiguration, Mods, Profilen, Screenshots und optionalen Logs.
+- Asynchrone Dateikopie mit Byte-/Dateifortschritt in der Modset-Ansicht.
+- Eigener Duplizierungsdialog für Namen, Zielpfad und Kopierumfang.
+- Pfadschutz gegen identische oder ineinander verschachtelte Quell-/Zielverzeichnisse.
+- Reparse-Points wie Junctions und Links werden bei der Duplizierung nicht verfolgt.
+- Tests für Pfadisolation und ausgewählte Kopierinhalte.
 
 ### Changed
 - Kritische Startfehler blockieren den Start auch bei deaktiviertem Startprüfungsdialog.
 - Modanzahl kann über die Launcher-Einstellungen ausgeblendet werden.
+- Duplizierte Modsets verwenden unabhängige Dateikopien statt Junctions oder Hardlinks.
 
 ## 0.4.0-dev
 
