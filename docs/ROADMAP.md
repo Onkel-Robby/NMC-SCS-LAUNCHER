@@ -67,8 +67,8 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [~] visuelles Feintuning zum finalen Mockup
 
 ## Danach
-- [ ] Modset-Duplizierung
-- [ ] Backup
+- [x] Modset-Duplizierung
+- [~] Backup
 - [ ] Workshop-Grundlage
 - [ ] Installer
 - [ ] Update-Mechanismus
