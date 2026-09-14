@@ -39,6 +39,24 @@ public sealed class LicenseHubRuntimeConfigurationTests
     }
 
     [Fact]
+    public void BuildRequirementForcesEnforcementWithoutEnvironmentFlag()
+    {
+        var previousRequired = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED");
+        try
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", null);
+
+            var configuration = LicenseHubRuntimeConfiguration.FromEnvironment(requiredByBuild: true);
+
+            Assert.True(configuration.Required);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", previousRequired);
+        }
+    }
+
+    [Fact]
     public void PublicDefaultsAloneDoNotCountAsPartialConfiguration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
