@@ -88,40 +88,39 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 ## Vor Installer verpflichtend
 
 ### LicenseHub – Lizenzschutz
-- [x] endgültige LicenseHub-Produktionsdomain festgelegt: `https://licensehub.nmc-it-service.cloud`
-- [x] endgültiger Product Slug festgelegt: `NMC-SCS-LAUNCHER`
-- [x] reale LicenseHub-Desktop-Contracts für Aktivierung, Validierung und Deaktivierung verifiziert
-- [x] LicenseHub als Lizenzautorität für produktiv erzwungene Builds angebunden
+- [x] LicenseHub bleibt serverseitig unverändert; Launcher nutzt vorhandenen Vertrag
+- [x] Produktionsdomain: `https://licensehub.nmc-it-service.cloud`
+- [x] Product Slug: `NMC-SCS-LAUNCHER`
+- [x] vorhandene `/api/license/activate.php`, `/validate.php`, `/deactivate.php` angebunden
+- [x] Release-Build erzwingt LicenseHub unabhängig von `NMC_LICENSEHUB_REQUIRED`
 - [x] maschinengebundene Aktivierung mit produktgebundenem SHA-256-Identifier
-- [x] Lizenzschlüssel lokal über Windows Credential Manager statt Klartext-JSON gespeichert
-- [x] Aktivierungs-/Statusdialog mit Ablaufdatum und Aktivierungszahlen
+- [x] Lizenzschlüssel im Windows Credential Manager
+- [~] Product API Key getrennt im Windows Credential Manager provisionieren und bei direktem EXE-Start wiederverwenden
+- [x] Aktivierungs-/Statusdialog
 - [x] Start-/Nutzungs-Gate bei ungültiger, blockierter, abgelaufener oder nicht aktivierter Lizenz
 - [x] zweites Lizenz-Gate unmittelbar vor der Prozesserzeugung
-- [x] fail-closed Verhalten bei Timeout, Unerreichbarkeit, Protokollfehler oder fehlender Required-Konfiguration
-- [x] Unit Tests und Windows-CI für Client, Runtime und Start-Gates
-- [~] Product API Credential und Testlizenz für den realen End-to-End-Lauf vollständig provisionieren
-- [ ] End-to-End-Test mit echter LicenseHub-Lizenz: aktivieren → validieren → sperren/ablaufen → Start muss blockieren → deaktivieren
+- [x] fail-closed bei Timeout, Unerreichbarkeit, Protokollfehler oder fehlender Required-Konfiguration
+- [x] Unit Tests und Windows-CI für Client, Runtime und Start-Gates vorhanden
+- [ ] E2E: Product API Key einmal provisionieren → EXE direkt starten ohne PowerShell → aktive Lizenz startet
+- [ ] E2E: Lizenz sperren/ablaufen → direkter EXE-Start muss blockieren → reaktivieren → Start wieder möglich
+- [ ] E2E: Deaktivierung prüfen
 
 ### LicenseHub – Updates
-- [x] Launcher auf lizenz- und maschinengebundenen Desktop-Updatevertrag umgestellt
-- [x] langlebigen Update-Bearer-Token aus dem Desktop-Design entfernt
-- [x] verfügbare Launcher-Version über LicenseHub abfragen
-- [x] kurzlebigen signierten LicenseHub-Download-Endpunkt verwenden
+- [x] LicenseHub-Server bleibt unverändert
+- [x] vorhandenen `/api/update/check.php` als Update-Metadatenquelle identifiziert
+- [x] Lizenz/Maschine wird unmittelbar vor Update-Check über vorhandenes `/api/license/validate.php` bestätigt
+- [~] Launcher vom verworfenen Desktop-Updatevertrag auf vorhandenen Update-Endpunkt umstellen
+- [x] kein langlebiger separater Update-Bearer-Token im Launcher
 - [x] SHA-256 während des Downloads verifizieren
 - [x] SHA-256 im externen Updater unmittelbar vor dem Anwenden erneut verifizieren
 - [x] Update als vollständiges ZIP-Publish-Bundle herunterladen und sicher entpacken
 - [x] ZIP-Traversal/absolute Pfade außerhalb des Staging-Verzeichnisses blockieren
 - [x] Anwendung über separaten self-contained Updater austauschen
-- [x] alte Anwendung vor Aktivierung der neuen Version als Rollback-Backup erhalten
-- [x] automatisches Rollback bei fehlgeschlagenem Verzeichnistausch oder fehlgeschlagenem Neustart
+- [x] Rollback-Backup und automatisches Rollback bei Apply-/Restart-Fehlern
 - [x] Updatefenster mit Version, Changelog, Fortschritt und kontrolliertem Neustart
-- [x] automatische Prüfung nach Programmstart nur bei vollständiger LicenseHub-Konfiguration und gespeicherter Lizenz
-- [x] Entwicklungsbuild ohne vollständige Product-Konfiguration führt keinen Update-Netzaufruf aus
-- [x] Unit Tests und Windows-CI inklusive Updater-Publish und Bundle-Prüfung
-- [x] GitHub Actions erzeugt validiertes LicenseHub-Release-ZIP plus SHA-256-Sidecar
-- [~] lizenzgebundene Desktop-Update-Endpunkte im LicenseHub-Hauptprojekt prüfen und gegen reale Umgebung verifizieren
-- [ ] echtes NMC-SCS-LAUNCHER-Release als vollständiges ZIP in LicenseHub provisionieren
-- [ ] End-to-End-Test: LicenseHub-Release erkennen → signiert laden → SHA-256 prüfen → anwenden → neue Version startet → Rollback-Test
+- [x] GitHub Actions erzeugt validiertes Release-ZIP plus SHA-256-Sidecar
+- [ ] reales `NMC-SCS-LAUNCHER`-Release in LicenseHub provisionieren
+- [ ] E2E: vorhandener LicenseHub-Updatecheck → Download → SHA-256 → Apply → Neustart → Rollback-Test
 
 ## Danach
 - [ ] Installer
@@ -129,4 +128,4 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [ ] Praxistest auf echter ETS2-/ATS-Installation abschließen
 - [ ] Release Candidate / 1.0.0
 
-**Installer-Blocker:** Installer-Arbeit beginnt erst, wenn die beiden offenen LicenseHub-End-to-End-Gates (reale Lizenz sowie reales Update-Release) erfolgreich verifiziert und dokumentiert sind.
+**Installer-Blocker:** Installer-Arbeit beginnt erst, wenn Lizenz-Direktstart und reales Update-Release End-to-End erfolgreich verifiziert sind.

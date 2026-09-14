@@ -27,6 +27,7 @@ public partial class App : Application
         services.AddSingleton<HttpClient>();
         services.AddSingleton<IMachineIdentityProvider, WindowsMachineIdentityProvider>();
         services.AddSingleton<ILicenseCredentialStore, WindowsCredentialManagerLicenseStore>();
+        services.AddSingleton<IProductApiCredentialStore, WindowsCredentialManagerProductApiKeyStore>();
         services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
         services.AddSingleton<IApplicationUpdateService, ApplicationUpdateService>();
         services.AddSingleton<ILicenseActivationDialogService, LicenseActivationDialogService>();

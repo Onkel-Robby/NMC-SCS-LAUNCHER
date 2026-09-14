@@ -8,3 +8,12 @@ public interface ILicenseCredentialStore
 
     Task ClearLicenseKeyAsync(CancellationToken cancellationToken = default);
 }
+
+public interface IProductApiCredentialStore
+{
+    Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default);
+
+    Task SaveProductApiKeyAsync(string productApiKey, CancellationToken cancellationToken = default);
+
+    Task ClearProductApiKeyAsync(CancellationToken cancellationToken = default);
+}

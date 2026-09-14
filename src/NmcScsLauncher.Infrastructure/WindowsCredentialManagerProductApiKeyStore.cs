@@ -1,0 +1,140 @@
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using System.Text;
+using NmcScsLauncher.Core;
+
+namespace NmcScsLauncher.Infrastructure;
+
+[SupportedOSPlatform("windows")]
+public sealed class WindowsCredentialManagerProductApiKeyStore : IProductApiCredentialStore
+{
+    private const string TargetName = "NMC Network/NMC SCS LAUNCHER/ProductApiKey";
+    private const string CredentialUserName = "NMC SCS LAUNCHER";
+    private const uint CredTypeGeneric = 1;
+    private const uint CredPersistLocalMachine = 2;
+    private const int ErrorNotFound = 1168;
+
+    public Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureWindows();
+
+        if (!CredRead(TargetName, CredTypeGeneric, 0, out var credentialPointer))
+        {
+            var error = Marshal.GetLastWin32Error();
+            if (error == ErrorNotFound) return Task.FromResult<string?>(null);
+            throw new Win32Exception(error, "LicenseHub product API key could not be read from Windows Credential Manager.");
+        }
+
+        try
+        {
+            var credential = Marshal.PtrToStructure<NativeCredential>(credentialPointer);
+            if (credential.CredentialBlob == IntPtr.Zero || credential.CredentialBlobSize == 0)
+                return Task.FromResult<string?>(null);
+
+            var blobLength = checked((int)credential.CredentialBlobSize);
+            var bytes = new byte[blobLength];
+            Marshal.Copy(credential.CredentialBlob, bytes, 0, blobLength);
+            var value = Encoding.UTF8.GetString(bytes).Trim();
+            Array.Clear(bytes, 0, bytes.Length);
+            return Task.FromResult<string?>(value.Length == 0 ? null : value);
+        }
+        finally
+        {
+            CredFree(credentialPointer);
+        }
+    }
+
+    public Task SaveProductApiKeyAsync(string productApiKey, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureWindows();
+
+        var normalized = productApiKey?.Trim() ?? string.Empty;
+        if (normalized.Length == 0 || normalized.Length > 64)
+            throw new ArgumentException("LicenseHub product API key is missing or invalid.", nameof(productApiKey));
+
+        var bytes = Encoding.UTF8.GetBytes(normalized);
+        var blobPointer = Marshal.AllocCoTaskMem(bytes.Length);
+        try
+        {
+            Marshal.Copy(bytes, 0, blobPointer, bytes.Length);
+            var credential = new NativeCredential
+            {
+                Type = CredTypeGeneric,
+                TargetName = TargetName,
+                CredentialBlobSize = (uint)bytes.Length,
+                CredentialBlob = blobPointer,
+                Persist = CredPersistLocalMachine,
+                UserName = CredentialUserName
+            };
+
+            if (!CredWrite(ref credential, 0))
+            {
+                var error = Marshal.GetLastWin32Error();
+                throw new Win32Exception(error, "LicenseHub product API key could not be saved in Windows Credential Manager.");
+            }
+        }
+        finally
+        {
+            Array.Clear(bytes, 0, bytes.Length);
+            Marshal.FreeCoTaskMem(blobPointer);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ClearProductApiKeyAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureWindows();
+
+        if (!CredDelete(TargetName, CredTypeGeneric, 0))
+        {
+            var error = Marshal.GetLastWin32Error();
+            if (error != ErrorNotFound)
+                throw new Win32Exception(error, "LicenseHub product API key could not be removed from Windows Credential Manager.");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private static void EnsureWindows()
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException("Windows Credential Manager is only available on Windows.");
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NativeCredential
+    {
+        public uint Flags;
+        public uint Type;
+        [MarshalAs(UnmanagedType.LPWStr)] public string TargetName;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? Comment;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+        public uint CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public uint Persist;
+        public uint AttributeCount;
+        public IntPtr Attributes;
+        [MarshalAs(UnmanagedType.LPWStr)] public string? TargetAlias;
+        [MarshalAs(UnmanagedType.LPWStr)] public string UserName;
+    }
+
+    [DllImport("advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CredRead(string target, uint type, uint flags, out IntPtr credentialPointer);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CredWrite(ref NativeCredential credential, uint flags);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CredDelete(string target, uint type, uint flags);
+
+    [DllImport("advapi32.dll", EntryPoint = "CredFree")]
+    private static extern void CredFree(IntPtr buffer);
+}
