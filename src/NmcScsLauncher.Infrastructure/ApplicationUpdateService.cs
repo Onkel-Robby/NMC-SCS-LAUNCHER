@@ -28,6 +28,20 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
+    public ApplicationUpdateService(
+        LicenseHubRuntimeConfiguration runtimeConfiguration,
+        ILicenseCredentialStore credentialStore,
+        IMachineIdentityProvider machineIdentityProvider,
+        HttpClient httpClient)
+        : this(
+            runtimeConfiguration,
+            credentialStore,
+            new ConfigurationProductApiCredentialStore(runtimeConfiguration?.ProductApiKey),
+            machineIdentityProvider,
+            httpClient)
+    {
+    }
+
     public bool IsConfigured =>
         _runtimeConfiguration.Required || _runtimeConfiguration.HasLicenseConfiguration;
 
@@ -168,5 +182,33 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
         foreach (var invalid in Path.GetInvalidFileNameChars())
             value = value.Replace(invalid, '_');
         return value.Length > 80 ? value[..80] : value;
+    }
+
+    private sealed class ConfigurationProductApiCredentialStore : IProductApiCredentialStore
+    {
+        private readonly string? _value;
+
+        public ConfigurationProductApiCredentialStore(string? value)
+        {
+            _value = value?.Trim();
+        }
+
+        public Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(string.IsNullOrWhiteSpace(_value) ? null : _value);
+        }
+
+        public Task SaveProductApiKeyAsync(string productApiKey, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task ClearProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
     }
 }
