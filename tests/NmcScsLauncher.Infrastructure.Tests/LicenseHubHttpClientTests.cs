@@ -69,26 +69,51 @@ public sealed class LicenseHubHttpClientTests
     }
 
     [Fact]
-    public async Task DesktopUpdateCheckUsesLicenseAndMachineBindingWithoutBearerToken()
+    public async Task UpdateCheckValidatesLicenseThenUsesExistingProductUpdateEndpoint()
     {
-        string? body = null;
+        var call = 0;
         var handler = new StubHandler(async request =>
         {
+            call++;
             Assert.Null(request.Headers.Authorization);
-            Assert.Equal("/api/desktop-update/check.php", request.RequestUri!.AbsolutePath);
-            body = await request.Content!.ReadAsStringAsync();
+
+            if (call == 1)
+            {
+                Assert.Equal(HttpMethod.Post, request.Method);
+                Assert.Equal("/api/license/validate.php", request.RequestUri!.AbsolutePath);
+                var body = await request.Content!.ReadAsStringAsync();
+                using var json = JsonDocument.Parse(body);
+                Assert.Equal("license-value", json.RootElement.GetProperty("license_key").GetString());
+                Assert.Equal("machine-value", json.RootElement.GetProperty("machine_id").GetString());
+                return Json(HttpStatusCode.OK, """
+                    {
+                      "success": true,
+                      "status": "active",
+                      "license_required": true,
+                      "license": {"max_activations": 2, "current_activations": 1}
+                    }
+                    """);
+            }
+
+            Assert.Equal(2, call);
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Equal("/api/update/check.php", request.RequestUri!.AbsolutePath);
+            var query = request.RequestUri.Query;
+            Assert.Contains("product_slug=nmc-scs-launcher", query);
+            Assert.Contains("api_key=product-value", query);
+            Assert.Contains("version=0.7.0-dev", query);
+            Assert.Contains("channel=stable", query);
             return Json(HttpStatusCode.OK, """
                 {
                   "success": true,
                   "update_available": true,
                   "current_version": "0.7.0-dev",
-                  "version": "0.8.0",
+                  "latest_version": "0.8.0",
                   "channel": "stable",
                   "mandatory": false,
-                  "download_endpoint": "/api/desktop-update/download.php?release_id=10&license_id=20&activation_id=30&expires=9999999999&channel=stable&sig=test",
+                  "download_url": "/downloads/NMC-SCS-LAUNCHER-0.8.0.zip",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "changelog": "Test release",
-                  "released_at": "2026-09-14T00:00:00+00:00"
+                  "changelog": "Test release"
                 }
                 """);
         });
@@ -97,15 +122,31 @@ public sealed class LicenseHubHttpClientTests
 
         var update = await client.CheckForUpdateAsync("license-value", "machine-value", "0.7.0-dev");
 
+        Assert.Equal(2, call);
         Assert.True(update.UpdateAvailable);
         Assert.Equal("0.8.0", update.LatestVersion);
-        using var json = JsonDocument.Parse(body!);
-        var root = json.RootElement;
-        Assert.Equal("nmc-scs-launcher", root.GetProperty("product_slug").GetString());
-        Assert.Equal("product-value", root.GetProperty("api_key").GetString());
-        Assert.Equal("license-value", root.GetProperty("license_key").GetString());
-        Assert.Equal("machine-value", root.GetProperty("machine_id").GetString());
-        Assert.Equal("stable", root.GetProperty("channel").GetString());
+        Assert.Equal("/downloads/NMC-SCS-LAUNCHER-0.8.0.zip", update.DownloadEndpoint);
+    }
+
+    [Fact]
+    public async Task UpdateCheckStopsWhenLicenseValidationIsBlocked()
+    {
+        var call = 0;
+        var handler = new StubHandler(request =>
+        {
+            call++;
+            Assert.Equal("/api/license/validate.php", request.RequestUri!.AbsolutePath);
+            return Task.FromResult(Json(HttpStatusCode.Forbidden, """
+                {"success":false,"error":"License is blocked","status":"blocked"}
+                """));
+        });
+        using var httpClient = new HttpClient(handler);
+        var client = CreateClient(httpClient);
+
+        await Assert.ThrowsAsync<LicenseHubProtocolException>(() =>
+            client.CheckForUpdateAsync("license-value", "machine-value", "0.7.0-dev"));
+
+        Assert.Equal(1, call);
     }
 
     [Fact]
@@ -115,7 +156,7 @@ public sealed class LicenseHubHttpClientTests
         var sha = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         var handler = new StubHandler(request =>
         {
-            Assert.Equal("/api/desktop-update/download.php", request.RequestUri!.AbsolutePath);
+            Assert.Equal("/downloads/NMC-SCS-LAUNCHER-0.8.0.zip", request.RequestUri!.AbsolutePath);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(payload)
@@ -132,7 +173,7 @@ public sealed class LicenseHubHttpClientTests
             "0.8.0",
             "stable",
             false,
-            "/api/desktop-update/download.php?release_id=10&license_id=20&activation_id=30&expires=9999999999&channel=stable&sig=test",
+            "/downloads/NMC-SCS-LAUNCHER-0.8.0.zip",
             sha,
             null,
             null);
