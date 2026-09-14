@@ -4,36 +4,40 @@ public sealed record LicenseHubRuntimeConfiguration(
     bool Required,
     string? BaseUrl,
     string? ProductSlug,
-    string? ProductApiKey = null)
+    string? ProductApiKey)
 {
     public const string DefaultBaseUrl = "https://licensehub.nmc-it-service.cloud";
     public const string DefaultProductSlug = "NMC-SCS-LAUNCHER";
-    public const string DesktopPublicClientMarker = "nmc-desktop-v1";
 
     public bool HasAnyConfiguration =>
         Required
+        || !string.IsNullOrWhiteSpace(ProductApiKey)
         || (!string.IsNullOrWhiteSpace(BaseUrl)
             && !string.Equals(BaseUrl.TrimEnd('/'), DefaultBaseUrl, StringComparison.OrdinalIgnoreCase))
         || (!string.IsNullOrWhiteSpace(ProductSlug)
-            && !string.Equals(ProductSlug, DefaultProductSlug, StringComparison.Ordinal))
-        || (!string.IsNullOrWhiteSpace(ProductApiKey)
-            && !string.Equals(ProductApiKey, DesktopPublicClientMarker, StringComparison.Ordinal));
+            && !string.Equals(ProductSlug, DefaultProductSlug, StringComparison.Ordinal));
+
+    public bool HasEndpointConfiguration =>
+        !string.IsNullOrWhiteSpace(BaseUrl)
+        && !string.IsNullOrWhiteSpace(ProductSlug);
 
     public bool HasLicenseConfiguration =>
-        !string.IsNullOrWhiteSpace(BaseUrl)
-        && !string.IsNullOrWhiteSpace(ProductSlug)
-        && !string.IsNullOrWhiteSpace(ProductApiKey)
-        && HasAnyConfiguration;
+        HasEndpointConfiguration
+        && !string.IsNullOrWhiteSpace(ProductApiKey);
 
-    public LicenseHubClientConfiguration CreateClientConfiguration()
+    public LicenseHubClientConfiguration CreateClientConfiguration(string? productApiKey = null)
     {
-        if (!HasLicenseConfiguration)
-            throw new LicenseHubConfigurationException("LicenseHub desktop configuration is incomplete.");
+        var effectiveApiKey = string.IsNullOrWhiteSpace(productApiKey)
+            ? ProductApiKey
+            : productApiKey.Trim();
+
+        if (!HasEndpointConfiguration || string.IsNullOrWhiteSpace(effectiveApiKey))
+            throw new LicenseHubConfigurationException("LicenseHub license configuration is incomplete.");
 
         return new LicenseHubClientConfiguration(
             BaseUrl!,
             ProductSlug!,
-            ProductApiKey!);
+            effectiveApiKey!);
     }
 
     public static LicenseHubRuntimeConfiguration FromEnvironment(bool requiredByBuild = false)
@@ -47,7 +51,7 @@ public sealed record LicenseHubRuntimeConfiguration(
             requiredByBuild || requiredByEnvironment,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")) ?? DefaultBaseUrl,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")) ?? DefaultProductSlug,
-            DesktopPublicClientMarker);
+            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
     }
 
     private static string? Normalize(string? value)
