@@ -7,36 +7,35 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
 {
     private const string UpdaterFileName = "NmcScsLauncher.Updater.exe";
     private const string LauncherFileName = "NmcScsLauncher.App.exe";
+    private readonly LicenseHubRuntimeConfiguration _runtimeConfiguration;
     private readonly ILicenseCredentialStore _credentialStore;
+    private readonly IProductApiCredentialStore _productApiCredentialStore;
     private readonly IMachineIdentityProvider _machineIdentityProvider;
-    private readonly ILicenseHubUpdateClient? _updateClient;
+    private readonly HttpClient _httpClient;
+    private ILicenseHubUpdateClient? _updateClient;
 
     public ApplicationUpdateService(
         LicenseHubRuntimeConfiguration runtimeConfiguration,
         ILicenseCredentialStore credentialStore,
+        IProductApiCredentialStore productApiCredentialStore,
         IMachineIdentityProvider machineIdentityProvider,
         HttpClient httpClient)
     {
-        ArgumentNullException.ThrowIfNull(runtimeConfiguration);
+        _runtimeConfiguration = runtimeConfiguration ?? throw new ArgumentNullException(nameof(runtimeConfiguration));
         _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+        _productApiCredentialStore = productApiCredentialStore ?? throw new ArgumentNullException(nameof(productApiCredentialStore));
         _machineIdentityProvider = machineIdentityProvider ?? throw new ArgumentNullException(nameof(machineIdentityProvider));
-        ArgumentNullException.ThrowIfNull(httpClient);
-
-        if (runtimeConfiguration.HasLicenseConfiguration)
-        {
-            _updateClient = new LicenseHubHttpClient(
-                httpClient,
-                runtimeConfiguration.CreateClientConfiguration());
-        }
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
     }
 
-    public bool IsConfigured => _updateClient is not null;
+    public bool IsConfigured =>
+        _runtimeConfiguration.Required || _runtimeConfiguration.HasLicenseConfiguration;
 
     public async Task<LicenseHubUpdateInfo> CheckAsync(
         string currentVersion,
         CancellationToken cancellationToken = default)
     {
-        var client = RequireClient();
+        var client = await RequireClientAsync(cancellationToken);
         var licenseKey = await _credentialStore.LoadLicenseKeyAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(licenseKey))
             throw new LicenseHubConfigurationException(
@@ -68,7 +67,8 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
             downloads,
             $"NMC-SCS-LAUNCHER-{safeVersion}-{Guid.NewGuid():N}.zip");
 
-        var downloaded = await RequireClient().DownloadAndVerifyAsync(
+        var client = await RequireClientAsync(cancellationToken);
+        var downloaded = await client.DownloadAndVerifyAsync(
             update,
             destination,
             progress,
@@ -125,9 +125,31 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
         return Task.FromResult(process.Id);
     }
 
-    private ILicenseHubUpdateClient RequireClient() =>
-        _updateClient ?? throw new LicenseHubConfigurationException(
-            "LicenseHub update integration is not configured for this build.");
+    private async Task<ILicenseHubUpdateClient> RequireClientAsync(CancellationToken cancellationToken)
+    {
+        if (_updateClient is not null) return _updateClient;
+        if (!_runtimeConfiguration.HasEndpointConfiguration)
+            throw new LicenseHubConfigurationException("LicenseHub update endpoint configuration is incomplete.");
+
+        var apiKey = _runtimeConfiguration.ProductApiKey?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            await _productApiCredentialStore.SaveProductApiKeyAsync(apiKey, cancellationToken);
+        }
+        else
+        {
+            apiKey = await _productApiCredentialStore.LoadProductApiKeyAsync(cancellationToken);
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new LicenseHubConfigurationException(
+                "LicenseHub product credential is not provisioned on this Windows account.");
+
+        _updateClient = new LicenseHubHttpClient(
+            _httpClient,
+            _runtimeConfiguration.CreateClientConfiguration(apiKey));
+        return _updateClient;
+    }
 
     private static string GetUpdateRoot()
     {
