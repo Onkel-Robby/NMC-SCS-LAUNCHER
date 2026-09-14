@@ -4,12 +4,13 @@
 
 Diese Integration basiert auf dem aktuellen Quellstand des privaten Hauptprojekts `Onkel-Robby/Licensehub` und nicht auf erfundenen Endpoints.
 
-Geprüfter LicenseHub-main-Stand bei der initialen Integration:
+Produktive LicenseHub-Basis-URL:
 
-- Commit: `90729c60312a55362e3d43bffb71cb0c36351ed1`
-- LicenseHub Produktmarker: 1.0.0
+`https://licensehub.nmc-it-service.cloud`
 
-Der Bot-spezifische `/api/v1`-M2M-Contract ist für den verteilten Windows-Client **nicht** der primäre Aktivierungsweg. Die Desktop-Lizenzierung verwendet die bereits vorhandenen Client-Endpunkte im LicenseHub-Hauptprojekt.
+Der Launcher verwendet diese URL als sicheren Default. Für isolierte Test-/Staging-Umgebungen kann sie weiterhin über `NMC_LICENSEHUB_BASE_URL` überschrieben werden.
+
+Der Bot-spezifische `/api/v1`-M2M-Contract ist für den verteilten Windows-Client **nicht** der primäre Aktivierungsweg. Die Desktop-Lizenzierung verwendet die Client-Endpunkte im LicenseHub-Hauptprojekt.
 
 ## Lizenzierung
 
@@ -79,58 +80,104 @@ Vorgesehener Speicher:
 - Windows Credential Manager
 - Target: `NMC Network/NMC SCS LAUNCHER/LicenseKey`
 
-Produkt-/Update-API-Konfiguration ist davon getrennt und darf nicht versehentlich in Logs ausgegeben werden.
+Produktkonfiguration ist davon getrennt und darf nicht versehentlich in Logs ausgegeben werden.
 
-## Updates
+## Desktop-Updates
 
-Für sichere Launcher-Updates wird der aktuelle projektbezogene LicenseHub-Pfad verwendet:
+Für verteilte Desktop-Builds wird **kein langlebiger Update-Bearer-Token in der Anwendung eingebettet**.
 
-`POST /api/version/update.php`
+Der Launcher verwendet den lizenz- und maschinengebundenen Desktop-Updatevertrag:
 
-Authentifizierung:
+`POST /api/desktop-update/check.php`
 
-- `Authorization: Bearer <update api token>`
-- erforderlicher serverseitiger Scope: `downloads.secure`
+Request-Felder:
 
-Request:
-
-- `product`
+- `product_slug`
+- `api_key`
+- `license_key`
+- `machine_id`
 - `version`
 - `channel`
+
+Der Server prüft dabei erneut:
+
+- Produktzuordnung
+- Lizenzstatus und Ablauf
+- Maschinenaktivierung
+- Release-Kanal
+- Rollout-Freigabe
+- Release-Aktivität
+- vorhandene SHA-256-Prüfsumme
 
 Bei verfügbarem Update liefert LicenseHub unter anderem:
 
 - `version`
 - `channel`
 - `download_endpoint`
-- `checksum`
+- `sha256`
 - `changelog`
 - `released_at`
 
-LicenseHub erzeugt für `download_endpoint` ein kurzlebiges signiertes Download-Token. Der Server verwendet dafür aktuell 300 Sekunden TTL.
-
-Der Launcher akzeptiert einen Update-Download erst nach erfolgreicher SHA-256-Prüfung gegen den von LicenseHub gelieferten Digest.
+Der `download_endpoint` enthält **keinen Lizenzschlüssel**. Er enthält nur interne IDs, Ablaufzeit, Channel und eine HMAC-Signatur.
 
 ## Download-Sicherheit
 
+Der Download läuft über:
+
+`GET /api/desktop-update/download.php`
+
+Der Server prüft vor der Ausgabe erneut:
+
+- Signatur und Ablaufzeit
+- Lizenzexistenz und Lizenzstatus
+- Maschinenaktivierung
+- Produkt-/Release-Zuordnung
+- Release-Aktivität und Channel
+
 Der vom Update-Check gelieferte `download_endpoint` muss HTTPS verwenden und zum konfigurierten LicenseHub-Origin gehören.
 
-Der signierte Endpoint `/api/releases/secure_download.php` validiert Token, Release-ID, Reseller-/Tenant-Bindung und Channel und leitet anschließend auf die hinterlegte Release-Datei weiter.
+Der Launcher akzeptiert ein Update erst nach erfolgreicher SHA-256-Prüfung. Der externe Updater prüft denselben SHA-256-Digest unmittelbar vor dem Anwenden ein zweites Mal.
 
-Der Launcher führt heruntergeladene Daten nicht ungeprüft aus.
+## Release-Paket
 
-## Noch zu provisionieren
+GitHub Actions erzeugt für LicenseHub zusätzlich zum normalen Publish-Artefakt ein vollständiges Update-Bundle:
 
-Vor Aktivierung des produktiven Lizenz-Gates werden außerhalb des Sourcecodes benötigt:
+- ZIP mit `NmcScsLauncher.App.exe` im Archiv-Root
+- self-contained `NmcScsLauncher.Updater.exe` im Archiv-Root
+- SHA-256-Sidecar
+- CI-Prüfung des ZIP-Layouts vor Upload
 
-- LicenseHub Base URL
+Dieses Paket ist ein Anwendungsupdate und **nicht** der spätere Windows-Installer.
+
+## Laufzeitkonfiguration
+
+Öffentlicher Default:
+
+- Base URL: `https://licensehub.nmc-it-service.cloud`
+
+Außerhalb des Sourcecodes zu provisionieren:
+
 - Product Slug für NMC SCS LAUNCHER
-- Product API Key für Lizenzaktivierung/-validierung
-- Update API Token mit minimal notwendigem `downloads.secure`-Scope
+- Product API Key für Aktivierung, Validierung und Desktop-Update-Check
 - mindestens ein Test-Lizenzschlüssel
 - Release-/Update-Testdatensatz mit SHA-256
 
-Diese Werte werden nicht als echte Secrets in das öffentliche GitHub-Repository committed.
+Umgebungsvariablen:
+
+- `NMC_LICENSEHUB_REQUIRED`
+- `NMC_LICENSEHUB_BASE_URL` – optionaler Override; ohne Override wird die produktive Base URL verwendet
+- `NMC_LICENSEHUB_PRODUCT_SLUG`
+- `NMC_LICENSEHUB_PRODUCT_API_KEY`
+
+Es gibt bewusst keinen `NMC_LICENSEHUB_UPDATE_API_TOKEN` mehr.
+
+Echte Product API Keys und Lizenzschlüssel werden nicht in das öffentliche GitHub-Repository committed.
+
+## Server-Contract-Status
+
+Die neuen lizenzgebundenen Desktop-Update-Endpunkte liegen zunächst isoliert im privaten LicenseHub-Repository und müssen vor Produktivfreigabe gegen die reale Umgebung verifiziert werden.
+
+Produktivfreigabe erfolgt erst nach einem vollständigen End-to-End-Test.
 
 ## Release-Gate
 
@@ -139,5 +186,5 @@ Der spätere Installer darf erst umgesetzt/freigegeben werden, wenn:
 1. Lizenzaktivierung und regelmäßige Validierung mit einem realen LicenseHub-Testprodukt funktionieren.
 2. ungültige, gesperrte, abgelaufene und nicht aktivierte Lizenzen korrekt gesperrt werden.
 3. LicenseHub-Ausfallverhalten explizit freigegeben ist.
-4. Update-Check, signierter Download und SHA-256-Prüfung mit einem realen Testrelease funktionieren.
-5. die produktive Credential-Provisionierung festgelegt ist.
+4. Update-Check, lizenzgebundener signierter Download und SHA-256-Prüfung mit einem realen Testrelease funktionieren.
+5. die produktive Product-Slug/API-Key-Provisionierung festgelegt und getestet ist.
