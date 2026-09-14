@@ -21,85 +21,73 @@ public sealed class LicenseHubRuntimeConfigurationTests
     {
         var previousBaseUrl = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL");
         var previousProductSlug = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG");
+        var previousProductApiKey = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY");
         try
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", null);
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG", null);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", null);
 
             var configuration = LicenseHubRuntimeConfiguration.FromEnvironment();
 
             Assert.Equal(LicenseHubRuntimeConfiguration.DefaultBaseUrl, configuration.BaseUrl);
             Assert.Equal(LicenseHubRuntimeConfiguration.DefaultProductSlug, configuration.ProductSlug);
-            Assert.Equal(LicenseHubRuntimeConfiguration.DesktopPublicClientMarker, configuration.ProductApiKey);
-            Assert.False(configuration.Required);
+            Assert.Null(configuration.ProductApiKey);
+            Assert.True(configuration.HasEndpointConfiguration);
             Assert.False(configuration.HasLicenseConfiguration);
         }
         finally
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", previousBaseUrl);
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG", previousProductSlug);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", previousProductApiKey);
         }
     }
 
     [Fact]
-    public void BuildRequirementEnablesDesktopConfigurationWithoutExternalProductKey()
+    public void BuildRequirementForcesEnforcementWithoutEnvironmentFlag()
     {
         var previousRequired = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED");
-        var previousLegacyKey = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY");
         try
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", null);
-            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", null);
 
             var configuration = LicenseHubRuntimeConfiguration.FromEnvironment(requiredByBuild: true);
 
             Assert.True(configuration.Required);
-            Assert.True(configuration.HasLicenseConfiguration);
-            Assert.Equal(LicenseHubRuntimeConfiguration.DesktopPublicClientMarker, configuration.ProductApiKey);
         }
         finally
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", previousRequired);
-            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", previousLegacyKey);
         }
     }
 
     [Fact]
-    public void PublicDefaultsAloneDoNotEnableDevelopmentBuildIntegration()
+    public void ProductApiKeyCompletesLicenseConfigurationWithPublicDefaults()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
-            false,
+            true,
             LicenseHubRuntimeConfiguration.DefaultBaseUrl,
             LicenseHubRuntimeConfiguration.DefaultProductSlug,
-            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
+            "unit-test-api-key");
 
-        Assert.False(configuration.HasAnyConfiguration);
+        Assert.True(configuration.HasEndpointConfiguration);
+        Assert.True(configuration.HasLicenseConfiguration);
+        var client = configuration.CreateClientConfiguration();
+        Assert.Equal("unit-test-api-key", client.ProductApiKey);
+    }
+
+    [Fact]
+    public void StoredProductApiKeyCanCompleteClientConfigurationAtRuntime()
+    {
+        var configuration = new LicenseHubRuntimeConfiguration(
+            true,
+            LicenseHubRuntimeConfiguration.DefaultBaseUrl,
+            LicenseHubRuntimeConfiguration.DefaultProductSlug,
+            null);
+
         Assert.False(configuration.HasLicenseConfiguration);
-    }
-
-    [Fact]
-    public void ExplicitAlternateBaseUrlEnablesDesktopConfiguration()
-    {
-        var configuration = new LicenseHubRuntimeConfiguration(
-            false,
-            "https://staging.example.test",
-            LicenseHubRuntimeConfiguration.DefaultProductSlug,
-            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
-
-        Assert.True(configuration.HasAnyConfiguration);
-        Assert.True(configuration.HasLicenseConfiguration);
-    }
-
-    [Fact]
-    public void ExplicitAlternateProductSlugEnablesDesktopConfiguration()
-    {
-        var configuration = new LicenseHubRuntimeConfiguration(
-            false,
-            LicenseHubRuntimeConfiguration.DefaultBaseUrl,
-            "NMC-SCS-LAUNCHER-STAGING",
-            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
-
-        Assert.True(configuration.HasAnyConfiguration);
-        Assert.True(configuration.HasLicenseConfiguration);
+        var client = configuration.CreateClientConfiguration("stored-api-key");
+        Assert.Equal("stored-api-key", client.ProductApiKey);
     }
 }
