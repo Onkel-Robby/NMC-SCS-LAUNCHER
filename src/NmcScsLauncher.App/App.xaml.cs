@@ -28,6 +28,7 @@ public partial class App : Application
         services.AddSingleton<IMachineIdentityProvider, WindowsMachineIdentityProvider>();
         services.AddSingleton<ILicenseCredentialStore, WindowsCredentialManagerLicenseStore>();
         services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
+        services.AddSingleton<IApplicationUpdateService, ApplicationUpdateService>();
         services.AddSingleton<ILicenseActivationDialogService, LicenseActivationDialogService>();
         services.AddSingleton<ScsGameLaunchService>();
         services.AddSingleton<LicensedGameLaunchService>();
@@ -94,6 +95,40 @@ public partial class App : Application
         MainWindow = mainWindow;
         mainWindow.Show();
         ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+        await CheckForApplicationUpdateAsync(mainWindow, logger);
+    }
+
+    private async Task CheckForApplicationUpdateAsync(Window owner, IAppLogger logger)
+    {
+        if (_serviceProvider is null) return;
+
+        var updateService = _serviceProvider.GetRequiredService<IApplicationUpdateService>();
+        if (!updateService.IsConfigured)
+        {
+            await logger.WriteAsync("INFO", "LicenseHub update check skipped because update integration is not configured.");
+            return;
+        }
+
+        try
+        {
+            var update = await updateService.CheckAsync(AppVersionInfo.Current);
+            await logger.WriteAsync(
+                "INFO",
+                $"LicenseHub update check completed. Current={update.CurrentVersion}; Latest={update.LatestVersion}; Available={update.UpdateAvailable}; Mandatory={update.Mandatory}");
+
+            if (!update.UpdateAvailable) return;
+
+            var window = new ApplicationUpdateWindow(updateService, logger, update)
+            {
+                Owner = owner
+            };
+            window.Show();
+        }
+        catch (Exception ex)
+        {
+            await logger.WriteAsync("ERROR", "LicenseHub update check failed. Launcher remains available.", ex);
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
