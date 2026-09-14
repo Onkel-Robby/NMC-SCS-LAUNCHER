@@ -66,6 +66,8 @@ public sealed record LicenseHubDownloadedUpdate(
 public interface ILicenseHubUpdateClient
 {
     Task<LicenseHubUpdateInfo> CheckForUpdateAsync(
+        string licenseKey,
+        string machineId,
         string currentVersion,
         string channel = "stable",
         CancellationToken cancellationToken = default);

@@ -4,7 +4,6 @@ public sealed record LicenseHubClientConfiguration(
     string BaseUrl,
     string ProductSlug,
     string ProductApiKey,
-    string? UpdateApiToken = null,
     TimeSpan? Timeout = null)
 {
     public Uri GetValidatedBaseUri()
@@ -34,15 +33,6 @@ public sealed record LicenseHubClientConfiguration(
             throw new LicenseHubConfigurationException("LicenseHub product slug is missing or invalid.");
         if (string.IsNullOrWhiteSpace(ProductApiKey) || ProductApiKey.Trim().Length > 64)
             throw new LicenseHubConfigurationException("LicenseHub product API key is missing or invalid.");
-    }
-
-    public string GetValidatedUpdateToken()
-    {
-        ValidateLicenseConfiguration();
-        var token = UpdateApiToken?.Trim() ?? string.Empty;
-        if (token.Length == 0)
-            throw new LicenseHubConfigurationException("LicenseHub update API token is not configured.");
-        return token;
     }
 
     public TimeSpan EffectiveTimeout => Timeout is { } value && value > TimeSpan.Zero

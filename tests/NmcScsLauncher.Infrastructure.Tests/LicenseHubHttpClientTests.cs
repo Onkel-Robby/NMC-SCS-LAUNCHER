@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -26,7 +25,6 @@ public sealed class LicenseHubHttpClientTests
                   "status": "active",
                   "message": "License activated successfully",
                   "license": {
-                    "key": "SECRET-KEY",
                     "expires_at": "2027-01-01T00:00:00+00:00",
                     "max_activations": 2,
                     "current_activations": 1
@@ -37,7 +35,7 @@ public sealed class LicenseHubHttpClientTests
         using var httpClient = new HttpClient(handler);
         var client = CreateClient(httpClient);
 
-        var result = await client.ActivateAsync("LIC-123", "machine-hash", "Test-PC", "0.7.0-dev");
+        var result = await client.ActivateAsync("license-value", "machine-value", "Test-PC", "0.7.0-dev");
 
         Assert.Equal(LicenseAccessState.Active, result.State);
         Assert.True(result.AllowsUse);
@@ -48,9 +46,9 @@ public sealed class LicenseHubHttpClientTests
         using var json = JsonDocument.Parse(requestBody!);
         var root = json.RootElement;
         Assert.Equal("nmc-scs-launcher", root.GetProperty("product_slug").GetString());
-        Assert.Equal("product-api-key", root.GetProperty("api_key").GetString());
-        Assert.Equal("LIC-123", root.GetProperty("license_key").GetString());
-        Assert.Equal("machine-hash", root.GetProperty("machine_id").GetString());
+        Assert.Equal("product-value", root.GetProperty("api_key").GetString());
+        Assert.Equal("license-value", root.GetProperty("license_key").GetString());
+        Assert.Equal("machine-value", root.GetProperty("machine_id").GetString());
         Assert.Equal("Test-PC", root.GetProperty("device_name").GetString());
         Assert.Equal("0.7.0-dev", root.GetProperty("app_version").GetString());
     }
@@ -64,20 +62,20 @@ public sealed class LicenseHubHttpClientTests
         using var httpClient = new HttpClient(handler);
         var client = CreateClient(httpClient);
 
-        var result = await client.ValidateAsync("LIC-123", "machine-hash", "0.7.0-dev");
+        var result = await client.ValidateAsync("license-value", "machine-value", "0.7.0-dev");
 
         Assert.Equal(LicenseAccessState.Blocked, result.State);
         Assert.False(result.AllowsUse);
     }
 
     [Fact]
-    public async Task UpdateCheckUsesBearerTokenAndSecureDownloadEndpoint()
+    public async Task DesktopUpdateCheckUsesLicenseAndMachineBindingWithoutBearerToken()
     {
-        AuthenticationHeaderValue? authorization = null;
         string? body = null;
         var handler = new StubHandler(async request =>
         {
-            authorization = request.Headers.Authorization;
+            Assert.Null(request.Headers.Authorization);
+            Assert.Equal("/api/desktop-update/check.php", request.RequestUri!.AbsolutePath);
             body = await request.Content!.ReadAsStringAsync();
             return Json(HttpStatusCode.OK, """
                 {
@@ -86,9 +84,9 @@ public sealed class LicenseHubHttpClientTests
                   "current_version": "0.7.0-dev",
                   "version": "0.8.0",
                   "channel": "stable",
-                  "download_token": "signed-token",
-                  "download_endpoint": "/api/releases/secure_download.php?token=signed-token",
-                  "checksum": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "mandatory": false,
+                  "download_endpoint": "/api/desktop-update/download.php?release_id=10&license_id=20&activation_id=30&expires=9999999999&channel=stable&sig=test",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                   "changelog": "Test release",
                   "released_at": "2026-09-14T00:00:00+00:00"
                 }
@@ -97,15 +95,17 @@ public sealed class LicenseHubHttpClientTests
         using var httpClient = new HttpClient(handler);
         var client = CreateClient(httpClient);
 
-        var update = await client.CheckForUpdateAsync("0.7.0-dev");
+        var update = await client.CheckForUpdateAsync("license-value", "machine-value", "0.7.0-dev");
 
         Assert.True(update.UpdateAvailable);
         Assert.Equal("0.8.0", update.LatestVersion);
-        Assert.Equal("Bearer", authorization?.Scheme);
-        Assert.Equal("update-api-token", authorization?.Parameter);
         using var json = JsonDocument.Parse(body!);
-        Assert.Equal("nmc-scs-launcher", json.RootElement.GetProperty("product").GetString());
-        Assert.Equal("stable", json.RootElement.GetProperty("channel").GetString());
+        var root = json.RootElement;
+        Assert.Equal("nmc-scs-launcher", root.GetProperty("product_slug").GetString());
+        Assert.Equal("product-value", root.GetProperty("api_key").GetString());
+        Assert.Equal("license-value", root.GetProperty("license_key").GetString());
+        Assert.Equal("machine-value", root.GetProperty("machine_id").GetString());
+        Assert.Equal("stable", root.GetProperty("channel").GetString());
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public sealed class LicenseHubHttpClientTests
         var sha = Convert.ToHexString(SHA256.HashData(payload)).ToLowerInvariant();
         var handler = new StubHandler(request =>
         {
-            Assert.Equal("/api/releases/secure_download.php", request.RequestUri!.AbsolutePath);
+            Assert.Equal("/api/desktop-update/download.php", request.RequestUri!.AbsolutePath);
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(payload)
@@ -132,7 +132,7 @@ public sealed class LicenseHubHttpClientTests
             "0.8.0",
             "stable",
             false,
-            "/api/releases/secure_download.php?token=signed-token",
+            "/api/desktop-update/download.php?release_id=10&license_id=20&activation_id=30&expires=9999999999&channel=stable&sig=test",
             sha,
             null,
             null);
@@ -148,8 +148,7 @@ public sealed class LicenseHubHttpClientTests
         new(httpClient, new LicenseHubClientConfiguration(
             "https://license.example.test/",
             "nmc-scs-launcher",
-            "product-api-key",
-            "update-api-token",
+            "product-value",
             TimeSpan.FromSeconds(5)));
 
     private static HttpResponseMessage Json(HttpStatusCode statusCode, string json) =>

@@ -12,7 +12,7 @@ public sealed class LicenseRuntimeServiceTests
     public async Task DevelopmentBuildWithoutConfigurationAllowsUse()
     {
         var service = new LicenseRuntimeService(
-            new LicenseHubRuntimeConfiguration(false, null, null, null, null),
+            new LicenseHubRuntimeConfiguration(false, null, null, null),
             new MemoryCredentialStore(),
             new FixedMachineIdentityProvider(),
             new HttpClient(new StaticHandler(HttpStatusCode.OK, "{}")));
@@ -28,7 +28,7 @@ public sealed class LicenseRuntimeServiceTests
     public async Task RequiredBuildWithoutConfigurationFailsClosed()
     {
         var service = new LicenseRuntimeService(
-            new LicenseHubRuntimeConfiguration(true, null, null, null, null),
+            new LicenseHubRuntimeConfiguration(true, null, null, null),
             new MemoryCredentialStore(),
             new FixedMachineIdentityProvider(),
             new HttpClient(new StaticHandler(HttpStatusCode.OK, "{}")));
@@ -56,7 +56,7 @@ public sealed class LicenseRuntimeServiceTests
     [Fact]
     public async Task StoredActiveLicenseAllowsUseAfterServerValidation()
     {
-        var store = new MemoryCredentialStore("LIC-123");
+        var store = new MemoryCredentialStore("stored-license-value");
         var service = CreateRequiredService(
             store,
             new StaticHandler(HttpStatusCode.OK, """
@@ -83,7 +83,7 @@ public sealed class LicenseRuntimeServiceTests
     [Fact]
     public async Task BlockedLicenseRemainsFailClosed()
     {
-        var store = new MemoryCredentialStore("LIC-123");
+        var store = new MemoryCredentialStore("stored-license-value");
         var service = CreateRequiredService(
             store,
             new StaticHandler(HttpStatusCode.Forbidden, """
@@ -110,10 +110,10 @@ public sealed class LicenseRuntimeServiceTests
                 }
                 """));
 
-        var state = await service.ActivateAsync("LIC-NEW", "Test PC", "0.7.0");
+        var state = await service.ActivateAsync("new-license-value", "Test PC", "0.7.0");
 
         Assert.True(state.AllowsUse);
-        Assert.Equal("LIC-NEW", await store.LoadLicenseKeyAsync());
+        Assert.Equal("new-license-value", await store.LoadLicenseKeyAsync());
     }
 
     private static LicenseRuntimeService CreateRequiredService(
@@ -125,8 +125,7 @@ public sealed class LicenseRuntimeServiceTests
                 true,
                 "https://license.example.test/",
                 "nmc-scs-launcher",
-                "product-api-key",
-                "update-api-token"),
+                "product-value"),
             store,
             new FixedMachineIdentityProvider(),
             new HttpClient(handler));
@@ -160,7 +159,7 @@ public sealed class LicenseRuntimeServiceTests
     private sealed class FixedMachineIdentityProvider : IMachineIdentityProvider
     {
         public Task<string> GetMachineIdAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult("machine-hash");
+            Task.FromResult("machine-value");
     }
 
     private sealed class StaticHandler : HttpMessageHandler
