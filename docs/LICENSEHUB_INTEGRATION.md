@@ -8,7 +8,11 @@ Produktive LicenseHub-Basis-URL:
 
 `https://licensehub.nmc-it-service.cloud`
 
-Der Launcher verwendet diese URL als sicheren Default. Für isolierte Test-/Staging-Umgebungen kann sie weiterhin über `NMC_LICENSEHUB_BASE_URL` überschrieben werden.
+Produktiver Product Slug:
+
+`NMC-SCS-LAUNCHER`
+
+Der Launcher verwendet URL und Product Slug als öffentliche Defaults. Für isolierte Test-/Staging-Umgebungen können beide weiterhin über `NMC_LICENSEHUB_BASE_URL` bzw. `NMC_LICENSEHUB_PRODUCT_SLUG` überschrieben werden.
 
 Der Bot-spezifische `/api/v1`-M2M-Contract ist für den verteilten Windows-Client **nicht** der primäre Aktivierungsweg. Die Desktop-Lizenzierung verwendet die Client-Endpunkte im LicenseHub-Hauptprojekt.
 
@@ -151,13 +155,13 @@ Dieses Paket ist ein Anwendungsupdate und **nicht** der spätere Windows-Install
 
 ## Laufzeitkonfiguration
 
-Öffentlicher Default:
+Öffentliche Defaults:
 
 - Base URL: `https://licensehub.nmc-it-service.cloud`
+- Product Slug: `NMC-SCS-LAUNCHER`
 
 Außerhalb des Sourcecodes zu provisionieren:
 
-- Product Slug für NMC SCS LAUNCHER
 - Product API Key für Aktivierung, Validierung und Desktop-Update-Check
 - mindestens ein Test-Lizenzschlüssel
 - Release-/Update-Testdatensatz mit SHA-256
@@ -166,7 +170,7 @@ Umgebungsvariablen:
 
 - `NMC_LICENSEHUB_REQUIRED`
 - `NMC_LICENSEHUB_BASE_URL` – optionaler Override; ohne Override wird die produktive Base URL verwendet
-- `NMC_LICENSEHUB_PRODUCT_SLUG`
+- `NMC_LICENSEHUB_PRODUCT_SLUG` – optionaler Override; ohne Override wird `NMC-SCS-LAUNCHER` verwendet
 - `NMC_LICENSEHUB_PRODUCT_API_KEY`
 
 Es gibt bewusst keinen `NMC_LICENSEHUB_UPDATE_API_TOKEN` mehr.
@@ -187,4 +191,4 @@ Der spätere Installer darf erst umgesetzt/freigegeben werden, wenn:
 2. ungültige, gesperrte, abgelaufene und nicht aktivierte Lizenzen korrekt gesperrt werden.
 3. LicenseHub-Ausfallverhalten explizit freigegeben ist.
 4. Update-Check, lizenzgebundener signierter Download und SHA-256-Prüfung mit einem realen Testrelease funktionieren.
-5. die produktive Product-Slug/API-Key-Provisionierung festgelegt und getestet ist.
+5. die produktive API-Key-Provisionierung festgelegt und getestet ist.
