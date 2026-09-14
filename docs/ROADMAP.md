@@ -88,21 +88,35 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 ## Vor Installer verpflichtend
 
 ### LicenseHub – Lizenzschutz
-- [~] reale LicenseHub-Contract-Basis für Desktop-Lizenzprüfung bestimmen
-- [ ] LicenseHub als alleinige Lizenz-/Entitlement-Autorität anbinden
-- [ ] sichere lokale Credential-/Aktivierungsablage definieren
-- [ ] Lizenzstatus im Launcher anzeigen
-- [ ] Start-/Nutzungs-Gates für ungültige bzw. widerrufene Lizenz
-- [ ] Fehler-/Offline-/INDETERMINATE-Verhalten nach realem LicenseHub-Contract implementieren
-- [ ] Tests und CI
+- [x] reale LicenseHub-Desktop-Contracts für Aktivierung, Validierung und Deaktivierung verifiziert
+- [x] LicenseHub als Lizenzautorität für produktiv erzwungene Builds angebunden
+- [x] maschinengebundene Aktivierung mit produktgebundenem SHA-256-Identifier
+- [x] Lizenzschlüssel lokal über Windows Credential Manager statt Klartext-JSON gespeichert
+- [x] Aktivierungs-/Statusdialog mit Ablaufdatum und Aktivierungszahlen
+- [x] Start-/Nutzungs-Gate bei ungültiger, blockierter, abgelaufener oder nicht aktivierter Lizenz
+- [x] zweites Lizenz-Gate unmittelbar vor der Prozesserzeugung
+- [x] fail-closed Verhalten bei Timeout, Unerreichbarkeit, Protokollfehler oder fehlender Required-Konfiguration
+- [x] Unit Tests und Windows-CI für Client, Runtime und Start-Gates
+- [ ] reales LicenseHub-Produkt/API-Credential für NMC SCS LAUNCHER provisionieren
+- [ ] End-to-End-Test mit echter LicenseHub-Lizenz: aktivieren → validieren → sperren/ablaufen → Start muss blockieren → deaktivieren
 
 ### LicenseHub – Updates
-- [~] reale `releases.read`-Contract-Basis bestimmen
-- [ ] verfügbare Launcher-Versionen über LicenseHub abfragen
-- [ ] Release-Metadaten/Digest/Signatur nach LicenseHub-Contract verifizieren
-- [ ] Update herunterladen, prüfen und kontrolliert anwenden
-- [ ] Update-Fehler-/Rollback-Strategie
-- [ ] Tests und CI
+- [x] reale LicenseHub-Update-/Release-Contracts verifiziert
+- [x] verfügbare Launcher-Version über LicenseHub abfragen
+- [x] kurzlebigen signierten LicenseHub-Download-Endpunkt verwenden
+- [x] SHA-256 während des Downloads verifizieren
+- [x] SHA-256 im externen Updater unmittelbar vor dem Anwenden erneut verifizieren
+- [x] Update als vollständiges ZIP-Publish-Bundle herunterladen und sicher entpacken
+- [x] ZIP-Traversal/absolute Pfade außerhalb des Staging-Verzeichnisses blockieren
+- [x] Anwendung über separaten self-contained Updater austauschen
+- [x] alte Anwendung vor Aktivierung der neuen Version als Rollback-Backup erhalten
+- [x] automatisches Rollback bei fehlgeschlagenem Verzeichnistausch oder fehlgeschlagenem Neustart
+- [x] Updatefenster mit Version, Changelog, Fortschritt und kontrolliertem Neustart
+- [x] automatische Prüfung nach Programmstart nur bei vorhandener Update-Konfiguration
+- [x] Entwicklungsbuild ohne Update-Token führt keinen Update-Netzaufruf aus
+- [x] Unit Tests und Windows-CI inklusive Updater-Publish und Bundle-Prüfung
+- [ ] echtes NMC-SCS-LAUNCHER-Release als vollständiges ZIP in LicenseHub provisionieren
+- [ ] End-to-End-Test: LicenseHub-Release erkennen → signiert laden → SHA-256 prüfen → anwenden → neue Version startet → Rollback-Test
 
 ## Danach
 - [ ] Installer
@@ -110,4 +124,4 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [ ] Praxistest auf echter ETS2-/ATS-Installation abschließen
 - [ ] Release Candidate / 1.0.0
 
-**Installer-Blocker:** Installer-Arbeit beginnt erst, wenn LicenseHub-Lizenzschutz und LicenseHub-Updateintegration technisch definiert, implementiert und CI-verifiziert sind.
+**Installer-Blocker:** Installer-Arbeit beginnt erst, wenn die beiden offenen LicenseHub-End-to-End-Gates (reale Lizenz sowie reales Update-Release) erfolgreich verifiziert und dokumentiert sind.
