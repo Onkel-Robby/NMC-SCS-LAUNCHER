@@ -34,6 +34,16 @@ jobs:
       - name: Publish WPF app
         run: dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
 
+      - name: Publish updater
+        run: dotnet publish src/NmcScsLauncher.Updater/NmcScsLauncher.Updater.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --no-restore --output artifacts/updater
+
+      - name: Bundle updater with launcher
+        shell: pwsh
+        run: |
+          $updater = "artifacts/updater/NmcScsLauncher.Updater.exe"
+          if (-not (Test-Path $updater)) { throw "Updater executable was not published." }
+          Copy-Item $updater "artifacts/publish/NmcScsLauncher.Updater.exe" -Force
+
       - name: Upload publish artifact
         uses: actions/upload-artifact@v4
         with:
