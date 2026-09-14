@@ -88,6 +88,7 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 ## Vor Installer verpflichtend
 
 ### LicenseHub – Lizenzschutz
+- [x] endgültige LicenseHub-Produktionsdomain festgelegt: `https://licensehub.nmc-it-service.cloud`
 - [x] reale LicenseHub-Desktop-Contracts für Aktivierung, Validierung und Deaktivierung verifiziert
 - [x] LicenseHub als Lizenzautorität für produktiv erzwungene Builds angebunden
 - [x] maschinengebundene Aktivierung mit produktgebundenem SHA-256-Identifier
@@ -97,11 +98,12 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] zweites Lizenz-Gate unmittelbar vor der Prozesserzeugung
 - [x] fail-closed Verhalten bei Timeout, Unerreichbarkeit, Protokollfehler oder fehlender Required-Konfiguration
 - [x] Unit Tests und Windows-CI für Client, Runtime und Start-Gates
-- [ ] reales LicenseHub-Produkt/API-Credential für NMC SCS LAUNCHER provisionieren
+- [~] Product Slug/API-Credential und Testlizenz für den realen End-to-End-Lauf vollständig provisionieren
 - [ ] End-to-End-Test mit echter LicenseHub-Lizenz: aktivieren → validieren → sperren/ablaufen → Start muss blockieren → deaktivieren
 
 ### LicenseHub – Updates
-- [x] reale LicenseHub-Update-/Release-Contracts verifiziert
+- [x] Launcher auf lizenz- und maschinengebundenen Desktop-Updatevertrag umgestellt
+- [x] langlebigen Update-Bearer-Token aus dem Desktop-Design entfernt
 - [x] verfügbare Launcher-Version über LicenseHub abfragen
 - [x] kurzlebigen signierten LicenseHub-Download-Endpunkt verwenden
 - [x] SHA-256 während des Downloads verifizieren
@@ -112,9 +114,11 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] alte Anwendung vor Aktivierung der neuen Version als Rollback-Backup erhalten
 - [x] automatisches Rollback bei fehlgeschlagenem Verzeichnistausch oder fehlgeschlagenem Neustart
 - [x] Updatefenster mit Version, Changelog, Fortschritt und kontrolliertem Neustart
-- [x] automatische Prüfung nach Programmstart nur bei vorhandener Update-Konfiguration
-- [x] Entwicklungsbuild ohne Update-Token führt keinen Update-Netzaufruf aus
+- [x] automatische Prüfung nach Programmstart nur bei vollständiger LicenseHub-Konfiguration und gespeicherter Lizenz
+- [x] Entwicklungsbuild ohne vollständige Product-Konfiguration führt keinen Update-Netzaufruf aus
 - [x] Unit Tests und Windows-CI inklusive Updater-Publish und Bundle-Prüfung
+- [x] GitHub Actions erzeugt validiertes LicenseHub-Release-ZIP plus SHA-256-Sidecar
+- [~] lizenzgebundene Desktop-Update-Endpunkte im LicenseHub-Hauptprojekt prüfen und gegen reale Umgebung verifizieren
 - [ ] echtes NMC-SCS-LAUNCHER-Release als vollständiges ZIP in LicenseHub provisionieren
 - [ ] End-to-End-Test: LicenseHub-Release erkennen → signiert laden → SHA-256 prüfen → anwenden → neue Version startet → Rollback-Test
 
