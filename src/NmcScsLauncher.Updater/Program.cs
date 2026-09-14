@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using NmcScsLauncher.Infrastructure;
 
 namespace NmcScsLauncher.Updater;
@@ -14,6 +15,12 @@ internal static class Program
         {
             var options = UpdaterOptions.Parse(args);
             await LogAsync($"Updater started. Target={options.TargetDirectory}; WaitPid={options.WaitProcessId}");
+
+            if (!await VerifySha256Async(options.PackagePath, options.ExpectedSha256))
+            {
+                await LogAsync("Update package SHA-256 verification failed before apply.");
+                return 6;
+            }
 
             if (options.WaitProcessId == Environment.ProcessId)
                 throw new InvalidOperationException("Updater cannot wait for its own process.");
@@ -82,6 +89,27 @@ internal static class Program
         }
     }
 
+    private static async Task<bool> VerifySha256Async(string filePath, string expectedSha256)
+    {
+        if (!File.Exists(filePath)) return false;
+        var expected = expectedSha256.Trim().ToLowerInvariant();
+        if (expected.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase))
+            expected = expected[7..];
+        if (expected.Length != 64 || expected.Any(character => !Uri.IsHexDigit(character)))
+            throw new ArgumentException("Expected SHA-256 must contain exactly 64 hexadecimal characters.");
+
+        await using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            128 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var actual = await SHA256.HashDataAsync(stream);
+        var expectedBytes = Convert.FromHexString(expected);
+        return CryptographicOperations.FixedTimeEquals(actual, expectedBytes);
+    }
+
     private static async Task<bool> WaitForProcessExitAsync(int processId, TimeSpan timeout)
     {
         Process process;
@@ -142,6 +170,7 @@ internal static class Program
 
     private sealed record UpdaterOptions(
         string PackagePath,
+        string ExpectedSha256,
         string TargetDirectory,
         string RestartExecutableRelativePath,
         int? WaitProcessId)
@@ -157,6 +186,7 @@ internal static class Program
             }
 
             var package = Require(values, "--package");
+            var sha256 = Require(values, "--sha256");
             var target = Require(values, "--target");
             var restart = Require(values, "--restart");
             int? waitPid = null;
@@ -167,7 +197,7 @@ internal static class Program
                 waitPid = parsedPid;
             }
 
-            return new UpdaterOptions(package, target, restart, waitPid);
+            return new UpdaterOptions(package, sha256, target, restart, waitPid);
         }
 
         private static string Require(IReadOnlyDictionary<string, string> values, string name)
