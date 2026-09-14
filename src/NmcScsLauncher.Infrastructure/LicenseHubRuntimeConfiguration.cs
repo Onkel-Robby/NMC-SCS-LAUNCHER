@@ -4,14 +4,12 @@ public sealed record LicenseHubRuntimeConfiguration(
     bool Required,
     string? BaseUrl,
     string? ProductSlug,
-    string? ProductApiKey,
-    string? UpdateApiToken)
+    string? ProductApiKey)
 {
     public bool HasAnyConfiguration =>
         !string.IsNullOrWhiteSpace(BaseUrl)
         || !string.IsNullOrWhiteSpace(ProductSlug)
-        || !string.IsNullOrWhiteSpace(ProductApiKey)
-        || !string.IsNullOrWhiteSpace(UpdateApiToken);
+        || !string.IsNullOrWhiteSpace(ProductApiKey);
 
     public bool HasLicenseConfiguration =>
         !string.IsNullOrWhiteSpace(BaseUrl)
@@ -26,8 +24,7 @@ public sealed record LicenseHubRuntimeConfiguration(
         return new LicenseHubClientConfiguration(
             BaseUrl!,
             ProductSlug!,
-            ProductApiKey!,
-            string.IsNullOrWhiteSpace(UpdateApiToken) ? null : UpdateApiToken.Trim());
+            ProductApiKey!);
     }
 
     public static LicenseHubRuntimeConfiguration FromEnvironment()
@@ -41,8 +38,7 @@ public sealed record LicenseHubRuntimeConfiguration(
             required,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")),
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")),
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")),
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_UPDATE_API_TOKEN")));
+            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
     }
 
     private static string? Normalize(string? value)
