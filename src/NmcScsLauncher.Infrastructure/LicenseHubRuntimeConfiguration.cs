@@ -3,15 +3,13 @@ namespace NmcScsLauncher.Infrastructure;
 public sealed record LicenseHubRuntimeConfiguration(
     bool Required,
     string? BaseUrl,
-    string? ProductSlug,
-    string? ProductApiKey)
+    string? ProductSlug)
 {
     public const string DefaultBaseUrl = "https://licensehub.nmc-it-service.cloud";
     public const string DefaultProductSlug = "NMC-SCS-LAUNCHER";
 
     public bool HasAnyConfiguration =>
         Required
-        || !string.IsNullOrWhiteSpace(ProductApiKey)
         || (!string.IsNullOrWhiteSpace(BaseUrl)
             && !string.Equals(BaseUrl.TrimEnd('/'), DefaultBaseUrl, StringComparison.OrdinalIgnoreCase))
         || (!string.IsNullOrWhiteSpace(ProductSlug)
@@ -20,17 +18,16 @@ public sealed record LicenseHubRuntimeConfiguration(
     public bool HasLicenseConfiguration =>
         !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(ProductSlug)
-        && !string.IsNullOrWhiteSpace(ProductApiKey);
+        && HasAnyConfiguration;
 
     public LicenseHubClientConfiguration CreateClientConfiguration()
     {
         if (!HasLicenseConfiguration)
-            throw new LicenseHubConfigurationException("LicenseHub license configuration is incomplete.");
+            throw new LicenseHubConfigurationException("LicenseHub desktop configuration is incomplete.");
 
         return new LicenseHubClientConfiguration(
             BaseUrl!,
-            ProductSlug!,
-            ProductApiKey!);
+            ProductSlug!);
     }
 
     public static LicenseHubRuntimeConfiguration FromEnvironment(bool requiredByBuild = false)
@@ -43,8 +40,7 @@ public sealed record LicenseHubRuntimeConfiguration(
         return new LicenseHubRuntimeConfiguration(
             requiredByBuild || requiredByEnvironment,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")) ?? DefaultBaseUrl,
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")) ?? DefaultProductSlug,
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
+            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")) ?? DefaultProductSlug);
     }
 
     private static string? Normalize(string? value)
