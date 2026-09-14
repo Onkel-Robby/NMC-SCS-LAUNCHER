@@ -80,6 +80,15 @@ public partial class App : Application
                 await logger.WriteAsync(
                     "INFO",
                     $"LicenseHub activation dialog closed. State={licenseState.State}; AllowsUse={licenseState.AllowsUse}");
+
+                if (!licenseState.AllowsUse)
+                {
+                    await logger.WriteAsync(
+                        "WARN",
+                        "LicenseHub enforcement is enabled and no valid license was confirmed. Launcher startup was stopped before the main window was shown.");
+                    Shutdown();
+                    return;
+                }
             }
 
             var settings = await settingsStore.LoadAsync();
