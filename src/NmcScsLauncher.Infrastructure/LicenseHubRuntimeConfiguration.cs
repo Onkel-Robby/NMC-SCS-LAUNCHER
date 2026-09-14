@@ -33,15 +33,15 @@ public sealed record LicenseHubRuntimeConfiguration(
             ProductApiKey!);
     }
 
-    public static LicenseHubRuntimeConfiguration FromEnvironment()
+    public static LicenseHubRuntimeConfiguration FromEnvironment(bool requiredByBuild = false)
     {
         var requiredValue = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED")?.Trim();
-        var required = string.Equals(requiredValue, "1", StringComparison.OrdinalIgnoreCase)
+        var requiredByEnvironment = string.Equals(requiredValue, "1", StringComparison.OrdinalIgnoreCase)
             || string.Equals(requiredValue, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(requiredValue, "yes", StringComparison.OrdinalIgnoreCase);
 
         return new LicenseHubRuntimeConfiguration(
-            required,
+            requiredByBuild || requiredByEnvironment,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")) ?? DefaultBaseUrl,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")) ?? DefaultProductSlug,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
