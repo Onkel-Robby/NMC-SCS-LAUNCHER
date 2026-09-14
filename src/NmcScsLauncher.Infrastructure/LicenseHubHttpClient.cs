@@ -76,32 +76,47 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
     }
 
     public async Task<LicenseHubUpdateInfo> CheckForUpdateAsync(
+        string licenseKey,
+        string machineId,
         string currentVersion,
         string channel = "stable",
         CancellationToken cancellationToken = default)
     {
+        ValidateLicenseArguments(licenseKey, machineId);
         if (string.IsNullOrWhiteSpace(currentVersion) || currentVersion.Trim().Length > 50)
             throw new ArgumentException("Current version is missing or invalid.", nameof(currentVersion));
         channel = string.IsNullOrWhiteSpace(channel) ? "stable" : channel.Trim().ToLowerInvariant();
         if (channel.Length > 20)
             throw new ArgumentException("Update channel is invalid.", nameof(channel));
 
-        var token = _configuration.GetValidatedUpdateToken();
-        var payload = new UpdateCheckRequest(_configuration.ProductSlug.Trim(), currentVersion.Trim(), channel);
-        using var response = await SendAsync(HttpMethod.Post, "api/version/update.php", payload, token, cancellationToken);
+        var payload = new DesktopUpdateCheckRequest(
+            _configuration.ProductSlug.Trim(),
+            _configuration.ProductApiKey.Trim(),
+            licenseKey.Trim(),
+            machineId.Trim(),
+            currentVersion.Trim(),
+            channel);
+
+        using var response = await SendAsync(
+            HttpMethod.Post,
+            "api/desktop-update/check.php",
+            payload,
+            null,
+            cancellationToken);
         var envelope = await ReadUpdateEnvelopeAsync(response, cancellationToken);
         if (!response.IsSuccessStatusCode || envelope.Success != true)
-            throw new LicenseHubProtocolException(envelope.Message ?? envelope.Error ?? $"LicenseHub update check failed with HTTP {(int)response.StatusCode}.");
+            throw new LicenseHubProtocolException(
+                envelope.Message ?? envelope.Error ?? $"LicenseHub desktop update check failed with HTTP {(int)response.StatusCode}.");
 
         var latestVersion = envelope.Version?.Trim() ?? string.Empty;
         if (latestVersion.Length == 0)
-            throw new LicenseHubProtocolException("LicenseHub update response does not contain a version.");
+            throw new LicenseHubProtocolException("LicenseHub desktop update response does not contain a version.");
 
         if (envelope.UpdateAvailable == true)
         {
             if (string.IsNullOrWhiteSpace(envelope.DownloadEndpoint))
-                throw new LicenseHubProtocolException("LicenseHub reports an update without a secure download endpoint.");
-            _ = NormalizeSha256(envelope.Checksum);
+                throw new LicenseHubProtocolException("LicenseHub reports an update without a secure desktop download endpoint.");
+            _ = NormalizeSha256(envelope.Sha256);
             _ = ResolveDownloadUri(envelope.DownloadEndpoint);
         }
 
@@ -112,7 +127,7 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
             envelope.Channel?.Trim() ?? channel,
             envelope.Mandatory == true,
             envelope.DownloadEndpoint,
-            envelope.Checksum,
+            envelope.Sha256,
             envelope.Changelog,
             ParseDate(envelope.ReleasedAt));
     }
@@ -385,8 +400,11 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         [property: JsonPropertyName("license_key")] string LicenseKey,
         [property: JsonPropertyName("machine_id")] string MachineId);
 
-    private sealed record UpdateCheckRequest(
-        [property: JsonPropertyName("product")] string Product,
+    private sealed record DesktopUpdateCheckRequest(
+        [property: JsonPropertyName("product_slug")] string ProductSlug,
+        [property: JsonPropertyName("api_key")] string ApiKey,
+        [property: JsonPropertyName("license_key")] string LicenseKey,
+        [property: JsonPropertyName("machine_id")] string MachineId,
         [property: JsonPropertyName("version")] string Version,
         [property: JsonPropertyName("channel")] string Channel);
 
@@ -422,7 +440,7 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         [JsonPropertyName("channel")] public string? Channel { get; init; }
         [JsonPropertyName("mandatory")] public bool? Mandatory { get; init; }
         [JsonPropertyName("download_endpoint")] public string? DownloadEndpoint { get; init; }
-        [JsonPropertyName("checksum")] public string? Checksum { get; init; }
+        [JsonPropertyName("sha256")] public string? Sha256 { get; init; }
         [JsonPropertyName("changelog")] public string? Changelog { get; init; }
         [JsonPropertyName("released_at")] public string? ReleasedAt { get; init; }
     }
