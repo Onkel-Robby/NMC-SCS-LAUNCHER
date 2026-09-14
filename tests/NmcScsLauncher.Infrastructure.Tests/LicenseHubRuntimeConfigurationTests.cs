@@ -30,6 +30,9 @@ public sealed class LicenseHubRuntimeConfigurationTests
 
             Assert.Equal(LicenseHubRuntimeConfiguration.DefaultBaseUrl, configuration.BaseUrl);
             Assert.Equal(LicenseHubRuntimeConfiguration.DefaultProductSlug, configuration.ProductSlug);
+            Assert.Equal(LicenseHubRuntimeConfiguration.DesktopPublicClientMarker, configuration.ProductApiKey);
+            Assert.False(configuration.Required);
+            Assert.False(configuration.HasLicenseConfiguration);
         }
         finally
         {
@@ -39,72 +42,64 @@ public sealed class LicenseHubRuntimeConfigurationTests
     }
 
     [Fact]
-    public void BuildRequirementForcesEnforcementWithoutEnvironmentFlag()
+    public void BuildRequirementEnablesDesktopConfigurationWithoutExternalProductKey()
     {
         var previousRequired = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED");
+        var previousLegacyKey = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY");
         try
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", null);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", null);
 
             var configuration = LicenseHubRuntimeConfiguration.FromEnvironment(requiredByBuild: true);
 
             Assert.True(configuration.Required);
+            Assert.True(configuration.HasLicenseConfiguration);
+            Assert.Equal(LicenseHubRuntimeConfiguration.DesktopPublicClientMarker, configuration.ProductApiKey);
         }
         finally
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED", previousRequired);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", previousLegacyKey);
         }
     }
 
     [Fact]
-    public void PublicDefaultsAloneDoNotCountAsPartialConfiguration()
+    public void PublicDefaultsAloneDoNotEnableDevelopmentBuildIntegration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
             false,
             LicenseHubRuntimeConfiguration.DefaultBaseUrl,
             LicenseHubRuntimeConfiguration.DefaultProductSlug,
-            null);
+            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
 
         Assert.False(configuration.HasAnyConfiguration);
         Assert.False(configuration.HasLicenseConfiguration);
     }
 
     [Fact]
-    public void ProductApiKeyCompletesLicenseConfigurationWithPublicDefaults()
+    public void ExplicitAlternateBaseUrlEnablesDesktopConfiguration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
             false,
-            LicenseHubRuntimeConfiguration.DefaultBaseUrl,
+            "https://staging.example.test",
             LicenseHubRuntimeConfiguration.DefaultProductSlug,
-            "unit-test-api-key");
+            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
 
         Assert.True(configuration.HasAnyConfiguration);
         Assert.True(configuration.HasLicenseConfiguration);
     }
 
     [Fact]
-    public void ExplicitAlternateBaseUrlCountsAsConfiguration()
-    {
-        var configuration = new LicenseHubRuntimeConfiguration(
-            false,
-            "https://staging.example.test",
-            LicenseHubRuntimeConfiguration.DefaultProductSlug,
-            null);
-
-        Assert.True(configuration.HasAnyConfiguration);
-        Assert.False(configuration.HasLicenseConfiguration);
-    }
-
-    [Fact]
-    public void ExplicitAlternateProductSlugCountsAsConfiguration()
+    public void ExplicitAlternateProductSlugEnablesDesktopConfiguration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
             false,
             LicenseHubRuntimeConfiguration.DefaultBaseUrl,
             "NMC-SCS-LAUNCHER-STAGING",
-            null);
+            LicenseHubRuntimeConfiguration.DesktopPublicClientMarker);
 
         Assert.True(configuration.HasAnyConfiguration);
-        Assert.False(configuration.HasLicenseConfiguration);
+        Assert.True(configuration.HasLicenseConfiguration);
     }
 }

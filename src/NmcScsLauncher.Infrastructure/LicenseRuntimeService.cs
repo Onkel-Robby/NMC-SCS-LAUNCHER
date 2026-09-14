@@ -22,7 +22,7 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
 
         if (_runtimeConfiguration.HasLicenseConfiguration)
         {
-            _licenseClient = new LicenseHubHttpClient(httpClient, _runtimeConfiguration.CreateClientConfiguration());
+            _licenseClient = new DesktopLicenseHubClient(httpClient, _runtimeConfiguration.CreateClientConfiguration());
         }
 
         Current = InitialState();
