@@ -6,25 +6,23 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
 {
     private readonly LicenseHubRuntimeConfiguration _runtimeConfiguration;
     private readonly ILicenseCredentialStore _credentialStore;
+    private readonly IProductApiCredentialStore _productApiCredentialStore;
     private readonly IMachineIdentityProvider _machineIdentityProvider;
-    private readonly ILicenseHubLicenseClient? _licenseClient;
+    private readonly HttpClient _httpClient;
+    private ILicenseHubLicenseClient? _licenseClient;
 
     public LicenseRuntimeService(
         LicenseHubRuntimeConfiguration runtimeConfiguration,
         ILicenseCredentialStore credentialStore,
+        IProductApiCredentialStore productApiCredentialStore,
         IMachineIdentityProvider machineIdentityProvider,
         HttpClient httpClient)
     {
         _runtimeConfiguration = runtimeConfiguration ?? throw new ArgumentNullException(nameof(runtimeConfiguration));
         _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+        _productApiCredentialStore = productApiCredentialStore ?? throw new ArgumentNullException(nameof(productApiCredentialStore));
         _machineIdentityProvider = machineIdentityProvider ?? throw new ArgumentNullException(nameof(machineIdentityProvider));
-        ArgumentNullException.ThrowIfNull(httpClient);
-
-        if (_runtimeConfiguration.HasLicenseConfiguration)
-        {
-            _licenseClient = new DesktopLicenseHubClient(httpClient, _runtimeConfiguration.CreateClientConfiguration());
-        }
-
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         Current = InitialState();
     }
 
@@ -34,15 +32,16 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         string appVersion,
         CancellationToken cancellationToken = default)
     {
-        if (_licenseClient is null)
+        var client = await TryGetClientAsync(cancellationToken);
+        if (client is null)
         {
             Current = _runtimeConfiguration.Required
-                ? ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber nicht vollständig konfiguriert.")
+                ? ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber die lokale Produktkonfiguration fehlt.")
                 : DevelopmentBypass();
             return Current;
         }
 
-        return await RefreshAsync(appVersion, cancellationToken);
+        return await RefreshWithClientAsync(client, appVersion, cancellationToken);
     }
 
     public async Task<LicenseRuntimeSnapshot> ActivateAsync(
@@ -51,7 +50,7 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         string appVersion,
         CancellationToken cancellationToken = default)
     {
-        var client = RequireClient();
+        var client = await RequireClientAsync(cancellationToken);
         var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
         var result = await client.ActivateAsync(licenseKey, machineId, deviceName, appVersion, cancellationToken);
         Current = Map(result);
@@ -68,30 +67,22 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         string appVersion,
         CancellationToken cancellationToken = default)
     {
-        if (_licenseClient is null)
+        var client = await TryGetClientAsync(cancellationToken);
+        if (client is null)
         {
             Current = _runtimeConfiguration.Required
-                ? ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber nicht vollständig konfiguriert.")
+                ? ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber die lokale Produktkonfiguration fehlt.")
                 : DevelopmentBypass();
             return Current;
         }
 
-        var licenseKey = await _credentialStore.LoadLicenseKeyAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(licenseKey))
-        {
-            Current = MissingLicense();
-            return Current;
-        }
-
-        var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
-        var result = await _licenseClient.ValidateAsync(licenseKey, machineId, appVersion, cancellationToken);
-        Current = Map(result);
-        return Current;
+        return await RefreshWithClientAsync(client, appVersion, cancellationToken);
     }
 
     public async Task<LicenseRuntimeSnapshot> DeactivateAsync(CancellationToken cancellationToken = default)
     {
-        if (_licenseClient is null)
+        var client = await TryGetClientAsync(cancellationToken);
+        if (client is null)
         {
             if (!_runtimeConfiguration.Required)
             {
@@ -100,7 +91,7 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
                 return Current;
             }
 
-            Current = ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber nicht vollständig konfiguriert.");
+            Current = ConfigurationFailure("LicenseHub ist für diesen Build erforderlich, aber die lokale Produktkonfiguration fehlt.");
             return Current;
         }
 
@@ -112,18 +103,79 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         }
 
         var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
-        await _licenseClient.DeactivateAsync(licenseKey, machineId, cancellationToken);
+        await client.DeactivateAsync(licenseKey, machineId, cancellationToken);
         await _credentialStore.ClearLicenseKeyAsync(cancellationToken);
         Current = MissingLicense();
         return Current;
     }
 
-    private ILicenseHubLicenseClient RequireClient()
+    private async Task<LicenseRuntimeSnapshot> RefreshWithClientAsync(
+        ILicenseHubLicenseClient client,
+        string appVersion,
+        CancellationToken cancellationToken)
+    {
+        var licenseKey = await _credentialStore.LoadLicenseKeyAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(licenseKey))
+        {
+            Current = MissingLicense();
+            return Current;
+        }
+
+        var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
+        var result = await client.ValidateAsync(licenseKey, machineId, appVersion, cancellationToken);
+        Current = Map(result);
+        return Current;
+    }
+
+    private async Task<ILicenseHubLicenseClient?> TryGetClientAsync(CancellationToken cancellationToken)
     {
         if (_licenseClient is not null) return _licenseClient;
+        if (!_runtimeConfiguration.HasEndpointConfiguration) return null;
+
+        string? apiKey;
+        try
+        {
+            apiKey = _runtimeConfiguration.ProductApiKey?.Trim();
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                await _productApiCredentialStore.SaveProductApiKeyAsync(apiKey, cancellationToken);
+            }
+            else
+            {
+                apiKey = await _productApiCredentialStore.LoadProductApiKeyAsync(cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey)) return null;
+
+        try
+        {
+            _licenseClient = new LicenseHubHttpClient(
+                _httpClient,
+                _runtimeConfiguration.CreateClientConfiguration(apiKey));
+            return _licenseClient;
+        }
+        catch (LicenseHubConfigurationException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<ILicenseHubLicenseClient> RequireClientAsync(CancellationToken cancellationToken)
+    {
+        var client = await TryGetClientAsync(cancellationToken);
+        if (client is not null) return client;
         throw new LicenseHubConfigurationException(
             _runtimeConfiguration.Required
-                ? "LicenseHub is required but not configured."
+                ? "LicenseHub is required but the local product credential is not configured."
                 : "LicenseHub is not configured for this development build.");
     }
 
