@@ -14,6 +14,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         var services = new ServiceCollection();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
@@ -28,7 +29,8 @@ public partial class App : Application
         services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
         services.AddSingleton<ILicenseActivationDialogService, LicenseActivationDialogService>();
         services.AddSingleton<ScsGameLaunchService>();
-        services.AddSingleton<IGameLaunchService, LicensedGameLaunchService>();
+        services.AddSingleton<LicensedGameLaunchService>();
+        services.AddSingleton<IGameLaunchService, InteractiveLicensedGameLaunchService>();
 
         services.AddSingleton<IModsetInspector, ScsModsetInspector>();
         services.AddSingleton<IModsetStore, JsonModsetStore>();
@@ -87,7 +89,10 @@ public partial class App : Application
             await logger.WriteAsync("ERROR", "Startup initialization failed.", ex);
         }
 
-        _serviceProvider.GetRequiredService<MainWindow>().Show();
+        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+        MainWindow = mainWindow;
+        mainWindow.Show();
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
     }
 
     protected override void OnExit(ExitEventArgs e)
