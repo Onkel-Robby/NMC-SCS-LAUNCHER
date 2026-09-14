@@ -89,6 +89,7 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 
 ### LicenseHub – Lizenzschutz
 - [x] endgültige LicenseHub-Produktionsdomain festgelegt: `https://licensehub.nmc-it-service.cloud`
+- [x] endgültiger Product Slug festgelegt: `NMC-SCS-LAUNCHER`
 - [x] reale LicenseHub-Desktop-Contracts für Aktivierung, Validierung und Deaktivierung verifiziert
 - [x] LicenseHub als Lizenzautorität für produktiv erzwungene Builds angebunden
 - [x] maschinengebundene Aktivierung mit produktgebundenem SHA-256-Identifier
@@ -98,7 +99,7 @@ Status: `[ ]` geplant · `[~]` in Arbeit · `[x]` fertig
 - [x] zweites Lizenz-Gate unmittelbar vor der Prozesserzeugung
 - [x] fail-closed Verhalten bei Timeout, Unerreichbarkeit, Protokollfehler oder fehlender Required-Konfiguration
 - [x] Unit Tests und Windows-CI für Client, Runtime und Start-Gates
-- [~] Product Slug/API-Credential und Testlizenz für den realen End-to-End-Lauf vollständig provisionieren
+- [~] Product API Credential und Testlizenz für den realen End-to-End-Lauf vollständig provisionieren
 - [ ] End-to-End-Test mit echter LicenseHub-Lizenz: aktivieren → validieren → sperren/ablaufen → Start muss blockieren → deaktivieren
 
 ### LicenseHub – Updates
