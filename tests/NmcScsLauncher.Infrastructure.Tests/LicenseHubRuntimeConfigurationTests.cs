@@ -14,6 +14,24 @@ public sealed class LicenseHubRuntimeConfigurationTests
     }
 
     [Fact]
+    public void FromEnvironmentUsesFinalDomainWhenNoOverrideIsSet()
+    {
+        var previous = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL");
+        try
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", null);
+
+            var configuration = LicenseHubRuntimeConfiguration.FromEnvironment();
+
+            Assert.Equal(LicenseHubRuntimeConfiguration.DefaultBaseUrl, configuration.BaseUrl);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", previous);
+        }
+    }
+
+    [Fact]
     public void DefaultBaseUrlAloneDoesNotCountAsPartialConfiguration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
