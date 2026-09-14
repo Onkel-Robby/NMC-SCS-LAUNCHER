@@ -7,17 +7,22 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
 {
     private const string UpdaterFileName = "NmcScsLauncher.Updater.exe";
     private const string LauncherFileName = "NmcScsLauncher.App.exe";
+    private readonly ILicenseCredentialStore _credentialStore;
+    private readonly IMachineIdentityProvider _machineIdentityProvider;
     private readonly ILicenseHubUpdateClient? _updateClient;
 
     public ApplicationUpdateService(
         LicenseHubRuntimeConfiguration runtimeConfiguration,
+        ILicenseCredentialStore credentialStore,
+        IMachineIdentityProvider machineIdentityProvider,
         HttpClient httpClient)
     {
         ArgumentNullException.ThrowIfNull(runtimeConfiguration);
+        _credentialStore = credentialStore ?? throw new ArgumentNullException(nameof(credentialStore));
+        _machineIdentityProvider = machineIdentityProvider ?? throw new ArgumentNullException(nameof(machineIdentityProvider));
         ArgumentNullException.ThrowIfNull(httpClient);
 
-        if (runtimeConfiguration.HasLicenseConfiguration
-            && !string.IsNullOrWhiteSpace(runtimeConfiguration.UpdateApiToken))
+        if (runtimeConfiguration.HasLicenseConfiguration)
         {
             _updateClient = new LicenseHubHttpClient(
                 httpClient,
@@ -27,10 +32,24 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
 
     public bool IsConfigured => _updateClient is not null;
 
-    public Task<LicenseHubUpdateInfo> CheckAsync(
+    public async Task<LicenseHubUpdateInfo> CheckAsync(
         string currentVersion,
-        CancellationToken cancellationToken = default) =>
-        RequireClient().CheckForUpdateAsync(currentVersion, "stable", cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        var client = RequireClient();
+        var licenseKey = await _credentialStore.LoadLicenseKeyAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(licenseKey))
+            throw new LicenseHubConfigurationException(
+                "A stored LicenseHub license is required before desktop updates can be checked.");
+
+        var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
+        return await client.CheckForUpdateAsync(
+            licenseKey,
+            machineId,
+            currentVersion,
+            "stable",
+            cancellationToken);
+    }
 
     public async Task<PreparedApplicationUpdate> DownloadAsync(
         LicenseHubUpdateInfo update,
