@@ -3,7 +3,6 @@ namespace NmcScsLauncher.Infrastructure;
 public sealed record LicenseHubClientConfiguration(
     string BaseUrl,
     string ProductSlug,
-    string ProductApiKey,
     TimeSpan? Timeout = null)
 {
     public Uri GetValidatedBaseUri()
@@ -31,8 +30,6 @@ public sealed record LicenseHubClientConfiguration(
         _ = GetValidatedBaseUri();
         if (string.IsNullOrWhiteSpace(ProductSlug) || ProductSlug.Trim().Length > 100)
             throw new LicenseHubConfigurationException("LicenseHub product slug is missing or invalid.");
-        if (string.IsNullOrWhiteSpace(ProductApiKey) || ProductApiKey.Trim().Length > 64)
-            throw new LicenseHubConfigurationException("LicenseHub product API key is missing or invalid.");
     }
 
     public TimeSpan EffectiveTimeout => Timeout is { } value && value > TimeSpan.Zero
