@@ -91,7 +91,32 @@ public partial class App : Application
                     return;
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await logger.WriteAsync(
+                    "ERROR",
+                    "LicenseHub startup gate failed. Launcher startup was stopped fail-closed.",
+                    ex);
+            }
+            catch
+            {
+                // The license gate must remain fail-closed even if logging itself fails.
+            }
 
+            MessageBox.Show(
+                "Die LicenseHub-Lizenzprüfung konnte nicht sicher abgeschlossen werden.\n\nDer NMC SCS LAUNCHER wird deshalb nicht gestartet.",
+                "NMC SCS LAUNCHER – Lizenzprüfung",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
+        try
+        {
             var settings = await settingsStore.LoadAsync();
             await viewModel.InitializeAsync(settings);
         }
