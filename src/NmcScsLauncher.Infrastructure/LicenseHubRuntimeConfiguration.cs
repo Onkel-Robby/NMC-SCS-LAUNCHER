@@ -6,10 +6,14 @@ public sealed record LicenseHubRuntimeConfiguration(
     string? ProductSlug,
     string? ProductApiKey)
 {
+    public const string DefaultBaseUrl = "https://licensehub.nmc-it-service.cloud";
+
     public bool HasAnyConfiguration =>
-        !string.IsNullOrWhiteSpace(BaseUrl)
+        Required
         || !string.IsNullOrWhiteSpace(ProductSlug)
-        || !string.IsNullOrWhiteSpace(ProductApiKey);
+        || !string.IsNullOrWhiteSpace(ProductApiKey)
+        || (!string.IsNullOrWhiteSpace(BaseUrl)
+            && !string.Equals(BaseUrl.TrimEnd('/'), DefaultBaseUrl, StringComparison.OrdinalIgnoreCase));
 
     public bool HasLicenseConfiguration =>
         !string.IsNullOrWhiteSpace(BaseUrl)
@@ -36,7 +40,7 @@ public sealed record LicenseHubRuntimeConfiguration(
 
         return new LicenseHubRuntimeConfiguration(
             required,
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")),
+            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")) ?? DefaultBaseUrl,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")),
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
     }
