@@ -7,17 +7,30 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
 {
     private const string UpdaterFileName = "NmcScsLauncher.Updater.exe";
     private const string LauncherFileName = "NmcScsLauncher.App.exe";
-    private readonly ILicenseHubUpdateClient _updateClient;
+    private readonly ILicenseHubUpdateClient? _updateClient;
 
-    public ApplicationUpdateService(ILicenseHubUpdateClient updateClient)
+    public ApplicationUpdateService(
+        LicenseHubRuntimeConfiguration runtimeConfiguration,
+        HttpClient httpClient)
     {
-        _updateClient = updateClient ?? throw new ArgumentNullException(nameof(updateClient));
+        ArgumentNullException.ThrowIfNull(runtimeConfiguration);
+        ArgumentNullException.ThrowIfNull(httpClient);
+
+        if (runtimeConfiguration.HasLicenseConfiguration
+            && !string.IsNullOrWhiteSpace(runtimeConfiguration.UpdateApiToken))
+        {
+            _updateClient = new LicenseHubHttpClient(
+                httpClient,
+                runtimeConfiguration.CreateClientConfiguration());
+        }
     }
+
+    public bool IsConfigured => _updateClient is not null;
 
     public Task<LicenseHubUpdateInfo> CheckAsync(
         string currentVersion,
         CancellationToken cancellationToken = default) =>
-        _updateClient.CheckForUpdateAsync(currentVersion, "stable", cancellationToken);
+        RequireClient().CheckForUpdateAsync(currentVersion, "stable", cancellationToken);
 
     public async Task<PreparedApplicationUpdate> DownloadAsync(
         LicenseHubUpdateInfo update,
@@ -36,7 +49,7 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
             downloads,
             $"NMC-SCS-LAUNCHER-{safeVersion}-{Guid.NewGuid():N}.zip");
 
-        var downloaded = await _updateClient.DownloadAndVerifyAsync(
+        var downloaded = await RequireClient().DownloadAndVerifyAsync(
             update,
             destination,
             progress,
@@ -92,6 +105,10 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
             ?? throw new InvalidOperationException("External updater process could not be started.");
         return Task.FromResult(process.Id);
     }
+
+    private ILicenseHubUpdateClient RequireClient() =>
+        _updateClient ?? throw new LicenseHubConfigurationException(
+            "LicenseHub update integration is not configured for this build.");
 
     private static string GetUpdateRoot()
     {

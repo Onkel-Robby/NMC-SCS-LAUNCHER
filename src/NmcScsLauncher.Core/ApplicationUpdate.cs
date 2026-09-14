@@ -6,6 +6,8 @@ public sealed record PreparedApplicationUpdate(
 
 public interface IApplicationUpdateService
 {
+    bool IsConfigured { get; }
+
     Task<LicenseHubUpdateInfo> CheckAsync(
         string currentVersion,
         CancellationToken cancellationToken = default);
