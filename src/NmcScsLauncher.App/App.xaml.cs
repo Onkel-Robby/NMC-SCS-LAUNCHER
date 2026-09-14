@@ -23,7 +23,7 @@ public partial class App : Application
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
 
-        services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment());
+        services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
         services.AddSingleton<IMachineIdentityProvider, WindowsMachineIdentityProvider>();
         services.AddSingleton<ILicenseCredentialStore, WindowsCredentialManagerLicenseStore>();
