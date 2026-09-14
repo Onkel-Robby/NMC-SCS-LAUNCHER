@@ -6,42 +6,62 @@ namespace NmcScsLauncher.Infrastructure.Tests;
 public sealed class LicenseHubRuntimeConfigurationTests
 {
     [Fact]
-    public void DefaultBaseUrlUsesFinalLicenseHubDomain()
+    public void DefaultsUseFinalLicenseHubValues()
     {
         Assert.Equal(
             "https://licensehub.nmc-it-service.cloud",
             LicenseHubRuntimeConfiguration.DefaultBaseUrl);
+        Assert.Equal(
+            "NMC-SCS-LAUNCHER",
+            LicenseHubRuntimeConfiguration.DefaultProductSlug);
     }
 
     [Fact]
-    public void FromEnvironmentUsesFinalDomainWhenNoOverrideIsSet()
+    public void FromEnvironmentUsesFinalDefaultsWhenNoOverridesAreSet()
     {
-        var previous = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL");
+        var previousBaseUrl = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL");
+        var previousProductSlug = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG");
         try
         {
             Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", null);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG", null);
 
             var configuration = LicenseHubRuntimeConfiguration.FromEnvironment();
 
             Assert.Equal(LicenseHubRuntimeConfiguration.DefaultBaseUrl, configuration.BaseUrl);
+            Assert.Equal(LicenseHubRuntimeConfiguration.DefaultProductSlug, configuration.ProductSlug);
         }
         finally
         {
-            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", previous);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL", previousBaseUrl);
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG", previousProductSlug);
         }
     }
 
     [Fact]
-    public void DefaultBaseUrlAloneDoesNotCountAsPartialConfiguration()
+    public void PublicDefaultsAloneDoNotCountAsPartialConfiguration()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
             false,
             LicenseHubRuntimeConfiguration.DefaultBaseUrl,
-            null,
+            LicenseHubRuntimeConfiguration.DefaultProductSlug,
             null);
 
         Assert.False(configuration.HasAnyConfiguration);
         Assert.False(configuration.HasLicenseConfiguration);
+    }
+
+    [Fact]
+    public void ProductApiKeyCompletesLicenseConfigurationWithPublicDefaults()
+    {
+        var configuration = new LicenseHubRuntimeConfiguration(
+            false,
+            LicenseHubRuntimeConfiguration.DefaultBaseUrl,
+            LicenseHubRuntimeConfiguration.DefaultProductSlug,
+            "unit-test-api-key");
+
+        Assert.True(configuration.HasAnyConfiguration);
+        Assert.True(configuration.HasLicenseConfiguration);
     }
 
     [Fact]
@@ -50,7 +70,20 @@ public sealed class LicenseHubRuntimeConfigurationTests
         var configuration = new LicenseHubRuntimeConfiguration(
             false,
             "https://staging.example.test",
-            null,
+            LicenseHubRuntimeConfiguration.DefaultProductSlug,
+            null);
+
+        Assert.True(configuration.HasAnyConfiguration);
+        Assert.False(configuration.HasLicenseConfiguration);
+    }
+
+    [Fact]
+    public void ExplicitAlternateProductSlugCountsAsConfiguration()
+    {
+        var configuration = new LicenseHubRuntimeConfiguration(
+            false,
+            LicenseHubRuntimeConfiguration.DefaultBaseUrl,
+            "NMC-SCS-LAUNCHER-STAGING",
             null);
 
         Assert.True(configuration.HasAnyConfiguration);
