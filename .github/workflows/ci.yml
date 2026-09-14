@@ -22,6 +22,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Resolve release version
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content "Directory.Build.props"
+          $version = [string]$props.Project.PropertyGroup.Version
+          if ([string]::IsNullOrWhiteSpace($version)) { throw "Project version could not be resolved." }
+          "NMC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "NMC SCS LAUNCHER version: $version"
+
       - name: Restore
         run: dotnet restore NMC-SCS-LAUNCHER.sln
 
@@ -44,11 +53,28 @@ jobs:
           if (-not (Test-Path $updater)) { throw "Updater executable was not published." }
           Copy-Item $updater "artifacts/publish/NmcScsLauncher.Updater.exe" -Force
 
+      - name: Verify release identity
+        shell: pwsh
+        run: |
+          $launcher = "artifacts/publish/NmcScsLauncher.App.exe"
+          $updater = "artifacts/publish/NmcScsLauncher.Updater.exe"
+          if (-not (Test-Path $launcher)) { throw "Launcher executable is missing." }
+          if (-not (Test-Path $updater)) { throw "Updater executable is missing." }
+
+          $productVersion = (Get-Item $launcher).VersionInfo.ProductVersion
+          if ([string]::IsNullOrWhiteSpace($productVersion) -or -not $productVersion.StartsWith($env:NMC_VERSION)) {
+            throw "Launcher ProductVersion '$productVersion' does not match release version '$env:NMC_VERSION'."
+          }
+
+          if (-not (Test-Path "artifacts/publish/coreclr.dll")) { throw "Self-contained runtime payload is missing coreclr.dll." }
+          if (-not (Test-Path "artifacts/publish/hostfxr.dll")) { throw "Self-contained runtime payload is missing hostfxr.dll." }
+
+          Write-Host "Verified self-contained release identity $env:NMC_VERSION."
+
       - name: Create LicenseHub release bundle
         shell: pwsh
         run: |
-          [xml]$props = Get-Content "Directory.Build.props"
-          $version = [string]$props.Project.PropertyGroup.Version
+          $version = $env:NMC_VERSION
           if ([string]::IsNullOrWhiteSpace($version)) { throw "Project version could not be resolved." }
 
           $releaseDir = "artifacts/release"
@@ -79,13 +105,13 @@ jobs:
       - name: Upload publish artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NMC-SCS-LAUNCHER-win
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-win-x64
           path: artifacts/publish
           if-no-files-found: error
 
       - name: Upload LicenseHub release bundle
         uses: actions/upload-artifact@v4
         with:
-          name: NMC-SCS-LAUNCHER-licensehub-release
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-licensehub-release
           path: artifacts/release
           if-no-files-found: error

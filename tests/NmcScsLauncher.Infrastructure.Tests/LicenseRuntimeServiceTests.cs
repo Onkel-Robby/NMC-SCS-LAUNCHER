@@ -116,6 +116,53 @@ public sealed class LicenseRuntimeServiceTests
         Assert.Equal("new-license-value", await store.LoadLicenseKeyAsync());
     }
 
+    [Fact]
+    public async Task ProvisionedProductApiKeyIsReusedForLaterDirectStart()
+    {
+        var licenseStore = new MemoryCredentialStore();
+        var productStore = new MemoryProductApiCredentialStore();
+
+        var provisioningService = new LicenseRuntimeService(
+            new LicenseHubRuntimeConfiguration(
+                true,
+                "https://license.example.test/",
+                "nmc-scs-launcher",
+                "product-value"),
+            licenseStore,
+            productStore,
+            new FixedMachineIdentityProvider(),
+            new HttpClient(new StaticHandler(HttpStatusCode.OK, "{}")));
+
+        var firstState = await provisioningService.InitializeAsync("1.0.0");
+
+        Assert.Equal(LicenseRuntimeState.LicenseMissing, firstState.State);
+        Assert.Equal("product-value", await productStore.LoadProductApiKeyAsync());
+
+        await licenseStore.SaveLicenseKeyAsync("stored-license-value");
+        var directStartService = new LicenseRuntimeService(
+            new LicenseHubRuntimeConfiguration(
+                true,
+                "https://license.example.test/",
+                "nmc-scs-launcher",
+                null),
+            licenseStore,
+            productStore,
+            new FixedMachineIdentityProvider(),
+            new HttpClient(new StaticHandler(HttpStatusCode.OK, """
+                {
+                  "success": true,
+                  "status": "active",
+                  "license_required": true,
+                  "license": {"max_activations": 1, "current_activations": 1}
+                }
+                """)));
+
+        var directStartState = await directStartService.InitializeAsync("1.0.0");
+
+        Assert.Equal(LicenseRuntimeState.Active, directStartState.State);
+        Assert.True(directStartState.AllowsUse);
+    }
+
     private static LicenseRuntimeService CreateRequiredService(
         MemoryCredentialStore store,
         HttpMessageHandler handler)
@@ -152,6 +199,31 @@ public sealed class LicenseRuntimeServiceTests
         public Task ClearLicenseKeyAsync(CancellationToken cancellationToken = default)
         {
             _licenseKey = null;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class MemoryProductApiCredentialStore : IProductApiCredentialStore
+    {
+        private string? _value;
+
+        public Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(_value);
+        }
+
+        public Task SaveProductApiKeyAsync(string productApiKey, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _value = productApiKey;
+            return Task.CompletedTask;
+        }
+
+        public Task ClearProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _value = null;
             return Task.CompletedTask;
         }
     }

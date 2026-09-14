@@ -2,6 +2,34 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 1.0.0
+
+### Release
+- Erste stabile 1.0.0-Version des NMC SCS LAUNCHER für Windows 10/11 x64.
+- Self-contained Windows-Publish; auf Zielsystemen ist kein separates .NET Runtime-Paket erforderlich.
+- Versionierte Windows- und LicenseHub-Release-Artefakte inklusive SHA-256-Sidecar werden durch CI erzeugt.
+- README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
+
+### Added
+- Persistenter Product-API-Key-Store im Windows Credential Manager für verwaltete Erstprovisionierung und spätere direkte EXE-Starts.
+- Automatischer Test, dass ein einmal provisioniertes Product Credential bei einem späteren direkten Start ohne Umgebungsvariable wiederverwendet wird.
+- Release-Identitätsprüfung in CI: ProductVersion, Launcher/Updater und self-contained Runtime-Dateien werden vor Artefakt-Upload validiert.
+
+### Changed
+- Produktive Builds erzwingen LicenseHub unabhängig von `NMC_LICENSEHUB_REQUIRED`.
+- Updateprüfung verwendet ausschließlich den bereits vorhandenen LicenseHub-Vertrag; am LicenseHub-Server ist keine NMC-SCS-LAUNCHER-spezifische Erweiterung erforderlich.
+- Veröffentlichte Artefaktnamen enthalten die echte Projektversion.
+
+### Security
+- Startup-Gate ist jetzt auch bei unerwarteten Ausnahmen fail-closed: Ein Fehler bei Initialisierung, Credential-Zugriff oder Aktivierungsdialog kann nicht mehr dazu führen, dass das Hauptfenster trotzdem geöffnet wird.
+- Lizenzstatus wird weiterhin beim Programmstart und unmittelbar vor dem Spielstart serverseitig bestätigt.
+- Product API Key und Benutzer-Lizenzschlüssel werden nicht im Repository oder in `settings.json` gespeichert.
+- Updatepakete werden beim Download und unmittelbar vor dem Anwenden erneut per SHA-256 geprüft.
+
+### External verification status
+- Die komplette Codebasis, Unit Tests, Windows-Builds und Publish-Artefakte werden automatisiert geprüft.
+- Ein Live-End-to-End-Test gegen produktive LicenseHub-Credentials sowie ein realer ETS2-/ATS-Praxistest sind externe Feldtests und werden nicht als in CI durchgeführt dargestellt.
+
 ## 0.7.0-dev
 
 ### Added
