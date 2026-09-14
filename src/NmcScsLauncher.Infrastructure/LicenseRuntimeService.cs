@@ -26,6 +26,20 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         Current = InitialState();
     }
 
+    public LicenseRuntimeService(
+        LicenseHubRuntimeConfiguration runtimeConfiguration,
+        ILicenseCredentialStore credentialStore,
+        IMachineIdentityProvider machineIdentityProvider,
+        HttpClient httpClient)
+        : this(
+            runtimeConfiguration,
+            credentialStore,
+            new ConfigurationProductApiCredentialStore(runtimeConfiguration?.ProductApiKey),
+            machineIdentityProvider,
+            httpClient)
+    {
+    }
+
     public LicenseRuntimeSnapshot Current { get; private set; }
 
     public async Task<LicenseRuntimeSnapshot> InitializeAsync(
@@ -241,4 +255,32 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         LicenseRuntimeState.ProtocolError => "Die LicenseHub-Antwort konnte nicht sicher ausgewertet werden.",
         _ => fallback
     };
+
+    private sealed class ConfigurationProductApiCredentialStore : IProductApiCredentialStore
+    {
+        private readonly string? _value;
+
+        public ConfigurationProductApiCredentialStore(string? value)
+        {
+            _value = value?.Trim();
+        }
+
+        public Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(string.IsNullOrWhiteSpace(_value) ? null : _value);
+        }
+
+        public Task SaveProductApiKeyAsync(string productApiKey, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+
+        public Task ClearProductApiKeyAsync(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+    }
 }
