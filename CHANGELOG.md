@@ -9,10 +9,42 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Erkennung lokaler Workshop-Content-Roots über alle erkannten Steam-Libraries.
 - Erfassung numerischer Workshop-/PublishedFileId-Verzeichnisse ohne Änderung von Steam-Abonnements.
 - Tests für getrennte ETS2-/ATS-Workshop-Inhalte und fehlende Workshop-Verzeichnisse.
+- LicenseHub-Desktop-Client für Aktivierung, Validierung und Deaktivierung von Lizenzen.
+- Produktgebundene Maschinen-ID auf SHA-256-Basis, ohne den rohen Windows-MachineGuid an LicenseHub zu übertragen.
+- Lokale Ablage des Benutzer-Lizenzschlüssels im Windows Credential Manager.
+- LicenseHub-Aktivierungsdialog mit Status, Ablaufdatum und Aktivierungszahlen.
+- Fail-closed Lizenz-Runtime für produktiv erzwungene Builds.
+- Lizenzprüfung als Teil der Startprüfung und zusätzliche erneute Prüfung direkt vor der Prozesserzeugung.
+- LicenseHub-Update-Client über den verifizierten Project-Update-Contract mit kurzlebigem signiertem Download-Endpunkt.
+- SHA-256-Verifikation während des Update-Downloads.
+- Separater self-contained `NmcScsLauncher.Updater.exe` für den Austausch der Anwendung nach Beenden des Launchers.
+- Zweite SHA-256-Verifikation direkt im externen Updater vor dem Anwenden des Pakets.
+- Sichere ZIP-Staging-/Verzeichnis-Tauschlogik mit Schutz gegen Path Traversal.
+- Rollback-Backup der vorherigen Anwendung und automatische Wiederherstellung bei fehlgeschlagenem Austausch bzw. Neustart.
+- LicenseHub-Updatefenster mit installierter/verfügbarer Version, Changelog, Fortschritt sowie „Installieren & neu starten“.
+- Automatische Updateprüfung nach Programmstart, wenn die vollständige LicenseHub-Updatekonfiguration vorhanden ist.
+- CI-Publish des self-contained Updaters und automatische Aufnahme in das Windows-Launcher-Artefakt.
+- Tests für LicenseHub-Client, Runtime-Enforcement, sicheren Update-Tausch, ZIP-Traversal, Rollback und unkonfigurierte Update-Builds.
+- Dokumentierter Contract für vollständige ZIP-Updatepakete unter `docs/UPDATE_PACKAGE.md`.
 
 ### Changed
 - Installer ist jetzt ausdrücklich hinter LicenseHub-Lizenzschutz und LicenseHub-Updateintegration blockiert.
-- Der geplante generische Update-Mechanismus wird durch eine LicenseHub-basierte Release-/Updateintegration ersetzt.
+- Der geplante generische Update-Mechanismus wurde durch die LicenseHub-basierte Release-/Updateintegration ersetzt.
+- Entwicklungsbuilds ohne LicenseHub-Update-Token führen keinen Update-Netzaufruf aus.
+- Produktive Builds können über `NMC_LICENSEHUB_REQUIRED` fail-closed auf eine bestätigte LicenseHub-Lizenz geschaltet werden.
+
+### Security
+- Keine echten LicenseHub-Credentials werden im öffentlichen Repository gespeichert.
+- Benutzer-Lizenzschlüssel werden nicht in `settings.json` abgelegt.
+- LicenseHub-Ausfall, Timeout oder ungültige Antworten ergeben bei aktivierter Lizenzpflicht keinen gültigen Nutzungsstatus.
+- Updatepakete werden zweimal gegen denselben LicenseHub-SHA-256-Digest geprüft: beim Download und direkt vor dem Anwenden.
+- Der externe Updater läuft außerhalb des zu ersetzenden Anwendungsverzeichnisses und wartet auf das Ende des Launchers.
+- Alte Programmdateien werden bei einem Update nicht direkt überschrieben, sondern als Rollback-Verzeichnis erhalten.
+
+### Verification pending
+- Reales NMC-SCS-LAUNCHER-Produkt/API-Credential in LicenseHub provisionieren und Lizenz-End-to-End-Test durchführen.
+- Reales vollständiges ZIP-Release in LicenseHub provisionieren und Update/Neustart/Rollback Ende-zu-Ende testen.
+- Realer Praxistest mit installierter Steam-Version von ETS2 und/oder ATS.
 
 ## 0.6.0-dev
 
