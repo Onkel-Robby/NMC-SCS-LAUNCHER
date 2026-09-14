@@ -69,7 +69,7 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
             licenseKey.Trim(),
             machineId.Trim());
 
-        using var response = await SendAsync(HttpMethod.Post, "api/license/deactivate.php", request, null, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Post, "api/license/deactivate.php", request, cancellationToken);
         var envelope = await ReadLicenseEnvelopeAsync(response, cancellationToken);
         if (!response.IsSuccessStatusCode || envelope.Success != true)
             throw new LicenseHubProtocolException(envelope.Error ?? $"LicenseHub deactivation failed with HTTP {(int)response.StatusCode}.");
@@ -85,51 +85,65 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         ValidateLicenseArguments(licenseKey, machineId);
         if (string.IsNullOrWhiteSpace(currentVersion) || currentVersion.Trim().Length > 50)
             throw new ArgumentException("Current version is missing or invalid.", nameof(currentVersion));
+
         channel = string.IsNullOrWhiteSpace(channel) ? "stable" : channel.Trim().ToLowerInvariant();
         if (channel.Length > 20)
             throw new ArgumentException("Update channel is invalid.", nameof(channel));
 
-        var payload = new DesktopUpdateCheckRequest(
-            _configuration.ProductSlug.Trim(),
-            _configuration.ProductApiKey.Trim(),
-            licenseKey.Trim(),
-            machineId.Trim(),
-            currentVersion.Trim(),
-            channel);
+        var normalizedVersion = currentVersion.Trim();
 
-        using var response = await SendAsync(
-            HttpMethod.Post,
-            "api/desktop-update/check.php",
-            payload,
-            null,
+        // The deployed LicenseHub update endpoint authenticates the product, not the machine.
+        // Therefore independently validate the stored license + machine immediately before
+        // asking for release metadata. This keeps update access gated by the same license
+        // authority without requiring any LicenseHub server changes.
+        var licenseState = await ValidateAsync(
+            licenseKey,
+            machineId,
+            normalizedVersion,
             cancellationToken);
-        var envelope = await ReadUpdateEnvelopeAsync(response, cancellationToken);
+        if (!licenseState.AllowsUse)
+            throw new LicenseHubProtocolException(
+                $"LicenseHub denied update access because the license is not active ({licenseState.State}).");
+
+        var relativePath = BuildExistingUpdateCheckPath(normalizedVersion, channel);
+        using var timeout = CreateTimeoutToken(cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(_baseUri, relativePath));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.UserAgent.ParseAdd("NMC-SCS-LAUNCHER/0.7");
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        var envelope = await ReadUpdateEnvelopeAsync(response, timeout.Token);
+
         if (!response.IsSuccessStatusCode || envelope.Success != true)
             throw new LicenseHubProtocolException(
-                envelope.Message ?? envelope.Error ?? $"LicenseHub desktop update check failed with HTTP {(int)response.StatusCode}.");
+                envelope.Message ?? envelope.Error ?? $"LicenseHub update check failed with HTTP {(int)response.StatusCode}.");
 
-        var latestVersion = envelope.Version?.Trim() ?? string.Empty;
-        if (latestVersion.Length == 0)
-            throw new LicenseHubProtocolException("LicenseHub desktop update response does not contain a version.");
-
-        if (envelope.UpdateAvailable == true)
+        var updateAvailable = envelope.UpdateAvailable == true;
+        var latestVersion = envelope.LatestVersion?.Trim();
+        if (string.IsNullOrWhiteSpace(latestVersion))
         {
-            if (string.IsNullOrWhiteSpace(envelope.DownloadEndpoint))
-                throw new LicenseHubProtocolException("LicenseHub reports an update without a secure desktop download endpoint.");
+            if (updateAvailable)
+                throw new LicenseHubProtocolException("LicenseHub reports an update without a version.");
+            latestVersion = normalizedVersion;
+        }
+
+        if (updateAvailable)
+        {
+            if (string.IsNullOrWhiteSpace(envelope.DownloadUrl))
+                throw new LicenseHubProtocolException("LicenseHub reports an update without a download URL.");
             _ = NormalizeSha256(envelope.Sha256);
-            _ = ResolveDownloadUri(envelope.DownloadEndpoint);
+            _ = ResolveDownloadUri(envelope.DownloadUrl);
         }
 
         return new LicenseHubUpdateInfo(
-            envelope.UpdateAvailable == true,
-            envelope.CurrentVersion?.Trim() ?? currentVersion.Trim(),
+            updateAvailable,
+            envelope.CurrentVersion?.Trim() ?? normalizedVersion,
             latestVersion,
             envelope.Channel?.Trim() ?? channel,
             envelope.Mandatory == true,
-            envelope.DownloadEndpoint,
+            envelope.DownloadUrl,
             envelope.Sha256,
             envelope.Changelog,
-            ParseDate(envelope.ReleasedAt));
+            null);
     }
 
     public async Task<LicenseHubDownloadedUpdate> DownloadAndVerifyAsync(
@@ -199,6 +213,17 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         return new LicenseHubDownloadedUpdate(finalPath, Convert.ToHexString(actualHash).ToLowerInvariant(), written);
     }
 
+    private string BuildExistingUpdateCheckPath(string currentVersion, string channel)
+    {
+        static string Escape(string value) => Uri.EscapeDataString(value);
+
+        return "api/update/check.php"
+            + "?product_slug=" + Escape(_configuration.ProductSlug.Trim())
+            + "&api_key=" + Escape(_configuration.ProductApiKey.Trim())
+            + "&version=" + Escape(currentVersion)
+            + "&channel=" + Escape(channel);
+    }
+
     private async Task<LicenseAccessSnapshot> SendLicenseRequestAsync(
         string path,
         LicenseRequest request,
@@ -206,7 +231,7 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
     {
         try
         {
-            using var response = await SendAsync(HttpMethod.Post, path, request, null, cancellationToken);
+            using var response = await SendAsync(HttpMethod.Post, path, request, cancellationToken);
             var envelope = await ReadLicenseEnvelopeAsync(response, cancellationToken);
             if (response.IsSuccessStatusCode && envelope.Success == true)
             {
@@ -244,15 +269,12 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         HttpMethod method,
         string relativePath,
         T body,
-        string? bearerToken,
         CancellationToken cancellationToken)
     {
         using var timeout = CreateTimeoutToken(cancellationToken);
         var request = new HttpRequestMessage(method, new Uri(_baseUri, relativePath));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.UserAgent.ParseAdd("NMC-SCS-LAUNCHER/0.7");
-        if (!string.IsNullOrWhiteSpace(bearerToken))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken.Trim());
         request.Content = JsonContent.Create(body);
         try
         {
@@ -317,13 +339,13 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
     private Uri ResolveDownloadUri(string? endpoint)
     {
         if (string.IsNullOrWhiteSpace(endpoint))
-            throw new LicenseHubProtocolException("LicenseHub secure download endpoint is missing.");
+            throw new LicenseHubProtocolException("LicenseHub update download URL is missing.");
 
         Uri resolved;
         if (Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var absolute))
         {
             if (!SameOrigin(_baseUri, absolute))
-                throw new LicenseHubProtocolException("LicenseHub secure download endpoint points to an unexpected origin.");
+                throw new LicenseHubProtocolException("LicenseHub update download URL points to an unexpected origin.");
             resolved = absolute;
         }
         else
@@ -332,7 +354,7 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         }
 
         if (!string.Equals(resolved.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-            throw new LicenseHubProtocolException("LicenseHub secure download endpoint must use HTTPS.");
+            throw new LicenseHubProtocolException("LicenseHub update download URL must use HTTPS.");
         return resolved;
     }
 
@@ -400,14 +422,6 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         [property: JsonPropertyName("license_key")] string LicenseKey,
         [property: JsonPropertyName("machine_id")] string MachineId);
 
-    private sealed record DesktopUpdateCheckRequest(
-        [property: JsonPropertyName("product_slug")] string ProductSlug,
-        [property: JsonPropertyName("api_key")] string ApiKey,
-        [property: JsonPropertyName("license_key")] string LicenseKey,
-        [property: JsonPropertyName("machine_id")] string MachineId,
-        [property: JsonPropertyName("version")] string Version,
-        [property: JsonPropertyName("channel")] string Channel);
-
     private sealed class LicenseEnvelope
     {
         [JsonPropertyName("success")] public bool? Success { get; init; }
@@ -436,12 +450,11 @@ public sealed class LicenseHubHttpClient : ILicenseHubLicenseClient, ILicenseHub
         [JsonPropertyName("message")] public string? Message { get; init; }
         [JsonPropertyName("update_available")] public bool? UpdateAvailable { get; init; }
         [JsonPropertyName("current_version")] public string? CurrentVersion { get; init; }
-        [JsonPropertyName("version")] public string? Version { get; init; }
+        [JsonPropertyName("latest_version")] public string? LatestVersion { get; init; }
         [JsonPropertyName("channel")] public string? Channel { get; init; }
         [JsonPropertyName("mandatory")] public bool? Mandatory { get; init; }
-        [JsonPropertyName("download_endpoint")] public string? DownloadEndpoint { get; init; }
+        [JsonPropertyName("download_url")] public string? DownloadUrl { get; init; }
         [JsonPropertyName("sha256")] public string? Sha256 { get; init; }
         [JsonPropertyName("changelog")] public string? Changelog { get; init; }
-        [JsonPropertyName("released_at")] public string? ReleasedAt { get; init; }
     }
 }
