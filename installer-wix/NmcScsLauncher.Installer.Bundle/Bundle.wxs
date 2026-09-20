@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Bundle
+      Name="NMC SCS LAUNCHER Setup"
+      Manufacturer="NMC IT-SERVICE"
+      Version="$(var.BundleVersion)"
+      UpgradeCode="66F7AB30-09E7-452B-903B-5888D676621E"
+      IconSourceFile="$(var.BrandingRoot)\nmc-scs-launcher.ico"
+      Compressed="yes"
+      AboutUrl="https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER">
+
+    <BootstrapperApplication SourceFile="$(var.BootstrapperExe)" />
+
+    <Variable Name="InstallFolder" Type="string" Value="" />
+    <Variable Name="CreateDesktopShortcut" Type="numeric" Value="0" Persisted="yes" />
+
+    <Chain DisableSystemRestore="yes">
+      <MsiPackage
+          Id="NmcScsLauncherMsi"
+          SourceFile="$(var.MsiPath)"
+          Visible="no"
+          Vital="yes"
+          Cache="keep">
+        <MsiProperty Name="INSTALLFOLDER" Value="[InstallFolder]" />
+        <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[CreateDesktopShortcut]" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>
