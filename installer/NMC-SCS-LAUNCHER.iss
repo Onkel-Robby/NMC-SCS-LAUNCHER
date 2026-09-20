@@ -34,6 +34,7 @@ RestartApplications=no
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
 SetupIconFile=branding\nmc-scs-launcher.ico
+WizardSmallImageFile=branding\nmc-scs-launcher-wizard-small.bmp
 
 [Tasks]
 Name: "desktopicon"; Description: "Desktop-Verknüpfung erstellen"; GroupDescription: "Zusätzliche Verknüpfungen:"; Flags: unchecked
@@ -62,8 +63,8 @@ begin
   NmcBrandingImage.Parent := WizardForm;
   NmcBrandingImage.Bitmap.LoadFromFile(ExpandConstant('{tmp}\nmc-it-service-installer-footer.bmp'));
   NmcBrandingImage.Stretch := True;
-  NmcBrandingImage.Width := ScaleX(128);
-  NmcBrandingImage.Height := ScaleY(44);
-  NmcBrandingImage.Left := ScaleX(12);
-  NmcBrandingImage.Top := WizardForm.ClientHeight - NmcBrandingImage.Height - ScaleY(10);
+  NmcBrandingImage.Width := ScaleX(170);
+  NmcBrandingImage.Height := ScaleY(57);
+  NmcBrandingImage.Left := ScaleX(18);
+  NmcBrandingImage.Top := WizardForm.ClientHeight - NmcBrandingImage.Height - ScaleY(7);
 end;
