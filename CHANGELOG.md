@@ -11,6 +11,9 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Read-only Abruf öffentlicher Steam-Workshop-Metadaten für lokal gefundene PublishedFileIds; echte Mod-Titel und Steam-Änderungszeit werden ohne Steam-Login oder API-Key ergänzt.
+- Workshop-Suche über Titel, ID und lokalen Pfad sowie Sortierung nach Name, Änderungsdatum oder PublishedFileId und Filter `Alle` / `Mit Titel` / `Nur ID`.
+- Robuster ID-Fallback, wenn Steam-Metadaten nicht erreichbar oder für einen Workshop-Eintrag nicht verfügbar sind.
 - Eigene Steam-Workshop-Seite für lokal installierte ETS2-/ATS-Workshop-Inhalte mit Spielauswahl, Aktualisierung, Explorer-Aktion und Link zur zugehörigen Steam-Workshop-Seite.
 - Sichere kanonische Workshop-Link-Erzeugung mit Tests; keine Subscribe/Unsubscribe-Schreibaktionen ohne verifizierten Steam-Auth-/API-Vertrag.
 - Klassischer Per-User-Windows-Installer unter `%LOCALAPPDATA%\\Programs\\NMC SCS LAUNCHER` mit Startmenü-Verknüpfung und optionalem Desktop-Shortcut.
