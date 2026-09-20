@@ -34,7 +34,7 @@ RestartApplications=no
 UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupLogging=yes
 SetupIconFile=branding\nmc-scs-launcher.ico
-WizardSmallImageFile=branding\nmc-scs-launcher-wizard-small.bmp
+WizardSmallImageFile=branding\nmc-scs-launcher-wizard-appicon.bmp
 
 [Tasks]
 Name: "desktopicon"; Description: "Desktop-Verknüpfung erstellen"; GroupDescription: "Zusätzliche Verknüpfungen:"; Flags: unchecked
