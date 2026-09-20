@@ -353,7 +353,11 @@ public partial class MainViewModel : ObservableObject
             SelectedLocalProfilesDirectory = inspection.LocalProfilesDirectory;
             SelectedSteamProfilesDirectory = inspection.SteamProfilesDirectory;
             SelectedInspectionStatus = inspection.GameDataDirectoryExists
-                ? inspection.Warnings.Count == 0 ? "SCS-Datenordner erfolgreich gelesen." : string.Join(" ", inspection.Warnings)
+                ? inspection.Warnings.Count == 0
+                    ? ScsModsetPathResolver.UsesDirectModDirectory(modset)
+                        ? "Mod-Ordner und Standardprofile erfolgreich gelesen."
+                        : "SCS-Datenordner erfolgreich gelesen."
+                    : string.Join(" ", inspection.Warnings)
                 : inspection.Warnings.FirstOrDefault() ?? "SCS-Datenordner ist noch nicht vorhanden.";
         }
         catch (Exception ex)
