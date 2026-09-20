@@ -7,6 +7,9 @@ Status: `[ ]` geplant · `[~]` externe Verifikation offen · `[x]` implementiert
 - [x] Steam-/ETS2-/ATS-Erkennung inklusive zusätzlicher Steam-Libraries
 - [x] manuelle Spielpfade
 - [x] getrennte Modsets pro Spiel
+- [x] direkter Mod-Ordner pro Modset ohne zusätzliche SCS-Pfadverschachtelung
+- [x] Standardpfade für lokale und Steam-Profile bei direkten Modsets
+- [x] interne Runtime-Home-Zuordnung für den SCS-`-homedir`-Start
 - [x] korrekte SCS-`-homedir`-Startlogik
 - [x] Startprüfung und Schutz vor zweitem benutzerdefiniertem `-homedir`
 - [x] read-only Mod-/Profilinspektion
