@@ -38,7 +38,7 @@ Status: `[ ]` geplant · `[~]` externe Verifikation offen · `[x]` implementiert
 Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI ausgeführt dargestellt:
 
 - [x] realer ETS2-Praxistest auf einem Windows-PC mit installierter Steam-Version: Spielstart über ein ausgewähltes Modset erfolgreich; es wurde ausschließlich der direkt gewählte Mod-Ordner eingebunden
-- [~] realer ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version
+- [x] realer ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version: Spielstart über ein ausgewähltes Modset erfolgreich; es wurde ausschließlich der direkt gewählte Mod-Ordner eingebunden
 - [x] Live-Lizenztest gegen produktive LicenseHub-Credentials: Aktivierung mit Benutzer-Lizenzschlüssel erfolgreich; gespeicherter Lizenzschlüssel wird nach Neustart automatisch aus dem Windows Credential Manager geladen und serverseitig validiert
 - [x] Live-Test für gesperrte/abgelaufene Lizenz: Launcher bleibt fail-closed und zeigt erneut den Lizenz-Key-Dialog statt die Hauptoberfläche freizugeben; Wechseltest bestätigt: gesperrter gespeicherter Key kann durch einen anderen gültigen Key ersetzt werden, und wird anschließend auch dieser neue Key serverseitig blockiert, erscheint erneut der Lizenz-Key-Dialog
 - [x] Live-Test der LicenseHub-Deaktivierung: Geräteaktivierung wurde serverseitig bestätigt, lokaler Lizenz-Key anschließend entfernt, Launcher automatisch beendet und beim nächsten Start korrekt wieder der Lizenz-Key-Dialog angezeigt
