@@ -45,6 +45,37 @@ public sealed class ScsModsetInspectorTests
     }
 
     [Fact]
+    public async Task DirectModsetReadsExactlySelectedModFolder()
+    {
+        var root = CreateTemporaryDirectory();
+        try
+        {
+            var runtimeHome = Directory.CreateDirectory(Path.Combine(root, "runtime")).FullName;
+            var modDirectory = Directory.CreateDirectory(Path.Combine(root, "mods-exact")).FullName;
+            await File.WriteAllTextAsync(Path.Combine(modDirectory, "map.scs"), string.Empty);
+            Directory.CreateDirectory(Path.Combine(modDirectory, "unpacked"));
+
+            var modset = CreateModset(GameType.Ets2, runtimeHome) with
+            {
+                ModDirectoryPath = modDirectory
+            };
+
+            var inspection = await new ScsModsetInspector().InspectAsync(modset);
+
+            Assert.True(inspection.GameDataDirectoryExists);
+            Assert.Equal(Path.GetFullPath(modDirectory), inspection.ModDirectory);
+            Assert.Equal(1, inspection.PackageModCount);
+            Assert.Equal(1, inspection.ExtractedModCount);
+            Assert.Equal(2, inspection.TotalModCount);
+            Assert.False(Directory.Exists(Path.Combine(modDirectory, "Euro Truck Simulator 2")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task MissingGameDataDirectoryReturnsEmptyInspectionInsteadOfCreatingIt()
     {
         var root = CreateTemporaryDirectory();
