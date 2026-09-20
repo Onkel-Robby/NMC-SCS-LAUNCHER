@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using Forms = System.Windows.Forms;
+using WpfMessageBox = System.Windows.MessageBox;
 
 namespace NmcScsLauncher.Installer;
 
@@ -135,7 +136,7 @@ public partial class InstallerWindow : Window
 
     private void UninstallButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var answer = MessageBox.Show(
+        var answer = WpfMessageBox.Show(
             this,
             "NMC SCS LAUNCHER wirklich deinstallieren?\n\nLauncher-Daten und LicenseHub-Credentials bleiben erhalten.",
             "NMC SCS LAUNCHER",
@@ -157,7 +158,7 @@ public partial class InstallerWindow : Window
         if (_busy)
         {
             e.Cancel = true;
-            MessageBox.Show(
+            WpfMessageBox.Show(
                 this,
                 "Der Installationsvorgang läuft noch. Bitte warten, bis er abgeschlossen ist.",
                 "NMC SCS LAUNCHER",
