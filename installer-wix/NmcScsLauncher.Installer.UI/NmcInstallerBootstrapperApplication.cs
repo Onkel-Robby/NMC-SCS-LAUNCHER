@@ -228,16 +228,42 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         }
 
         AppendDiagnostic($"BeginInteractiveAction: {action}.");
+        _actionInProgress = true;
 
         if (IsLauncherRunning())
         {
-            AppendDiagnostic("Action blocked because NmcScsLauncher.App is still running.");
-            _window?.ShowFailure(
-                "NMC SCS LAUNCHER läuft noch. Bitte den Launcher schließen und den Vorgang erneut starten.");
-            return;
+            AppendDiagnostic("NmcScsLauncher.App is running; prompting user to close it.");
+
+            var answer = MessageBox.Show(
+                _window,
+                "NMC SCS LAUNCHER läuft noch.\n\nSoll der Installer den Launcher jetzt automatisch schließen und anschließend fortfahren?\n\nNicht gespeicherte Änderungen im Launcher können dabei verloren gehen.",
+                "NMC SCS LAUNCHER",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (answer != MessageBoxResult.Yes)
+            {
+                AppendDiagnostic("User declined automatic launcher shutdown.");
+                _actionInProgress = false;
+                _window?.SetStatus("Installation wartet darauf, dass der Launcher geschlossen wird.");
+                return;
+            }
+
+            _window?.SetBusy(true, "NMC SCS LAUNCHER wird geschlossen …");
+            _window?.SetProgress(1, "Laufender Launcher wird beendet");
+
+            var closed = await Task.Run(TryCloseLauncherProcesses);
+            if (!closed)
+            {
+                AppendDiagnostic("Automatic launcher shutdown failed.");
+                Fail(
+                    "NMC SCS LAUNCHER konnte nicht automatisch beendet werden. Bitte den Launcher im Task-Manager schließen und danach erneut auf „Installieren“ klicken.");
+                return;
+            }
+
+            AppendDiagnostic("NmcScsLauncher.App was closed successfully.");
         }
 
-        _actionInProgress = true;
         _currentAction = action;
         _lastError = string.Empty;
 
@@ -413,6 +439,57 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         }
         catch
         {
+            return false;
+        }
+    }
+
+    private static bool TryCloseLauncherProcesses()
+    {
+        try
+        {
+            var processes = Process.GetProcessesByName("NmcScsLauncher.App");
+            foreach (var process in processes)
+            {
+                try
+                {
+                    if (process.HasExited)
+                        continue;
+
+                    AppendDiagnostic($"Attempting graceful launcher shutdown. PID={process.Id}.");
+                    if (process.CloseMainWindow() && process.WaitForExit((int)TimeSpan.FromSeconds(5).TotalMilliseconds))
+                        continue;
+
+                    if (!process.HasExited)
+                    {
+                        AppendDiagnostic($"Graceful shutdown timed out; terminating launcher. PID={process.Id}.");
+                        process.Kill(entireProcessTree: true);
+                        process.WaitForExit((int)TimeSpan.FromSeconds(5).TotalMilliseconds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppendDiagnostic($"Failed to close launcher process PID={process.Id}: {ex.Message}");
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
+
+            var remaining = Process.GetProcessesByName("NmcScsLauncher.App");
+            try
+            {
+                return remaining.All(p => p.HasExited);
+            }
+            finally
+            {
+                foreach (var process in remaining)
+                    process.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendDiagnostic($"Launcher shutdown check failed: {ex}");
             return false;
         }
     }
