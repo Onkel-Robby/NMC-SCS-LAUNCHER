@@ -38,7 +38,7 @@ Status: `[ ]` geplant · `[~]` externe Verifikation offen · `[x]` implementiert
 Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI ausgeführt dargestellt:
 
 - [~] realer ETS2-/ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version
-- [~] Live-Lizenztest gegen produktive LicenseHub-Credentials
+- [x] Live-Lizenztest gegen produktive LicenseHub-Credentials: Aktivierung mit Benutzer-Lizenzschlüssel erfolgreich; gespeicherter Lizenzschlüssel wird nach Neustart automatisch aus dem Windows Credential Manager geladen und serverseitig validiert
 - [~] Live-Test für gesperrte/abgelaufene Lizenz und Deaktivierung
 - [~] reales LicenseHub-Release inklusive Update, Neustart und Rollback
 
