@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <NmcLicenseHubProductApiKey Condition="'$(NmcLicenseHubProductApiKey)' == ''">$(NMC_LICENSEHUB_PRODUCT_API_KEY)</NmcLicenseHubProductApiKey>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\NmcScsLauncher.Core\NmcScsLauncher.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(NmcLicenseHubProductApiKey)' != ''">
+    <AssemblyMetadata Include="NmcLicenseHubProductApiKey" Value="$(NmcLicenseHubProductApiKey)" />
   </ItemGroup>
 </Project>
