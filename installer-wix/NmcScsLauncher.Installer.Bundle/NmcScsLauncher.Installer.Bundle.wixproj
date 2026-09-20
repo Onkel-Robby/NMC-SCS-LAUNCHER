@@ -1,0 +1,19 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputType>Bundle</OutputType>
+    <Platform>x64</Platform>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <BundleVersion Condition="'$(BundleVersion)' == ''">1.0.0.0</BundleVersion>
+    <MsiPath Condition="'$(MsiPath)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\wix\msi\NMC-SCS-LAUNCHER-$(ProductVersion).msi</MsiPath>
+    <BootstrapperExe Condition="'$(BootstrapperExe)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\wix\ui\NmcScsLauncher.Installer.UI.exe</BootstrapperExe>
+    <BrandingRoot Condition="'$(BrandingRoot)' == ''">$(MSBuildThisFileDirectory)..\..\branding</BrandingRoot>
+    <OutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\wix\installer\</OutputPath>
+    <OutputName>NMC-SCS-LAUNCHER-$(ProductVersion)-Setup</OutputName>
+    <DefineConstants>ProductVersion=$(ProductVersion);BundleVersion=$(BundleVersion);MsiPath=$(MsiPath);BootstrapperExe=$(BootstrapperExe);BrandingRoot=$(BrandingRoot)</DefineConstants>
+  </PropertyGroup>
+
+  <Target Name="ValidateNmcInstallerInputs" BeforeTargets="Build">
+    <Error Condition="!Exists('$(MsiPath)')" Text="NMC WiX MSI not found: $(MsiPath)" />
+    <Error Condition="!Exists('$(BootstrapperExe)')" Text="NMC Installer UI not found: $(BootstrapperExe)" />
+  </Target>
+</Project>
