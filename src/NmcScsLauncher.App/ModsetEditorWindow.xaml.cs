@@ -9,6 +9,7 @@ namespace NmcScsLauncher.App;
 public partial class ModsetEditorWindow : Window
 {
     private readonly ModsetEditorMode _mode;
+    private readonly string? _preferredProfile;
 
     public ModsetEditorData? Result { get; private set; }
 
@@ -16,53 +17,53 @@ public partial class ModsetEditorWindow : Window
     {
         InitializeComponent();
         _mode = mode;
+        _preferredProfile = initialData.PreferredProfile;
 
         GameComboBox.ItemsSource = Enum.GetValues<GameType>();
         GameComboBox.SelectedItem = initialData.Game;
         NameTextBox.Text = initialData.Name;
         DescriptionTextBox.Text = initialData.Description ?? string.Empty;
-        HomePathTextBox.Text = initialData.HomeBasePath;
-        PreferredProfileTextBox.Text = initialData.PreferredProfile ?? string.Empty;
+        ModPathTextBox.Text = initialData.ModDirectoryPath;
         LaunchArgumentsTextBox.Text = initialData.AdditionalLaunchArguments ?? string.Empty;
 
         switch (mode)
         {
             case ModsetEditorMode.Create:
                 HeadingTextBlock.Text = "Neues Modset";
-                SubtitleTextBlock.Text = "Es wird ein separates Home-Verzeichnis für dieses Modset angelegt.";
+                SubtitleTextBlock.Text = "Wähle genau den Ordner aus, in dem die Mods dieses Modsets liegen sollen.";
                 SaveButton.Content = "Modset erstellen";
                 break;
             case ModsetEditorMode.Import:
                 HeadingTextBlock.Text = "Bestehendes Modset importieren";
-                SubtitleTextBlock.Text = "Der vorhandene Ordner wird nur registriert. Dateien werden nicht verändert.";
+                SubtitleTextBlock.Text = "Der vorhandene Mod-Ordner wird nur registriert. Dateien werden nicht verändert.";
                 SaveButton.Content = "Importieren";
                 break;
             case ModsetEditorMode.Edit:
                 HeadingTextBlock.Text = "Modset bearbeiten";
-                SubtitleTextBlock.Text = "Änderungen am Pfad verschieben oder löschen keine vorhandenen Dateien.";
+                SubtitleTextBlock.Text = "Der ausgewählte Pfad ist direkt der Mod-Ordner. Dateien werden nicht verschoben oder gelöscht.";
                 SaveButton.Content = "Änderungen speichern";
                 break;
         }
     }
 
-    private void BrowseHome_Click(object sender, RoutedEventArgs e)
+    private void BrowseMod_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
         {
             Title = _mode == ModsetEditorMode.Import
-                ? "Bestehendes SCS-Home-Verzeichnis auswählen"
-                : "Home-Verzeichnis auswählen",
+                ? "Bestehenden Mod-Ordner auswählen"
+                : "Mod-Ordner auswählen",
             Multiselect = false
         };
 
-        if (Directory.Exists(HomePathTextBox.Text))
+        if (Directory.Exists(ModPathTextBox.Text))
         {
-            dialog.InitialDirectory = HomePathTextBox.Text;
+            dialog.InitialDirectory = ModPathTextBox.Text;
         }
 
         if (dialog.ShowDialog(this) == true)
         {
-            HomePathTextBox.Text = dialog.FolderName;
+            ModPathTextBox.Text = dialog.FolderName;
         }
     }
 
@@ -70,7 +71,7 @@ public partial class ModsetEditorWindow : Window
     {
         ValidationTextBlock.Text = string.Empty;
         var name = NameTextBox.Text.Trim();
-        var homePath = HomePathTextBox.Text.Trim();
+        var modPath = ModPathTextBox.Text.Trim();
 
         if (name.Length == 0)
         {
@@ -78,15 +79,21 @@ public partial class ModsetEditorWindow : Window
             return;
         }
 
-        if (homePath.Length == 0)
+        if (modPath.Length == 0)
         {
-            ValidationTextBlock.Text = "Bitte ein Home-Verzeichnis angeben.";
+            ValidationTextBlock.Text = "Bitte einen Mod-Ordner angeben.";
             return;
         }
 
-        if ((_mode is ModsetEditorMode.Import or ModsetEditorMode.Edit) && !Directory.Exists(homePath))
+        if (!Path.IsPathFullyQualified(modPath))
         {
-            ValidationTextBlock.Text = "Das angegebene Verzeichnis existiert nicht.";
+            ValidationTextBlock.Text = "Bitte einen absoluten Mod-Ordner-Pfad angeben.";
+            return;
+        }
+
+        if ((_mode is ModsetEditorMode.Import or ModsetEditorMode.Edit) && !Directory.Exists(modPath))
+        {
+            ValidationTextBlock.Text = "Der angegebene Mod-Ordner existiert nicht.";
             return;
         }
 
@@ -94,8 +101,8 @@ public partial class ModsetEditorWindow : Window
             (GameType)(GameComboBox.SelectedItem ?? GameType.Ets2),
             name,
             NullIfWhiteSpace(DescriptionTextBox.Text),
-            homePath,
-            NullIfWhiteSpace(PreferredProfileTextBox.Text),
+            modPath,
+            _preferredProfile,
             NullIfWhiteSpace(LaunchArgumentsTextBox.Text));
 
         DialogResult = true;
