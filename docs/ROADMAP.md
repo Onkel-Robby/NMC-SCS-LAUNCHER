@@ -43,7 +43,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [~] reales LicenseHub-Release inklusive Update, Neustart und Rollback
 
 ## Nach 1.0.0
-- [ ] optionaler klassischer Windows-Installer
+- [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [ ] optionale SteamUGC-/Workshop-Verwaltungsfunktionen
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
