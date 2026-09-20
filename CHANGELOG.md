@@ -16,6 +16,10 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Release-Identitätsprüfung in CI: ProductVersion, Launcher/Updater und self-contained Runtime-Dateien werden vor Artefakt-Upload validiert.
 
 ### Changed
+- Neue und bearbeitete Modsets verwenden den vom Benutzer ausgewählten Pfad direkt als Mod-Ordner; es wird weder `Euro Truck Simulator 2`/`American Truck Simulator` noch `mod` an diesen Pfad angehängt.
+- Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden und werden bei direkten Modsets nicht pro Modset dupliziert.
+- Der SCS-`-homedir` bleibt intern launcherverwaltet; der direkte Mod-Ordner und die Standardprofilordner werden zur Laufzeit sicher eingebunden.
+- Backup und Duplizierung direkter Modsets arbeiten auf dem exakten Mod-Ordner und erzeugen keine zusätzliche SCS-Verzeichnisverschachtelung.
 - Produktive Builds erzwingen LicenseHub unabhängig von `NMC_LICENSEHUB_REQUIRED`.
 - Updateprüfung verwendet ausschließlich den bereits vorhandenen LicenseHub-Vertrag; am LicenseHub-Server ist keine NMC-SCS-LAUNCHER-spezifische Erweiterung erforderlich.
 - Veröffentlichte Artefaktnamen enthalten die echte Projektversion.
