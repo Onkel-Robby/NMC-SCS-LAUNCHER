@@ -11,6 +11,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Eigene Steam-Workshop-Seite für lokal installierte ETS2-/ATS-Workshop-Inhalte mit Spielauswahl, Aktualisierung, Explorer-Aktion und Link zur zugehörigen Steam-Workshop-Seite.
+- Sichere kanonische Workshop-Link-Erzeugung mit Tests; keine Subscribe/Unsubscribe-Schreibaktionen ohne verifizierten Steam-Auth-/API-Vertrag.
 - Klassischer Per-User-Windows-Installer unter `%LOCALAPPDATA%\\Programs\\NMC SCS LAUNCHER` mit Startmenü-Verknüpfung und optionalem Desktop-Shortcut.
 - CI-Erstellung des Setup-EXE inklusive SHA-256-Sidecar und automatisiertem Silent-Install/Uninstall-Smoke-Test.
 - Persistenter Product-API-Key-Store im Windows Credential Manager für verwaltete Erstprovisionierung und spätere direkte EXE-Starts.
