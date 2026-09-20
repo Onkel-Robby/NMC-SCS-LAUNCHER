@@ -2,23 +2,6 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
-## 1.0.2
-
-### Added
-- Einstellungen enthalten jetzt die echte Aktion **„Lizenz auf diesem PC deaktivieren“**. Sie meldet die aktuelle Maschinenaktivierung über den vorhandenen LicenseHub-Deaktivierungsendpunkt ab und beendet danach den Launcher.
-- Vor der Deaktivierung wird ausdrücklich bestätigt, dass der Aktivierungsplatz bei LicenseHub freigegeben wird und beim nächsten Start wieder ein gültiger Lizenz-Key erforderlich ist.
-
-### Security
-- Der lokal gespeicherte Benutzer-Lizenzschlüssel wird erst gelöscht, nachdem LicenseHub die serverseitige Deaktivierung erfolgreich bestätigt hat. Bei Server-, Netzwerk- oder Protokollfehlern bleibt das lokale Credential bestehen.
-
-
-## 1.0.1
-
-### Update-Test
-- Temporäre höhere Version für den realen LicenseHub-End-to-End-Update-Test von 1.0.0 auf 1.0.1.
-- Keine fachliche Funktionsänderung gegenüber 1.0.0; die sichtbare Versionsnummer dient zur eindeutigen Verifikation nach Download, SHA-256-Prüfung, Anwendung und Neustart.
-
-
 ## 1.0.0
 
 ### Release
@@ -28,6 +11,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Einstellungen enthalten die echte Aktion **„Lizenz auf diesem PC deaktivieren“**. Sie meldet die aktuelle Maschinenaktivierung über den vorhandenen LicenseHub-Deaktivierungsendpunkt ab und beendet danach den Launcher.
+- Vor der Deaktivierung wird ausdrücklich bestätigt, dass der Aktivierungsplatz bei LicenseHub freigegeben wird und beim nächsten Start wieder ein gültiger Lizenz-Key erforderlich ist.
 - Lokale Mod-Liste pro Modset mit `.scs`-Paketen und entpackten Mod-Ordnern inklusive Typ, Größe, Änderungsdatum und Pfad.
 - Suche, Sortierung nach Name/Änderungsdatum/Größe/Typ, Typ-Filter sowie Explorer-Aktion für ausgewählte lokale Mods.
 - Größenprüfung entpackter Mods läuft außerhalb des UI-Threads und folgt keinen Junctions/Reparse-Points; unvollständige Größen werden nicht als exakte Werte dargestellt.
@@ -58,6 +43,7 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Workshop-Erkennung verwendet zusätzlich den tatsächlich erkannten bzw. gespeicherten ETS2-/ATS-Installationspfad, um die zugehörige Steam-Library und `steamapps\\workshop\\content\\<AppId>` zu finden.
 
 ### Security
+- Der lokal gespeicherte Benutzer-Lizenzschlüssel wird bei einer Geräte-Deaktivierung erst gelöscht, nachdem LicenseHub die serverseitige Deaktivierung erfolgreich bestätigt hat. Bei Server-, Netzwerk- oder Protokollfehlern bleibt das lokale Credential bestehen.
 - Startup-Gate ist jetzt auch bei unerwarteten Ausnahmen fail-closed: Ein Fehler bei Initialisierung, Credential-Zugriff oder Aktivierungsdialog kann nicht mehr dazu führen, dass das Hauptfenster trotzdem geöffnet wird.
 - Lizenzstatus wird weiterhin beim Programmstart und unmittelbar vor dem Spielstart serverseitig bestätigt.
 - Product API Key und Benutzer-Lizenzschlüssel werden nicht im Repository oder in `settings.json` gespeichert.
