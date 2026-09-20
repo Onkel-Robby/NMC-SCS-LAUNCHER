@@ -21,4 +21,9 @@ public interface IWorkshopContentLocator
     Task<WorkshopContentSnapshot> ScanAsync(
         GameType game,
         CancellationToken cancellationToken = default);
+
+    Task<WorkshopContentSnapshot> ScanAsync(
+        GameType game,
+        string? preferredInstallPath,
+        CancellationToken cancellationToken = default);
 }
