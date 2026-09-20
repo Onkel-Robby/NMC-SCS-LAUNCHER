@@ -117,29 +117,33 @@ public sealed class LicenseRuntimeServiceTests
     }
 
     [Fact]
-    public async Task ProvisionedProductApiKeyIsReusedForLaterDirectStart()
+    public async Task ConfiguredProductApiKeyDoesNotRequireLocalProvisioning()
     {
         var licenseStore = new MemoryCredentialStore();
         var productStore = new MemoryProductApiCredentialStore();
-
-        var provisioningService = new LicenseRuntimeService(
+        var service = new LicenseRuntimeService(
             new LicenseHubRuntimeConfiguration(
                 true,
                 "https://license.example.test/",
                 "nmc-scs-launcher",
-                "product-value"),
+                "embedded-product-value"),
             licenseStore,
             productStore,
             new FixedMachineIdentityProvider(),
             new HttpClient(new StaticHandler(HttpStatusCode.OK, "{}")));
 
-        var firstState = await provisioningService.InitializeAsync("1.0.0");
+        var state = await service.InitializeAsync("1.0.0");
 
-        Assert.Equal(LicenseRuntimeState.LicenseMissing, firstState.State);
-        Assert.Equal("product-value", await productStore.LoadProductApiKeyAsync());
+        Assert.Equal(LicenseRuntimeState.LicenseMissing, state.State);
+        Assert.Null(await productStore.LoadProductApiKeyAsync());
+    }
 
-        await licenseStore.SaveLicenseKeyAsync("stored-license-value");
-        var directStartService = new LicenseRuntimeService(
+    [Fact]
+    public async Task StoredProductApiKeyRemainsSupportedAsLegacyFallback()
+    {
+        var licenseStore = new MemoryCredentialStore("stored-license-value");
+        var productStore = new MemoryProductApiCredentialStore("legacy-product-value");
+        var service = new LicenseRuntimeService(
             new LicenseHubRuntimeConfiguration(
                 true,
                 "https://license.example.test/",
@@ -157,10 +161,10 @@ public sealed class LicenseRuntimeServiceTests
                 }
                 """)));
 
-        var directStartState = await directStartService.InitializeAsync("1.0.0");
+        var state = await service.InitializeAsync("1.0.0");
 
-        Assert.Equal(LicenseRuntimeState.Active, directStartState.State);
-        Assert.True(directStartState.AllowsUse);
+        Assert.Equal(LicenseRuntimeState.Active, state.State);
+        Assert.True(state.AllowsUse);
     }
 
     [Fact]
