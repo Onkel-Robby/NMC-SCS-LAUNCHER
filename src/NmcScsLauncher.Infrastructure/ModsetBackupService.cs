@@ -37,12 +37,29 @@ public sealed class ModsetBackupService : IModsetBackupService
         var modset = modsets.FirstOrDefault(item => item.Id == request.ModsetId)
             ?? throw new KeyNotFoundException($"Modset {request.ModsetId} wurde nicht gefunden.");
 
-        var gameDataDirectory = Path.Combine(Path.GetFullPath(modset.HomeBasePath), GameDefinition.For(modset.Game).HomeDirectoryName);
-        if (!Directory.Exists(gameDataDirectory))
+        var directMode = ScsModsetPathResolver.UsesDirectModDirectory(modset);
+        var gameDataDirectory = directMode
+            ? ScsModsetPathResolver.GetStandardGameDataDirectory(modset.Game)
+            : ScsModsetPathResolver.GetRuntimeGameDataDirectory(modset);
+
+        if (!directMode && !Directory.Exists(gameDataDirectory))
             throw new DirectoryNotFoundException("Der SCS-Datenordner des Modsets existiert noch nicht.");
 
         var warnings = new List<string>();
-        var files = BuildFilePlan(gameDataDirectory, request.Content, warnings, cancellationToken);
+        List<BackupFile> files;
+        if (directMode)
+        {
+            if ((request.Content & ~ModsetBackupContent.Mods) != ModsetBackupContent.None)
+                warnings.Add("Bei direkten Mod-Ordnern werden Konfiguration und Profile nicht als Modset-Daten gesichert.");
+
+            files = request.Content.HasFlag(ModsetBackupContent.Mods)
+                ? BuildDirectModFilePlan(ScsModsetPathResolver.GetModDirectory(modset), warnings, cancellationToken)
+                : new List<BackupFile>();
+        }
+        else
+        {
+            files = BuildFilePlan(gameDataDirectory, request.Content, warnings, cancellationToken);
+        }
         if (files.Count == 0)
             warnings.Add("Für die ausgewählten Backup-Bereiche wurden keine Dateien gefunden.");
 
@@ -132,6 +149,81 @@ public sealed class ModsetBackupService : IModsetBackupService
         File.Move(stagingPath, archivePath);
         progress?.Report(new ModsetBackupProgress("Completed", bytesArchived, totalBytes, filesArchived, files.Count));
         return new ModsetBackupResult(archivePath, filesArchived, bytesArchived, manifest, warnings);
+    }
+
+    private static List<BackupFile> BuildDirectModFilePlan(
+        string modDirectory,
+        ICollection<string> warnings,
+        CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(modDirectory))
+            throw new DirectoryNotFoundException("Der ausgewählte Mod-Ordner existiert nicht.");
+
+        var files = new List<BackupFile>();
+        AddDirectModDirectoryTree(modDirectory, files, warnings, cancellationToken);
+        return files
+            .OrderBy(static file => file.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static void AddDirectModDirectoryTree(
+        string modDirectory,
+        ICollection<BackupFile> files,
+        ICollection<string> warnings,
+        CancellationToken cancellationToken)
+    {
+        if (IsReparsePoint(modDirectory))
+            throw new IOException("Der ausgewählte Mod-Ordner ist selbst ein Link/Junction und wird nicht als Backup-Quelle verwendet.");
+
+        var pending = new Stack<string>();
+        pending.Push(modDirectory);
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = pending.Pop();
+
+            string[] directories;
+            string[] currentFiles;
+            try
+            {
+                directories = Directory.GetDirectories(current, "*", SearchOption.TopDirectoryOnly);
+                currentFiles = Directory.GetFiles(current, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new IOException($"'{current}' konnte für das Backup nicht vollständig gelesen werden.", ex);
+            }
+
+            foreach (var directory in directories)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsReparsePoint(directory))
+                {
+                    warnings.Add($"'{Path.GetRelativePath(modDirectory, directory)}' wurde nicht gesichert, weil es ein Link/Junction ist.");
+                    continue;
+                }
+
+                pending.Push(directory);
+            }
+
+            foreach (var file in currentFiles)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsReparsePoint(file))
+                {
+                    warnings.Add($"'{Path.GetRelativePath(modDirectory, file)}' wurde nicht gesichert, weil es ein Link ist.");
+                    continue;
+                }
+
+                var info = new FileInfo(file);
+                var relative = Path.Combine("mod", Path.GetRelativePath(modDirectory, file));
+                files.Add(new BackupFile(
+                    file,
+                    relative,
+                    info.Length,
+                    new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
+            }
+        }
     }
 
     private static List<BackupFile> BuildFilePlan(
