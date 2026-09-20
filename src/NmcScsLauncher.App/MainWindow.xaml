@@ -339,6 +339,13 @@
                                     <TextBlock Text="Kritische Startfehler bleiben auch bei deaktivierter Startprüfung gesperrt." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,14,0,0" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
+                            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22" Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="LicenseHub-Lizenz" FontSize="17" FontWeight="SemiBold" />
+                                    <TextBlock Text="Deaktiviert die Geräteaktivierung dieses PCs serverseitig bei LicenseHub. Der lokal gespeicherte Lizenz-Key wird nur entfernt, wenn LicenseHub die Deaktivierung erfolgreich bestätigt hat." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,6,0,12" TextWrapping="Wrap" />
+                                    <Button Content="Lizenz auf diesem PC deaktivieren" Command="{Binding DeactivateLicenseCommand}" Padding="18,9" HorizontalAlignment="Left" />
+                                </StackPanel>
+                            </Border>
                             <Button Content="Einstellungen speichern" Command="{Binding SaveSettingsCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="18,9" HorizontalAlignment="Left" Margin="0,16,0,0" />
                         </StackPanel>
                     </ScrollViewer>

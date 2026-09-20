@@ -33,6 +33,7 @@ public partial class App : Application
         services.AddSingleton<ILicenseRuntimeService, LicenseRuntimeService>();
         services.AddSingleton<IApplicationUpdateService, ApplicationUpdateService>();
         services.AddSingleton<ILicenseActivationDialogService, LicenseActivationDialogService>();
+        services.AddSingleton<ILicenseDeactivationService, LicenseDeactivationService>();
         services.AddSingleton<ScsGameLaunchService>();
         services.AddSingleton<LicensedGameLaunchService>();
         services.AddSingleton<IGameLaunchService, InteractiveLicensedGameLaunchService>();

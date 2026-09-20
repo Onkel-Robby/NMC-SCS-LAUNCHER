@@ -117,6 +117,38 @@ public sealed class LicenseRuntimeServiceTests
     }
 
     [Fact]
+    public async Task SuccessfulDeactivationClearsStoredLicenseOnlyAfterServerConfirmation()
+    {
+        var store = new MemoryCredentialStore("stored-license-value");
+        var service = CreateRequiredService(
+            store,
+            new StaticHandler(HttpStatusCode.OK, """
+                {"success":true,"message":"Activation deactivated"}
+                """));
+
+        var state = await service.DeactivateAsync();
+
+        Assert.Equal(LicenseRuntimeState.LicenseMissing, state.State);
+        Assert.False(state.AllowsUse);
+        Assert.Null(await store.LoadLicenseKeyAsync());
+    }
+
+    [Fact]
+    public async Task FailedDeactivationKeepsStoredLicense()
+    {
+        var store = new MemoryCredentialStore("stored-license-value");
+        var service = CreateRequiredService(
+            store,
+            new StaticHandler(HttpStatusCode.Forbidden, """
+                {"success":false,"error":"Deactivation denied"}
+                """));
+
+        await Assert.ThrowsAsync<LicenseHubProtocolException>(() => service.DeactivateAsync());
+
+        Assert.Equal("stored-license-value", await store.LoadLicenseKeyAsync());
+    }
+
+    [Fact]
     public async Task ConfiguredProductApiKeyDoesNotRequireLocalProvisioning()
     {
         var licenseStore = new MemoryCredentialStore();

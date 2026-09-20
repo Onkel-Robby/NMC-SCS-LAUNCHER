@@ -2,6 +2,16 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 1.0.2
+
+### Added
+- Einstellungen enthalten jetzt die echte Aktion **„Lizenz auf diesem PC deaktivieren“**. Sie meldet die aktuelle Maschinenaktivierung über den vorhandenen LicenseHub-Deaktivierungsendpunkt ab und beendet danach den Launcher.
+- Vor der Deaktivierung wird ausdrücklich bestätigt, dass der Aktivierungsplatz bei LicenseHub freigegeben wird und beim nächsten Start wieder ein gültiger Lizenz-Key erforderlich ist.
+
+### Security
+- Der lokal gespeicherte Benutzer-Lizenzschlüssel wird erst gelöscht, nachdem LicenseHub die serverseitige Deaktivierung erfolgreich bestätigt hat. Bei Server-, Netzwerk- oder Protokollfehlern bleibt das lokale Credential bestehen.
+
+
 ## 1.0.1
 
 ### Update-Test
