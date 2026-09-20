@@ -234,7 +234,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         {
             AppendDiagnostic("NmcScsLauncher.App is running; prompting user to close it.");
 
-            var answer = MessageBox.Show(
+            var answer = System.Windows.MessageBox.Show(
                 _window,
                 "NMC SCS LAUNCHER läuft noch.\n\nSoll der Installer den Launcher jetzt automatisch schließen und anschließend fortfahren?\n\nNicht gespeicherte Änderungen im Launcher können dabei verloren gehen.",
                 "NMC SCS LAUNCHER",
