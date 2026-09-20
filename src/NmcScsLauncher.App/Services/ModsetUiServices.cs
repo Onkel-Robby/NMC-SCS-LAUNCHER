@@ -32,6 +32,7 @@ public interface IConfirmationService
 public interface IExplorerService
 {
     void OpenFolder(string path);
+    void RevealPath(string path);
 }
 
 public sealed class ModsetEditorService : IModsetEditorService
@@ -77,6 +78,29 @@ public sealed class ExplorerService : IExplorerService
         Process.Start(new ProcessStartInfo
         {
             FileName = path,
+            UseShellExecute = true
+        });
+    }
+
+    public void RevealPath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (Directory.Exists(path))
+        {
+            OpenFolder(path);
+            return;
+        }
+
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("Die Datei wurde nicht gefunden.", path);
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "explorer.exe",
+            Arguments = $"/select,\"{path}\"",
             UseShellExecute = true
         });
     }
