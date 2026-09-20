@@ -40,6 +40,7 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Veröffentlichte Artefaktnamen enthalten die echte Projektversion.
 
 ### Fixed
+- Branding-Feinschliff: Inno-Standardgrafik durch das NMC SCS LAUNCHER Branding ersetzt, Installer-Firmenlogo vergrößert, doppeltes NMC IT-SERVICE Logo im Launcher entfernt und die Info-Seite auf `NMC IT-SERVICE` vereinheitlicht.
 - LicenseHub-Anwendungsupdates erhalten jetzt die vom Inno-Installer erzeugten `uninsNNN.exe/.dat/.msg`-Dateien, damit die Windows-Deinstallation auch nach einem erfolgreichen In-App-Update weiterhin funktioniert. Updatepakete dürfen diese installer-eigenen Dateien nicht überschreiben.
 - Globale Dark-Theme-Control-Templates für Buttons, Textfelder, ComboBoxen und Dropdown-Einträge stellen lesbare Vorder-/Hintergrundkontraste unabhängig vom Windows-Systemtheme sicher. Die Control-Farbwerte sind zentralisiert und bleiben für das spätere Style-Redesign austauschbar.
 - Workshop-Erkennung verwendet zusätzlich den tatsächlich erkannten bzw. gespeicherten ETS2-/ATS-Installationspfad, um die zugehörige Steam-Library und `steamapps\\workshop\\content\\<AppId>` zu finden.
