@@ -116,6 +116,189 @@ jobs:
           Write-Host "SHA-256: $sha256"
 
 
+      - name: Publish NMC installer UI
+        shell: pwsh
+        run: |
+          $uiDir = "artifacts/wix/ui"
+          New-Item -ItemType Directory -Path $uiDir -Force | Out-Null
+          dotnet publish installer-wix/NmcScsLauncher.Installer.UI/NmcScsLauncher.Installer.UI.csproj --configuration Release --runtime win-x64 --self-contained true --output $uiDir
+          if ($LASTEXITCODE -ne 0) { throw "NMC Installer UI publish failed." }
+          if (-not (Test-Path "$uiDir/NmcScsLauncher.Installer.UI.exe")) { throw "NMC Installer UI executable is missing." }
+
+      - name: Build NMC WiX MSI
+        shell: pwsh
+        run: |
+          $publishDir = (Resolve-Path "artifacts/publish").Path
+          dotnet build installer-wix/NmcScsLauncher.Installer.Msi/NmcScsLauncher.Installer.Msi.wixproj --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:PublishDir=$publishDir"
+          if ($LASTEXITCODE -ne 0) { throw "NMC WiX MSI build failed." }
+
+          $msi = Get-ChildItem "artifacts/wix/msi" -Filter "NMC-SCS-LAUNCHER-$env:NMC_VERSION.msi" -Recurse | Select-Object -First 1
+          if (-not $msi) { throw "NMC WiX MSI was not created." }
+          "NMC_WIX_MSI=$($msi.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build NMC custom installer
+        shell: pwsh
+        run: |
+          $bootstrapper = (Resolve-Path "artifacts/wix/ui/NmcScsLauncher.Installer.UI.exe").Path
+          $bundleVersion = "$env:NMC_VERSION.0"
+
+          dotnet build installer-wix/NmcScsLauncher.Installer.Bundle/NmcScsLauncher.Installer.Bundle.wixproj --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:BundleVersion=$bundleVersion" "-p:MsiPath=$env:NMC_WIX_MSI" "-p:BootstrapperExe=$bootstrapper"
+          if ($LASTEXITCODE -ne 0) { throw "NMC WiX Burn bundle build failed." }
+
+          $bundle = Get-ChildItem "artifacts/wix/installer" -Filter "NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe" -Recurse | Select-Object -First 1
+          if (-not $bundle) { throw "NMC custom installer was not created." }
+
+          $outDir = "artifacts/nmc-installer"
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+          $installer = Join-Path $outDir $bundle.Name
+          Copy-Item $bundle.FullName $installer -Force
+
+          $sha256 = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha256 -notmatch '^[0-9a-f]{64}
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $programFilesX86 = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFilesX86)
+          $compilerCandidates = @(
+            (Join-Path $programFilesX86 "Inno Setup 6\ISCC.exe"),
+            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe")
+          )
+          $compiler = $compilerCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($compiler)) { throw "Inno Setup compiler was not found." }
+
+          & $compiler "/DMyAppVersion=$env:NMC_VERSION" "installer\NMC-SCS-LAUNCHER.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed with exit code $LASTEXITCODE." }
+
+          $installer = "artifacts/installer/NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe"
+          if (-not (Test-Path $installer)) { throw "Windows installer was not created." }
+
+          $sha256 = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($sha256 -notmatch '^[0-9a-f]{64}$') { throw "Invalid installer SHA-256 result." }
+          $installerName = Split-Path $installer -Leaf
+          Set-Content -Path "$installer.sha256" -Value "$sha256  $installerName" -Encoding ascii -NoNewline
+
+          Write-Host "Windows installer: $installer"
+          Write-Host "SHA-256: $sha256"
+
+      - name: Smoke test Windows installer
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path "artifacts/installer/NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe").Path
+          $target = Join-Path $env:RUNNER_TEMP "NMC-SCS-LAUNCHER-installer-smoke"
+          if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+
+          $install = Start-Process -FilePath $installer -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/SP-",
+            "/DIR=$target"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Silent installer smoke test failed with exit code $($install.ExitCode)." }
+
+          foreach ($required in @(
+            "NmcScsLauncher.App.exe",
+            "NmcScsLauncher.Updater.exe",
+            "coreclr.dll",
+            "hostfxr.dll",
+            "unins000.exe"
+          )) {
+            if (-not (Test-Path (Join-Path $target $required))) {
+              throw "Installed payload is missing $required."
+            }
+          }
+
+          $uninstaller = Join-Path $target "unins000.exe"
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART"
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent uninstall smoke test failed with exit code $($uninstall.ExitCode)." }
+          if (Test-Path (Join-Path $target "NmcScsLauncher.App.exe")) {
+            throw "Uninstaller left the launcher executable behind."
+          }
+
+          Write-Host "Installer install/uninstall smoke test passed."
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-win-x64
+          path: artifacts/publish
+          if-no-files-found: error
+
+      - name: Upload LicenseHub release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-licensehub-release
+          path: artifacts/release
+          if-no-files-found: error
+
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-installer
+          path: |
+            artifacts/installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe
+            artifacts/installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe.sha256
+          if-no-files-found: error
+
+      - name: Upload NMC custom installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-nmc-installer
+          path: |
+            artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe
+            artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe.sha256
+          if-no-files-found: error
+) { throw "Invalid NMC installer SHA-256 result." }
+          Set-Content -Path "$installer.sha256" -Value "$sha256  $($bundle.Name)" -Encoding ascii -NoNewline
+          Write-Host "NMC custom installer: $installer"
+          Write-Host "SHA-256: $sha256"
+
+      - name: Smoke test NMC custom installer
+        shell: pwsh
+        run: |
+          $installer = (Resolve-Path "artifacts/nmc-installer/NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe").Path
+          $target = Join-Path $env:LOCALAPPDATA "Programs\NMC SCS LAUNCHER"
+          if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+
+          $install = Start-Process -FilePath $installer -ArgumentList @(
+            "/quiet",
+            "/norestart"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "NMC custom installer smoke install failed with exit code $($install.ExitCode)." }
+
+          foreach ($required in @(
+            "NmcScsLauncher.App.exe",
+            "NmcScsLauncher.Updater.exe",
+            "coreclr.dll",
+            "hostfxr.dll"
+          )) {
+            if (-not (Test-Path (Join-Path $target $required))) {
+              throw "NMC custom installer payload is missing $required."
+            }
+          }
+
+          $marker = Get-ItemProperty -Path "HKCU:\Software\NMC IT-SERVICE\NMC SCS LAUNCHER" -ErrorAction Stop
+          if ([string]::IsNullOrWhiteSpace([string]$marker.InstallPath)) {
+            throw "NMC custom installer did not register the install path."
+          }
+
+          $uninstall = Start-Process -FilePath $installer -ArgumentList @(
+            "/uninstall",
+            "/quiet",
+            "/norestart"
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "NMC custom installer smoke uninstall failed with exit code $($uninstall.ExitCode)." }
+          if (Test-Path (Join-Path $target "NmcScsLauncher.App.exe")) {
+            throw "NMC custom installer uninstall left the launcher executable behind."
+          }
+
+          Write-Host "NMC custom installer install/uninstall smoke test passed."
+
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
