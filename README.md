@@ -20,7 +20,8 @@ Aktuelle Version: **1.0.0**
 - Workshop-Einträge nach Spiel anzeigen, mit echten Steam-Workshop-Titeln anreichern, durchsuchen, nach Name/Änderungsdatum/ID sortieren und nach Titelverfügbarkeit filtern.
 - Workshop-Einträge lokal im Explorer öffnen oder die zugehörige Steam-Workshop-Seite im Browser öffnen; Abonnements werden nicht verändert.
 - LicenseHub-Lizenzierung mit Maschinenbindung und Fail-Closed-Verhalten.
-- Lizenzschlüssel und Product API Credential getrennt im Windows Credential Manager speichern.
+- Release-Builds erhalten das LicenseHub-Product-Credential beim CI-Publish aus einem GitHub-Actions-Secret; Benutzer geben ausschließlich ihren Lizenzschlüssel ein.
+- Der Benutzer-Lizenzschlüssel wird nach erfolgreicher Aktivierung im Windows Credential Manager gespeichert.
 - Anwendungsupdates über den vorhandenen LicenseHub-Updatevertrag prüfen, herunterladen und per SHA-256 verifizieren.
 - Externer self-contained Updater mit Rollback bei fehlgeschlagenem Austausch oder Neustart.
 
@@ -80,16 +81,11 @@ Product Slug:
 NMC-SCS-LAUNCHER
 ```
 
-Der Product API Key wird **nicht** im Repository hinterlegt. Bei der verwalteten Erstbereitstellung kann er einmalig über die Prozessumgebung gesetzt werden:
+Der Product API Key wird **nicht** im öffentlichen Repository hinterlegt. Für veröffentlichte Builds wird er beim GitHub-Actions-Publish aus dem Repository-Secret `NMC_LICENSEHUB_PRODUCT_API_KEY` in das Release eingebettet. Der Aktivierungsdialog fragt deshalb **nur nach dem Benutzer-Lizenzschlüssel**.
 
-```powershell
-$env:NMC_LICENSEHUB_PRODUCT_API_KEY="<PRODUCT-API-KEY>"
-.\NmcScsLauncher.App.exe
-```
+Der Benutzer-Lizenzschlüssel wird nach erfolgreicher Aktivierung im Windows Credential Manager gespeichert. Eine aktive Lizenz wird beim Start und zusätzlich unmittelbar vor einem Spielstart erneut gegen LicenseHub geprüft. Unerreichbarkeit, Timeout oder ungültige Serverantworten führen bei der produktiven Lizenzpflicht nicht zu einem gültigen Nutzungsstatus.
 
-Der Launcher übernimmt das Credential anschließend in den Windows Credential Manager. Spätere direkte Starts der EXE verwenden das lokal gespeicherte Credential; die Umgebungsvariable ist dann nicht mehr erforderlich.
-
-Der Benutzer-Lizenzschlüssel wird separat im Windows Credential Manager gespeichert. Eine aktive Lizenz wird beim Start und zusätzlich unmittelbar vor einem Spielstart erneut gegen LicenseHub geprüft. Unerreichbarkeit, Timeout oder ungültige Serverantworten führen bei der produktiven Lizenzpflicht nicht zu einem gültigen Nutzungsstatus.
+Für lokale Entwicklungs-/Migrationsszenarien bleibt die bisherige Umgebungsvariable `NMC_LICENSEHUB_PRODUCT_API_KEY` sowie ein bereits vorhandenes Product-Credential im Windows Credential Manager als Fallback unterstützt. Release-Builds verwenden jedoch vorrangig das beim Build eingebettete Credential.
 
 Weitere Details: [`docs/LICENSEHUB_INTEGRATION.md`](docs/LICENSEHUB_INTEGRATION.md)
 
@@ -112,6 +108,7 @@ Dazu gehören insbesondere Einstellungen, Logs, Modset-Metadaten, interne Runtim
 - Restore blockiert ZIP Path Traversal und absolute Archivpfade.
 - Updatepakete werden beim Download und unmittelbar vor dem Anwenden erneut per SHA-256 geprüft.
 - Der produktive Launcher bleibt bei Fehlern im LicenseHub-Start-Gate geschlossen.
+- Ein in eine Desktop-Anwendung eingebettetes Product-Credential ist trotz fehlender Klartextablage im Repository grundsätzlich aus dem ausgelieferten Binary extrahierbar; es muss deshalb serverseitig auf die minimal benötigten LicenseHub-Produktaktionen beschränkt bleiben.
 
 ## Build
 
