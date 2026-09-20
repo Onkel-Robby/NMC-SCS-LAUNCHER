@@ -1,4 +1,6 @@
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
+using Microsoft.Win32;
 using NmcScsLauncher.Core;
 
 namespace NmcScsLauncher.Infrastructure;
@@ -57,6 +59,13 @@ public sealed partial class SteamGameInstallationDetector : IGameInstallationDet
         }
 
         var definition = GameDefinition.For(gameType);
+
+        var registryInstallation = TryDetectFromWindowsUninstallRegistry(gameType, definition);
+        if (registryInstallation is not null)
+        {
+            return Task.FromResult<GameInstallation?>(registryInstallation);
+        }
+
         foreach (var libraryRoot in _libraryLocator.FindLibraryRoots())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -78,6 +87,54 @@ public sealed partial class SteamGameInstallationDetector : IGameInstallationDet
         }
 
         return Task.FromResult<GameInstallation?>(null);
+    }
+
+    private GameInstallation? TryDetectFromWindowsUninstallRegistry(GameType gameType, GameDefinition definition)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return null;
+        }
+
+        return TryDetectFromWindowsUninstallRegistryCore(gameType, definition);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private GameInstallation? TryDetectFromWindowsUninstallRegistryCore(GameType gameType, GameDefinition definition)
+    {
+        var subKeyPath = $@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App {definition.SteamAppId}";
+
+        foreach (var hive in new[] { RegistryHive.CurrentUser, RegistryHive.LocalMachine })
+        {
+            foreach (var view in new[] { RegistryView.Registry32, RegistryView.Registry64 })
+            {
+                try
+                {
+                    using var root = RegistryKey.OpenBaseKey(hive, view);
+                    using var key = root.OpenSubKey(subKeyPath);
+                    if (key?.GetValue("InstallLocation") is not string installLocation
+                        || string.IsNullOrWhiteSpace(installLocation))
+                    {
+                        continue;
+                    }
+
+                    var installation = Validate(
+                        gameType,
+                        installLocation.Trim().Trim('"'),
+                        GameInstallationSource.SteamAutoDetection);
+                    if (installation is not null)
+                    {
+                        return installation;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Steam uninstall registry detection is best-effort.
+                }
+            }
+        }
+
+        return null;
     }
 
     private static string? ReadInstallDirectoryName(string manifestPath)
