@@ -23,6 +23,7 @@ public partial class App : Application
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
         services.AddSingleton<IWorkshopContentLocator, SteamWorkshopContentLocator>();
+        services.AddSingleton<IWorkshopMetadataProvider, SteamWorkshopMetadataProvider>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -69,6 +70,7 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IModsetBackupDialogService>());
         viewModel.ConfigureWorkshopServices(
             _serviceProvider.GetRequiredService<IWorkshopContentLocator>(),
+            _serviceProvider.GetRequiredService<IWorkshopMetadataProvider>(),
             _serviceProvider.GetRequiredService<IExternalUriService>());
 
         try
