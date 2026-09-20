@@ -13,6 +13,12 @@ public sealed class SteamWorkshopContentLocator : IWorkshopContentLocator
 
     public Task<WorkshopContentSnapshot> ScanAsync(
         GameType game,
+        CancellationToken cancellationToken = default) =>
+        ScanAsync(game, preferredInstallPath: null, cancellationToken);
+
+    public Task<WorkshopContentSnapshot> ScanAsync(
+        GameType game,
+        string? preferredInstallPath,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -21,7 +27,17 @@ public sealed class SteamWorkshopContentLocator : IWorkshopContentLocator
         var scannedRoots = new List<string>();
         var warnings = new List<string>();
 
-        foreach (var libraryRoot in _libraryLocator.FindLibraryRoots())
+        var libraryRoots = new HashSet<string>(
+            _libraryLocator.FindLibraryRoots(),
+            StringComparer.OrdinalIgnoreCase);
+
+        var inferredLibraryRoot = TryInferSteamLibraryRoot(preferredInstallPath);
+        if (inferredLibraryRoot is not null)
+        {
+            libraryRoots.Add(inferredLibraryRoot);
+        }
+
+        foreach (var libraryRoot in libraryRoots.OrderBy(static path => path, StringComparer.OrdinalIgnoreCase))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var contentRoot = Path.Combine(
@@ -93,5 +109,36 @@ public sealed class SteamWorkshopContentLocator : IWorkshopContentLocator
             orderedItems,
             scannedRoots.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(static path => path, StringComparer.OrdinalIgnoreCase).ToArray(),
             warnings));
+    }
+
+    private static string? TryInferSteamLibraryRoot(string? installPath)
+    {
+        if (string.IsNullOrWhiteSpace(installPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var installDirectory = new DirectoryInfo(Path.GetFullPath(installPath.Trim()));
+            var commonDirectory = installDirectory.Parent;
+            var steamAppsDirectory = commonDirectory?.Parent;
+            var libraryDirectory = steamAppsDirectory?.Parent;
+
+            if (commonDirectory is null
+                || steamAppsDirectory is null
+                || libraryDirectory is null
+                || !string.Equals(commonDirectory.Name, "common", StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(steamAppsDirectory.Name, "steamapps", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return libraryDirectory.FullName;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 }
