@@ -46,6 +46,50 @@ public sealed class ModsetBackupServiceTests
     }
 
     [Fact]
+    public async Task DirectModsetBackupUsesExactSelectedModFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        Modset? modset = null;
+        try
+        {
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            var modDirectory = Directory.CreateDirectory(Path.Combine(root, "exact-mod-folder")).FullName;
+            await File.WriteAllTextAsync(Path.Combine(modDirectory, "map.scs"), "mod-package");
+
+            modset = await manager.CreateAsync(new ModsetDraft(
+                GameType.Ets2,
+                "Direct Backup",
+                null,
+                string.Empty,
+                null,
+                null,
+                modDirectory));
+
+            var archivePath = Path.Combine(root, "direct-mods.zip");
+            var result = await new ModsetBackupService(manager).CreateAsync(
+                new ModsetBackupRequest(modset.Id, archivePath, ModsetBackupContent.Mods));
+
+            Assert.Equal(1, result.FilesArchived);
+            using var archive = ZipFile.OpenRead(archivePath);
+            Assert.NotNull(archive.GetEntry("data/mod/map.scs"));
+            Assert.Null(archive.GetEntry("data/Euro Truck Simulator 2/mod/map.scs"));
+        }
+        finally
+        {
+            if (modset is not null && Directory.Exists(modset.HomeBasePath))
+            {
+                Directory.Delete(modset.HomeBasePath, recursive: true);
+            }
+
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task BackupCanIncludeModsExplicitly()
     {
         var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
