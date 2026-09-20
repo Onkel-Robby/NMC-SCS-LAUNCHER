@@ -2,6 +2,13 @@
 
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
+## 1.0.1
+
+### Update-Test
+- Temporäre höhere Version für den realen LicenseHub-End-to-End-Update-Test von 1.0.0 auf 1.0.1.
+- Keine fachliche Funktionsänderung gegenüber 1.0.0; die sichtbare Versionsnummer dient zur eindeutigen Verifikation nach Download, SHA-256-Prüfung, Anwendung und Neustart.
+
+
 ## 1.0.0
 
 ### Release
