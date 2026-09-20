@@ -15,7 +15,7 @@ public sealed record ModsetEditorData(
     GameType Game,
     string Name,
     string? Description,
-    string HomeBasePath,
+    string ModDirectoryPath,
     string? PreferredProfile,
     string? AdditionalLaunchArguments);
 
@@ -54,7 +54,7 @@ public sealed class ConfirmationService : IConfirmationService
     {
         ArgumentNullException.ThrowIfNull(modset);
         var result = MessageBox.Show(
-            $"Modset '{modset.Name}' aus dem NMC SCS LAUNCHER entfernen?\n\nDie Dateien im Home-Verzeichnis werden NICHT gelöscht.",
+            $"Modset '{modset.Name}' aus dem NMC SCS LAUNCHER entfernen?\n\nDie Dateien im Mod-Ordner werden NICHT gelöscht.",
             "Modset entfernen",
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,

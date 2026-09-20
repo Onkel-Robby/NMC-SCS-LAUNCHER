@@ -1,6 +1,6 @@
 # NMC SCS LAUNCHER
 
-Windows-Desktop-Launcher für **Euro Truck Simulator 2 (ETS2)** und **American Truck Simulator (ATS)** mit getrennten Mod-/Profil-Umgebungen auf Basis des SCS-Parameters `-homedir`.
+Windows-Desktop-Launcher für **Euro Truck Simulator 2 (ETS2)** und **American Truck Simulator (ATS)** mit getrennten Mod-Ordnern und den normalen lokalen/Steam-Profilen von SCS.
 
 Aktuelle Version: **1.0.0**
 
@@ -9,7 +9,9 @@ Aktuelle Version: **1.0.0**
 - ETS2- und ATS-Installationen über Steam erkennen, inklusive zusätzlicher Steam-Libraries.
 - Installationspfade bei Bedarf manuell setzen.
 - Beliebig viele getrennte Modsets pro Spiel verwalten.
-- Jedes Modset verwendet eine eigene SCS-Home-Basis und wird mit genau einem launcherverwalteten `-homedir` gestartet.
+- Bei neuen Modsets ist der vom Benutzer ausgewählte Pfad **direkt der Mod-Ordner**; der Launcher hängt weder den Spielnamen noch `mod` an.
+- Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden (`profiles` / `steam_profiles`).
+- Für den Spielstart erzeugt der Launcher intern eine verwaltete Laufzeit-Home-Basis und bindet den direkten Mod-Ordner sowie die Standardprofile ein.
 - Mods und lokale/Steam-Profile read-only inspizieren.
 - Modsets duplizieren, ohne Junctions oder Hardlinks zu verwenden.
 - ZIP-Backups erstellen und mit Sicherheitsprüfung wiederherstellen.
@@ -78,7 +80,7 @@ Launcher-Daten liegen unter:
 %LOCALAPPDATA%\NMC Network\NMC SCS Launcher\
 ```
 
-Dazu gehören insbesondere Einstellungen, Logs, Modset-Metadaten, Update-Staging und weitere lokale Launcher-Daten. Vorhandene SCS-Spielstände, `.scs`-Pakete und SII-Dateien werden nicht automatisch verändert.
+Dazu gehören insbesondere Einstellungen, Logs, Modset-Metadaten, interne Runtime-Homes, Update-Staging und weitere lokale Launcher-Daten. Der vom Benutzer gewählte Mod-Ordner bleibt an seinem ursprünglichen Ort. Vorhandene SCS-Spielstände, `.scs`-Pakete und SII-Dateien werden nicht automatisch verschoben oder verändert.
 
 ## Sicherheitsgrenzen
 

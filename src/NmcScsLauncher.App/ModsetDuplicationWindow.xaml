@@ -30,7 +30,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="0,18,0,0">
-            <TextBlock Text="Neues Home-Verzeichnis" FontWeight="SemiBold" />
+            <TextBlock x:Name="TargetPathLabel" Text="Neues Home-Verzeichnis" FontWeight="SemiBold" />
             <Grid Margin="0,7,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -39,7 +39,7 @@
                 <TextBox x:Name="TargetPathTextBox" Padding="10,7" />
                 <Button Grid.Column="1" Content="Übergeordneten Ordner wählen" Margin="9,0,0,0" Padding="12,7" Click="BrowseTarget_OnClick" />
             </Grid>
-            <TextBlock Margin="0,6,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
+            <TextBlock x:Name="TargetPathHint" Margin="0,6,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
                        Text="Der Zielordner muss neu sein. Die Kopie erhält ein vollständig eigenes Home-Verzeichnis." />
         </StackPanel>
 
@@ -55,7 +55,7 @@
         </StackPanel>
 
         <Border Grid.Row="4" Margin="0,15,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="9" Padding="13">
-            <TextBlock Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
+            <TextBlock x:Name="CopyInfoTextBlock" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
                        Text="Launcher-Metadaten wie Beschreibung, Profilvorgabe und zusätzliche Startparameter werden immer übernommen. Die ausgewählten Inhalte werden als echte, unabhängige Dateien kopiert. Links/Junctions werden nicht verfolgt." />
         </Border>
 

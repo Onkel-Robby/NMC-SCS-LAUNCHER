@@ -9,15 +9,25 @@ public sealed class ScsModsetInspector : IModsetInspector
         ArgumentNullException.ThrowIfNull(modset);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var definition = GameDefinition.For(modset.Game);
-        var gameDataDirectory = Path.Combine(Path.GetFullPath(modset.HomeBasePath), definition.HomeDirectoryName);
-        var modDirectory = Path.Combine(gameDataDirectory, "mod");
-        var localProfilesDirectory = Path.Combine(gameDataDirectory, "profiles");
-        var steamProfilesDirectory = Path.Combine(gameDataDirectory, "steam_profiles");
+        var directMode = ScsModsetPathResolver.UsesDirectModDirectory(modset);
+        var gameDataDirectory = directMode
+            ? ScsModsetPathResolver.GetStandardGameDataDirectory(modset.Game)
+            : ScsModsetPathResolver.GetRuntimeGameDataDirectory(modset);
+        var modDirectory = ScsModsetPathResolver.GetModDirectory(modset);
+        var localProfilesDirectory = ScsModsetPathResolver.GetLocalProfilesDirectory(modset);
+        var steamProfilesDirectory = ScsModsetPathResolver.GetSteamProfilesDirectory(modset);
         var warnings = new List<string>();
 
-        if (!Directory.Exists(gameDataDirectory))
+        var inspectionRootExists = directMode
+            ? Directory.Exists(modDirectory)
+            : Directory.Exists(gameDataDirectory);
+
+        if (!inspectionRootExists)
         {
+            var warning = directMode
+                ? "Der ausgewählte Mod-Ordner existiert nicht."
+                : $"Der SCS-Datenordner '{GameDefinition.For(modset.Game).HomeDirectoryName}' existiert noch nicht.";
+
             return Task.FromResult(new ModsetInspection(
                 gameDataDirectory,
                 modDirectory,
@@ -27,7 +37,7 @@ public sealed class ScsModsetInspector : IModsetInspector
                 PackageModCount: 0,
                 ExtractedModCount: 0,
                 Profiles: Array.Empty<ScsProfileInfo>(),
-                Warnings: [$"Der SCS-Datenordner '{definition.HomeDirectoryName}' existiert noch nicht."]));
+                Warnings: [warning]));
         }
 
         var packageModCount = CountScsPackages(modDirectory, warnings, cancellationToken);

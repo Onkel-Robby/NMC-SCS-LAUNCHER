@@ -30,7 +30,7 @@
         </StackPanel>
 
         <Border Grid.Row="2" Margin="0,20,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="9" Padding="13">
-            <TextBlock Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
+            <TextBlock x:Name="BackupInfoTextBlock" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap"
                        Text="Mods sind standardmäßig deaktiviert, da große Map-/Modsets sehr umfangreich sein können. Das Backup wird als ZIP mit NMC-Manifest gespeichert. Quelldateien werden nicht verändert." />
         </Border>
 

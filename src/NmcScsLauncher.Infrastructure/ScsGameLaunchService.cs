@@ -17,6 +17,29 @@ public sealed class ScsGameLaunchService : IGameLaunchService
         var checks = new List<LaunchCheckItem>();
         var definition = GameDefinition.For(modset.Game);
 
+        if (ScsModsetPathResolver.UsesDirectModDirectory(modset))
+        {
+            try
+            {
+                ScsModsetPathResolver.EnsureRuntimeWorkspace(modset);
+                checks.Add(new LaunchCheckItem(
+                    "Mod-Ordner",
+                    ScsModsetPathResolver.GetModDirectory(modset),
+                    LaunchCheckSeverity.Success));
+                checks.Add(new LaunchCheckItem(
+                    "Profile",
+                    "Lokale und Steam-Profile verwenden die normalen SCS-Dokumentenpfade.",
+                    LaunchCheckSeverity.Success));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+            {
+                checks.Add(new LaunchCheckItem(
+                    "Modset-Zuordnung",
+                    $"Der direkte Mod-Ordner konnte nicht in die Laufzeitumgebung eingebunden werden: {ex.Message}",
+                    LaunchCheckSeverity.Error));
+            }
+        }
+
         if (installation.GameType != modset.Game)
         {
             checks.Add(new LaunchCheckItem(
@@ -70,7 +93,7 @@ public sealed class ScsGameLaunchService : IGameLaunchService
             checks.Add(CheckWriteAccess(homeBasePath));
         }
 
-        var gameDataDirectory = Path.Combine(homeBasePath, definition.HomeDirectoryName);
+        var gameDataDirectory = ScsModsetPathResolver.GetRuntimeGameDataDirectory(modset);
         checks.Add(Directory.Exists(gameDataDirectory)
             ? new LaunchCheckItem(
                 "SCS-Datenordner",

@@ -36,7 +36,10 @@ public sealed class ModsetDuplicationService : IModsetDuplicationService
         if (modsets.Any(item => item.Game == source.Game && string.Equals(item.Name, targetName, StringComparison.CurrentCultureIgnoreCase)))
             throw new ModsetValidationException("Für dieses Spiel existiert bereits ein Modset mit diesem Namen.");
 
-        var sourceHome = NormalizePath(source.HomeBasePath, "Der Quellpfad ist ungültig.");
+        var directMode = ScsModsetPathResolver.UsesDirectModDirectory(source);
+        var sourceHome = NormalizePath(
+            directMode ? ScsModsetPathResolver.GetModDirectory(source) : source.HomeBasePath,
+            "Der Quellpfad ist ungültig.");
         var targetHome = NormalizePath(request.TargetHomeBasePath, "Der Zielpfad ist ungültig.");
         EnsureSeparatedTrees(sourceHome, targetHome);
         if (Directory.Exists(targetHome) || File.Exists(targetHome))
@@ -49,7 +52,9 @@ public sealed class ModsetDuplicationService : IModsetDuplicationService
         Directory.CreateDirectory(targetParent);
         var stagingHome = targetHome + ".nmc-dup-" + Guid.NewGuid().ToString("N");
         var warnings = new List<string>();
-        var plan = BuildCopyPlan(source, sourceHome, request.Content, warnings, cancellationToken);
+        var plan = directMode
+            ? BuildDirectModCopyPlan(sourceHome, request.Content, warnings, cancellationToken)
+            : BuildCopyPlan(source, sourceHome, request.Content, warnings, cancellationToken);
         var totalBytes = plan.Files.Sum(static item => item.Length);
         progress?.Report(new ModsetDuplicationProgress("Scanning", 0, totalBytes, 0, plan.Files.Count));
 
@@ -91,12 +96,38 @@ public sealed class ModsetDuplicationService : IModsetDuplicationService
             source.Game,
             targetName,
             source.Description,
-            targetHome,
+            directMode ? string.Empty : targetHome,
             source.PreferredProfile,
-            source.AdditionalLaunchArguments), cancellationToken);
+            source.AdditionalLaunchArguments,
+            directMode ? targetHome : null), cancellationToken);
 
         progress?.Report(new ModsetDuplicationProgress("Completed", bytesCopied, totalBytes, filesCopied, plan.Files.Count));
         return new ModsetDuplicationResult(created, filesCopied, bytesCopied, warnings);
+    }
+
+    private static CopyPlan BuildDirectModCopyPlan(
+        string sourceModDirectory,
+        ModsetCopyContent content,
+        ICollection<string> warnings,
+        CancellationToken cancellationToken)
+    {
+        var directories = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var files = new List<CopyFile>();
+
+        if (content.HasFlag(ModsetCopyContent.Mods))
+        {
+            AddDirectoryTree(sourceModDirectory, sourceModDirectory, directories, files, warnings, cancellationToken);
+        }
+
+        var ignored = content & ~ModsetCopyContent.Mods;
+        if (ignored != ModsetCopyContent.None)
+        {
+            warnings.Add("Konfiguration, Profile, Screenshots und Logs werden bei direkten Mod-Ordnern nicht dupliziert, weil diese Daten aus den normalen SCS-Pfaden verwendet werden.");
+        }
+
+        return new CopyPlan(
+            directories,
+            files.OrderBy(static item => item.RelativePath, StringComparer.OrdinalIgnoreCase).ToList());
     }
 
     private static CopyPlan BuildCopyPlan(

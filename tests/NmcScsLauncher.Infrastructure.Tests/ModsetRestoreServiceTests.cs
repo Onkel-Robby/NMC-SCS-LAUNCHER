@@ -47,6 +47,62 @@ public sealed class ModsetRestoreServiceTests
     }
 
     [Fact]
+    public async Task DirectModsetRestoreWritesIntoExactSelectedModFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        Modset? source = null;
+        Modset? target = null;
+        try
+        {
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+
+            var sourceMods = Directory.CreateDirectory(Path.Combine(root, "source-mods")).FullName;
+            await File.WriteAllTextAsync(Path.Combine(sourceMods, "map.scs"), "direct-mod");
+            source = await manager.CreateAsync(new ModsetDraft(
+                GameType.Ets2,
+                "Direct Source",
+                null,
+                string.Empty,
+                null,
+                null,
+                sourceMods));
+
+            var archivePath = Path.Combine(root, "direct.zip");
+            await new ModsetBackupService(manager).CreateAsync(
+                new ModsetBackupRequest(source.Id, archivePath, ModsetBackupContent.Mods));
+
+            var targetMods = Directory.CreateDirectory(Path.Combine(root, "target-mods")).FullName;
+            target = await manager.ImportAsync(new ModsetDraft(
+                GameType.Ets2,
+                "Direct Target",
+                null,
+                string.Empty,
+                null,
+                null,
+                targetMods));
+
+            var restore = new ModsetRestoreService(manager);
+            var preview = await restore.InspectAsync(target.Id, archivePath);
+            Assert.Equal(1, preview.NewTargetFiles);
+
+            await restore.RestoreAsync(new ModsetRestoreRequest(target.Id, archivePath, OverwriteExisting: false));
+
+            Assert.Equal("direct-mod", await File.ReadAllTextAsync(Path.Combine(targetMods, "map.scs")));
+            Assert.False(Directory.Exists(Path.Combine(targetMods, "mod")));
+        }
+        finally
+        {
+            if (source is not null && Directory.Exists(source.HomeBasePath))
+                Directory.Delete(source.HomeBasePath, recursive: true);
+            if (target is not null && Directory.Exists(target.HomeBasePath))
+                Directory.Delete(target.HomeBasePath, recursive: true);
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task RestoreRejectsBackupForDifferentGame()
     {
         var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));

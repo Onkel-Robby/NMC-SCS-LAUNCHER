@@ -45,7 +45,7 @@ public partial class MainViewModel
         }
 
         var copyName = BuildAvailableCopyName(source);
-        var suggestedTarget = BuildSuggestedHomePath(source.Game, copyName);
+        var suggestedTarget = BuildSuggestedModPath(source.Game, copyName);
         var dialogResult = _modsetDuplicationDialogService.Show(source, suggestedTarget);
         if (dialogResult is null) return;
 
@@ -75,7 +75,7 @@ public partial class MainViewModel
 
             await _logger.WriteAsync(
                 "INFO",
-                $"Duplicated modset {source.Id} to {result.Modset.Id}. Files={result.FilesCopied}; Bytes={result.BytesCopied}; Target={result.Modset.HomeBasePath}");
+                $"Duplicated modset {source.Id} to {result.Modset.Id}. Files={result.FilesCopied}; Bytes={result.BytesCopied}; Target={result.Modset.ModFolderDisplayPath}");
 
             foreach (var warning in result.Warnings)
             {

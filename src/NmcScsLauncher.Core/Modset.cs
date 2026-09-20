@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace NmcScsLauncher.Core;
 
 public sealed record Modset
@@ -11,6 +13,13 @@ public sealed record Modset
     public string? Description { get; init; }
 
     public required string HomeBasePath { get; init; }
+
+    public string? ModDirectoryPath { get; init; }
+
+    [JsonIgnore]
+    public string ModFolderDisplayPath => !string.IsNullOrWhiteSpace(ModDirectoryPath)
+        ? ModDirectoryPath
+        : Path.Combine(HomeBasePath, GameDefinition.For(Game).HomeDirectoryName, "mod");
 
     public required DateTimeOffset CreatedAt { get; init; }
 
@@ -31,7 +40,8 @@ public sealed record ModsetDraft(
     string? Description,
     string HomeBasePath,
     string? PreferredProfile = null,
-    string? AdditionalLaunchArguments = null);
+    string? AdditionalLaunchArguments = null,
+    string? ModDirectoryPath = null);
 
 public sealed class ModsetValidationException : Exception
 {

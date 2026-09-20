@@ -39,4 +39,50 @@ public sealed class ModsetDuplicationCopyTests
         Assert.True(result.Modset.IsManagedDirectory);
         Assert.Equal(2, (await manager.GetAllAsync()).Count);
     }
+
+    [Fact]
+    public async Task DuplicateDirectModsetCopiesFilesIntoExactTargetFolder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        Modset? source = null;
+        Modset? copy = null;
+        try
+        {
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            var sourceMods = Directory.CreateDirectory(Path.Combine(root, "source-mods")).FullName;
+            await File.WriteAllTextAsync(Path.Combine(sourceMods, "map.scs"), "mod");
+
+            source = await manager.ImportAsync(new ModsetDraft(
+                GameType.Ets2,
+                "Direct Source",
+                null,
+                string.Empty,
+                null,
+                null,
+                sourceMods));
+
+            var targetMods = Path.Combine(root, "copy-mods");
+            var result = await new ModsetDuplicationService(manager).DuplicateAsync(
+                new ModsetDuplicationRequest(
+                    source.Id,
+                    "Direct Copy",
+                    targetMods,
+                    ModsetCopyContent.Mods));
+            copy = result.Modset;
+
+            Assert.Equal(Path.GetFullPath(targetMods), copy.ModDirectoryPath);
+            Assert.True(File.Exists(Path.Combine(targetMods, "map.scs")));
+            Assert.False(Directory.Exists(Path.Combine(targetMods, "Euro Truck Simulator 2")));
+        }
+        finally
+        {
+            if (source is not null && Directory.Exists(source.HomeBasePath))
+                Directory.Delete(source.HomeBasePath, recursive: true);
+            if (copy is not null && Directory.Exists(copy.HomeBasePath))
+                Directory.Delete(copy.HomeBasePath, recursive: true);
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
 }
