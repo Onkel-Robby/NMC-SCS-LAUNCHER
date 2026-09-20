@@ -152,7 +152,9 @@ public sealed class UpdatePackageApplier
     private static bool IsInstallerUninstallerFile(string fileName)
     {
         var extension = Path.GetExtension(fileName);
-        if (extension is not ".exe" and not ".dat" and not ".msg")
+        if (!extension.Equals(".exe", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".dat", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
             return false;
 
         var stem = Path.GetFileNameWithoutExtension(fileName);
