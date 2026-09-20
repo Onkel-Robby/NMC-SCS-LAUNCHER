@@ -24,6 +24,22 @@ public partial class ModsetDuplicationWindow : Window
         SourceTextBlock.Text = $"Quelle: {source.Name} · {GameDefinition.For(source.Game).DisplayName}";
         NameTextBox.Text = source.Name + " Kopie";
         TargetPathTextBox.Text = suggestedTargetHome;
+
+        if (!string.IsNullOrWhiteSpace(source.ModDirectoryPath))
+        {
+            TargetPathLabel.Text = "Neuer Mod-Ordner";
+            TargetPathHint.Text = "Der Zielordner muss neu sein. Er wird direkt als Mod-Ordner der Kopie verwendet.";
+            ConfigurationCheckBox.IsChecked = false;
+            ConfigurationCheckBox.IsEnabled = false;
+            ProfilesCheckBox.IsChecked = false;
+            ProfilesCheckBox.IsEnabled = false;
+            ScreenshotsCheckBox.IsChecked = false;
+            ScreenshotsCheckBox.IsEnabled = false;
+            LogsCheckBox.IsChecked = false;
+            LogsCheckBox.IsEnabled = false;
+            ModsCheckBox.IsChecked = true;
+            CopyInfoTextBlock.Text = "Bei direkten Mod-Ordnern werden nur die Mod-Dateien dupliziert. Profile bleiben in den normalen SCS-Pfaden und werden nicht kopiert.";
+        }
     }
 
     private void BrowseTarget_OnClick(object sender, RoutedEventArgs e)
@@ -59,7 +75,7 @@ public partial class ModsetDuplicationWindow : Window
         }
         if (target.Length == 0 || !Path.IsPathFullyQualified(target))
         {
-            ValidationTextBlock.Text = "Bitte ein absolutes neues Home-Verzeichnis angeben.";
+            ValidationTextBlock.Text = "Bitte einen absoluten neuen Zielordner angeben.";
             return;
         }
         if (Directory.Exists(target) || File.Exists(target))
