@@ -1,3 +1,4 @@
+using System.IO;
 using System.Diagnostics;
 using System.Reflection;
 using System.Windows;
@@ -96,7 +97,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         {
             _dispatcher = Dispatcher.CurrentDispatcher;
 
-            var app = new Application
+            var app = new System.Windows.Application
             {
                 ShutdownMode = ShutdownMode.OnMainWindowClose
             };
