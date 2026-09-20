@@ -36,9 +36,11 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="ModPathTextBox" Height="34" Padding="8,5" />
                     <Button Grid.Column="1" Content="Durchsuchen …" Margin="8,0,0,0" Padding="12,5" Click="BrowseMod_Click" />
+                    <Button x:Name="CreateFolderButton" Grid.Column="2" Content="Ordner anlegen" Margin="8,0,0,0" Padding="12,5" Click="CreateFolder_Click" />
                 </Grid>
                 <TextBlock Margin="0,0,0,15" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
                            Text="Dieser Ordner wird direkt als Mod-Ordner verwendet. Der Launcher hängt weder 'Euro Truck Simulator 2'/'American Truck Simulator' noch '\mod' an. Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden." />

@@ -25,12 +25,13 @@ public partial class ModsetEditorWindow : Window
         DescriptionTextBox.Text = initialData.Description ?? string.Empty;
         ModPathTextBox.Text = initialData.ModDirectoryPath;
         LaunchArgumentsTextBox.Text = initialData.AdditionalLaunchArguments ?? string.Empty;
+        CreateFolderButton.Visibility = mode == ModsetEditorMode.Create ? Visibility.Visible : Visibility.Collapsed;
 
         switch (mode)
         {
             case ModsetEditorMode.Create:
                 HeadingTextBlock.Text = "Neues Modset";
-                SubtitleTextBlock.Text = "Wähle genau den Ordner aus, in dem die Mods dieses Modsets liegen sollen.";
+                SubtitleTextBlock.Text = "Wähle einen vorhandenen Mod-Ordner aus oder lege den eingetragenen neuen Ordner direkt an.";
                 SaveButton.Content = "Modset erstellen";
                 break;
             case ModsetEditorMode.Import:
@@ -56,14 +57,47 @@ public partial class ModsetEditorWindow : Window
             Multiselect = false
         };
 
-        if (Directory.Exists(ModPathTextBox.Text))
+        var initialDirectory = FindExistingDirectory(ModPathTextBox.Text);
+        if (initialDirectory is not null)
         {
-            dialog.InitialDirectory = ModPathTextBox.Text;
+            dialog.InitialDirectory = initialDirectory;
         }
 
         if (dialog.ShowDialog(this) == true)
         {
             ModPathTextBox.Text = dialog.FolderName;
+        }
+    }
+
+    private void CreateFolder_Click(object sender, RoutedEventArgs e)
+    {
+        ValidationTextBlock.Text = string.Empty;
+        var modPath = ModPathTextBox.Text.Trim();
+
+        if (modPath.Length == 0)
+        {
+            ValidationTextBlock.Text = "Bitte zuerst einen Mod-Ordner-Pfad angeben.";
+            return;
+        }
+
+        if (!Path.IsPathFullyQualified(modPath))
+        {
+            ValidationTextBlock.Text = "Bitte einen absoluten Mod-Ordner-Pfad angeben.";
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(modPath);
+            ValidationTextBlock.Text = "Mod-Ordner wurde angelegt.";
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException
+                                   or IOException
+                                   or ArgumentException
+                                   or NotSupportedException
+                                   or PathTooLongException)
+        {
+            ValidationTextBlock.Text = $"Mod-Ordner konnte nicht angelegt werden: {ex.Message}";
         }
     }
 
@@ -111,6 +145,35 @@ public partial class ModsetEditorWindow : Window
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private static string? FindExistingDirectory(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var current = Path.GetFullPath(path.Trim());
+            while (!Directory.Exists(current))
+            {
+                var parent = Directory.GetParent(current);
+                if (parent is null)
+                {
+                    return null;
+                }
+
+                current = parent.FullName;
+            }
+
+            return current;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
     }
 
     private static string? NullIfWhiteSpace(string value) =>
