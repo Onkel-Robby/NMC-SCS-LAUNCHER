@@ -43,7 +43,14 @@ public partial class MainViewModel
         IsBusy = true;
         try
         {
-            var snapshot = await _workshopContentLocator.ScanAsync(WorkshopSelectedGame);
+            var detectedInstallation = await _gameDetector.DetectAsync(
+                WorkshopSelectedGame,
+                GetSavedPath(WorkshopSelectedGame));
+            var preferredInstallPath = detectedInstallation?.InstallPath ?? GetSavedPath(WorkshopSelectedGame);
+
+            var snapshot = await _workshopContentLocator.ScanAsync(
+                WorkshopSelectedGame,
+                preferredInstallPath);
             WorkshopItems.Clear();
             foreach (var item in snapshot.Items)
             {
@@ -62,7 +69,7 @@ public partial class MainViewModel
             SelectedWorkshopItem = WorkshopItems.FirstOrDefault();
             await _logger.WriteAsync(
                 "INFO",
-                $"Workshop scan completed. Game={WorkshopSelectedGame}; Items={snapshot.Items.Count}; Roots={snapshot.ScannedContentRoots.Count}; Warnings={snapshot.Warnings.Count}");
+                $"Workshop scan completed. Game={WorkshopSelectedGame}; InstallPath={preferredInstallPath ?? "<none>"}; Items={snapshot.Items.Count}; Roots={snapshot.ScannedContentRoots.Count}; Warnings={snapshot.Warnings.Count}");
         }
         catch (Exception ex)
         {

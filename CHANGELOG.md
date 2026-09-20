@@ -28,6 +28,9 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Updateprüfung verwendet ausschließlich den bereits vorhandenen LicenseHub-Vertrag; am LicenseHub-Server ist keine NMC-SCS-LAUNCHER-spezifische Erweiterung erforderlich.
 - Veröffentlichte Artefaktnamen enthalten die echte Projektversion.
 
+### Fixed
+- Workshop-Erkennung verwendet zusätzlich den tatsächlich erkannten bzw. gespeicherten ETS2-/ATS-Installationspfad, um die zugehörige Steam-Library und `steamapps\\workshop\\content\\<AppId>` zu finden.
+
 ### Security
 - Startup-Gate ist jetzt auch bei unerwarteten Ausnahmen fail-closed: Ein Fehler bei Initialisierung, Credential-Zugriff oder Aktivierungsdialog kann nicht mehr dazu führen, dass das Hauptfenster trotzdem geöffnet wird.
 - Lizenzstatus wird weiterhin beim Programmstart und unmittelbar vor dem Spielstart serverseitig bestätigt.
