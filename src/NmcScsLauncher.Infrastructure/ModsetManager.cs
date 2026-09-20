@@ -26,9 +26,11 @@ public sealed class ModsetManager : IModsetManager, IDisposable
         }
     }
 
-    public Task<Modset> CreateAsync(ModsetDraft draft, CancellationToken cancellationToken = default) => AddAsync(draft, isImport: false, cancellationToken);
+    public Task<Modset> CreateAsync(ModsetDraft draft, CancellationToken cancellationToken = default) =>
+        AddAsync(draft, isImport: false, cancellationToken);
 
-    public Task<Modset> ImportAsync(ModsetDraft draft, CancellationToken cancellationToken = default) => AddAsync(draft, isImport: true, cancellationToken);
+    public Task<Modset> ImportAsync(ModsetDraft draft, CancellationToken cancellationToken = default) =>
+        AddAsync(draft, isImport: true, cancellationToken);
 
     public async Task<Modset> UpdateAsync(Guid id, ModsetDraft draft, CancellationToken cancellationToken = default)
     {
@@ -41,16 +43,38 @@ public sealed class ModsetManager : IModsetManager, IDisposable
             var modsets = (await _store.LoadAsync(cancellationToken)).ToList();
             var index = modsets.FindIndex(item => item.Id == id);
             if (index < 0) throw new KeyNotFoundException($"Modset {id} wurde nicht gefunden.");
-            EnsureUniqueName(modsets, normalizedDraft.Game, normalizedDraft.Name, id);
-            if (!Directory.Exists(normalizedDraft.HomeBasePath)) throw new ModsetValidationException("Der neue Home-Pfad muss beim Bearbeiten bereits existieren.");
 
+            EnsureUniqueName(modsets, normalizedDraft.Game, normalizedDraft.Name, id);
             var existing = modsets[index];
+
+            string homeBasePath;
+            string? modDirectoryPath;
+            if (!string.IsNullOrWhiteSpace(normalizedDraft.ModDirectoryPath))
+            {
+                modDirectoryPath = normalizedDraft.ModDirectoryPath;
+                if (!Directory.Exists(modDirectoryPath))
+                    throw new ModsetValidationException("Der ausgewählte Mod-Ordner muss beim Bearbeiten bereits existieren.");
+
+                homeBasePath = !string.IsNullOrWhiteSpace(existing.ModDirectoryPath)
+                    ? existing.HomeBasePath
+                    : BuildRuntimeHomePath(id);
+                Directory.CreateDirectory(homeBasePath);
+            }
+            else
+            {
+                homeBasePath = normalizedDraft.HomeBasePath;
+                modDirectoryPath = null;
+                if (!Directory.Exists(homeBasePath))
+                    throw new ModsetValidationException("Der neue Home-Pfad muss beim Bearbeiten bereits existieren.");
+            }
+
             var updated = existing with
             {
                 Game = normalizedDraft.Game,
                 Name = normalizedDraft.Name,
                 Description = normalizedDraft.Description,
-                HomeBasePath = normalizedDraft.HomeBasePath,
+                HomeBasePath = homeBasePath,
+                ModDirectoryPath = modDirectoryPath,
                 PreferredProfile = normalizedDraft.PreferredProfile,
                 AdditionalLaunchArguments = normalizedDraft.AdditionalLaunchArguments,
                 UpdatedAt = DateTimeOffset.UtcNow
@@ -111,28 +135,57 @@ public sealed class ModsetManager : IModsetManager, IDisposable
     private async Task<Modset> AddAsync(ModsetDraft draft, bool isImport, CancellationToken cancellationToken)
     {
         var normalizedDraft = NormalizeAndValidate(draft);
-        if (isImport)
-        {
-            if (!Directory.Exists(normalizedDraft.HomeBasePath)) throw new ModsetValidationException("Das zu importierende Home-Verzeichnis existiert nicht.");
-        }
-        else
-        {
-            Directory.CreateDirectory(normalizedDraft.HomeBasePath);
-        }
 
         await _gate.WaitAsync(cancellationToken);
         try
         {
             var modsets = (await _store.LoadAsync(cancellationToken)).ToList();
             EnsureUniqueName(modsets, normalizedDraft.Game, normalizedDraft.Name, exceptId: null);
+
+            var id = Guid.NewGuid();
+            string homeBasePath;
+            string? modDirectoryPath;
+
+            if (!string.IsNullOrWhiteSpace(normalizedDraft.ModDirectoryPath))
+            {
+                modDirectoryPath = normalizedDraft.ModDirectoryPath;
+                if (isImport)
+                {
+                    if (!Directory.Exists(modDirectoryPath))
+                        throw new ModsetValidationException("Der zu importierende Mod-Ordner existiert nicht.");
+                }
+                else
+                {
+                    Directory.CreateDirectory(modDirectoryPath);
+                }
+
+                homeBasePath = BuildRuntimeHomePath(id);
+                Directory.CreateDirectory(homeBasePath);
+            }
+            else
+            {
+                homeBasePath = normalizedDraft.HomeBasePath;
+                modDirectoryPath = null;
+                if (isImport)
+                {
+                    if (!Directory.Exists(homeBasePath))
+                        throw new ModsetValidationException("Das zu importierende Home-Verzeichnis existiert nicht.");
+                }
+                else
+                {
+                    Directory.CreateDirectory(homeBasePath);
+                }
+            }
+
             var now = DateTimeOffset.UtcNow;
             var modset = new Modset
             {
-                Id = Guid.NewGuid(),
+                Id = id,
                 Game = normalizedDraft.Game,
                 Name = normalizedDraft.Name,
                 Description = normalizedDraft.Description,
-                HomeBasePath = normalizedDraft.HomeBasePath,
+                HomeBasePath = homeBasePath,
+                ModDirectoryPath = modDirectoryPath,
                 CreatedAt = now,
                 UpdatedAt = now,
                 PreferredProfile = normalizedDraft.PreferredProfile,
@@ -154,24 +207,53 @@ public sealed class ModsetManager : IModsetManager, IDisposable
         ArgumentNullException.ThrowIfNull(draft);
         var name = draft.Name.Trim();
         if (name.Length == 0) throw new ModsetValidationException("Der Modset-Name darf nicht leer sein.");
-        if (string.IsNullOrWhiteSpace(draft.HomeBasePath)) throw new ModsetValidationException("Ein Home-Verzeichnis ist erforderlich.");
 
-        string path;
-        try { path = Path.GetFullPath(draft.HomeBasePath.Trim()); }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { throw new ModsetValidationException("Der Home-Pfad ist ungültig."); }
-        if (!Path.IsPathFullyQualified(path)) throw new ModsetValidationException("Der Home-Pfad muss absolut sein.");
+        string homePath = string.Empty;
+        string? modDirectoryPath = null;
+
+        if (!string.IsNullOrWhiteSpace(draft.ModDirectoryPath))
+        {
+            modDirectoryPath = NormalizePath(draft.ModDirectoryPath, "Der Mod-Ordner-Pfad ist ungültig.");
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(draft.HomeBasePath))
+                throw new ModsetValidationException("Ein Home-Verzeichnis ist erforderlich.");
+
+            homePath = NormalizePath(draft.HomeBasePath, "Der Home-Pfad ist ungültig.");
+        }
 
         return draft with
         {
             Name = name,
             Description = NormalizeOptional(draft.Description),
-            HomeBasePath = path,
+            HomeBasePath = homePath,
+            ModDirectoryPath = modDirectoryPath,
             PreferredProfile = NormalizeOptional(draft.PreferredProfile),
             AdditionalLaunchArguments = NormalizeOptional(draft.AdditionalLaunchArguments)
         };
     }
 
-    private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static string NormalizePath(string value, string errorMessage)
+    {
+        string path;
+        try { path = Path.GetFullPath(value.Trim()); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            throw new ModsetValidationException(errorMessage);
+        }
+
+        if (!Path.IsPathFullyQualified(path))
+            throw new ModsetValidationException(errorMessage);
+
+        return Path.TrimEndingDirectorySeparator(path);
+    }
+
+    private static string BuildRuntimeHomePath(Guid id) =>
+        Path.Combine(AppPaths.RuntimeHomesDirectory, id.ToString("N"));
+
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static void EnsureUniqueName(IEnumerable<Modset> modsets, GameType game, string name, Guid? exceptId)
     {
