@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace NmcScsLauncher.Infrastructure;
 
 public sealed record LicenseHubRuntimeConfiguration(
@@ -8,6 +10,7 @@ public sealed record LicenseHubRuntimeConfiguration(
 {
     public const string DefaultBaseUrl = "https://licensehub.nmc-it-service.cloud";
     public const string DefaultProductSlug = "NMC-SCS-LAUNCHER";
+    private const string EmbeddedProductApiKeyMetadataName = "NmcLicenseHubProductApiKey";
 
     public bool HasAnyConfiguration =>
         Required
@@ -40,18 +43,39 @@ public sealed record LicenseHubRuntimeConfiguration(
             effectiveApiKey!);
     }
 
-    public static LicenseHubRuntimeConfiguration FromEnvironment(bool requiredByBuild = false)
+    public static LicenseHubRuntimeConfiguration FromEnvironment(
+        bool requiredByBuild = false,
+        string? builtInProductApiKey = null)
     {
         var requiredValue = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_REQUIRED")?.Trim();
         var requiredByEnvironment = string.Equals(requiredValue, "1", StringComparison.OrdinalIgnoreCase)
             || string.Equals(requiredValue, "true", StringComparison.OrdinalIgnoreCase)
             || string.Equals(requiredValue, "yes", StringComparison.OrdinalIgnoreCase);
 
+        var releaseProductApiKey =
+            Normalize(builtInProductApiKey)
+            ?? ReadEmbeddedProductApiKey();
+
         return new LicenseHubRuntimeConfiguration(
             requiredByBuild || requiredByEnvironment,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_BASE_URL")) ?? DefaultBaseUrl,
             Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_SLUG")) ?? DefaultProductSlug,
-            Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
+            releaseProductApiKey
+                ?? Normalize(Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY")));
+    }
+
+    private static string? ReadEmbeddedProductApiKey()
+    {
+        var attribute = typeof(LicenseHubRuntimeConfiguration)
+            .Assembly
+            .GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(static item =>
+                string.Equals(
+                    item.Key,
+                    EmbeddedProductApiKeyMetadataName,
+                    StringComparison.Ordinal));
+
+        return Normalize(attribute?.Value);
     }
 
     private static string? Normalize(string? value)
