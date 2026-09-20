@@ -194,7 +194,7 @@
                             <TextBlock Text="Launcher-Verhalten und Standardpfade konfigurieren." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
                                 <StackPanel>
-                                    <TextBlock Text="Standardordner für neue Modsets" FontSize="17" FontWeight="SemiBold" />
+                                    <TextBlock Text="Standardordner für neue Mod-Ordner" FontSize="17" FontWeight="SemiBold" />
                                     <TextBlock Text="Dieser Pfad ist der Standardordner für neu angelegte Mod-Ordner. Beim Modset selbst wird der ausgewählte Ordner direkt verwendet." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,10" />
                                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding SettingsDefaultModsetRoot, UpdateSourceTrigger=PropertyChanged}" Padding="9,7"/><Button Grid.Column="1" Content="Durchsuchen …" Command="{Binding BrowseDefaultModsetRootCommand}" Margin="8,0,0,0"/></Grid>
                                 </StackPanel>
