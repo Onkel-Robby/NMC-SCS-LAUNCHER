@@ -11,6 +11,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Klassischer Per-User-Windows-Installer unter `%LOCALAPPDATA%\\Programs\\NMC SCS LAUNCHER` mit Startmenü-Verknüpfung und optionalem Desktop-Shortcut.
+- CI-Erstellung des Setup-EXE inklusive SHA-256-Sidecar und automatisiertem Silent-Install/Uninstall-Smoke-Test.
 - Persistenter Product-API-Key-Store im Windows Credential Manager für verwaltete Erstprovisionierung und spätere direkte EXE-Starts.
 - Automatischer Test, dass ein einmal provisioniertes Product Credential bei einem späteren direkten Start ohne Umgebungsvariable wiederverwendet wird.
 - Release-Identitätsprüfung in CI: ProductVersion, Launcher/Updater und self-contained Runtime-Dateien werden vor Artefakt-Upload validiert.

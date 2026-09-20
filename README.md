@@ -29,6 +29,24 @@ Aktuelle Version: **1.0.0**
 
 Der veröffentlichte Windows-Build ist **self-contained**. Auf dem Zielsystem muss deshalb kein separates .NET Runtime-Paket installiert werden.
 
+## Windows-Installer
+
+Zusätzlich zum portablen ZIP erzeugt CI einen klassischen Per-User-Installer:
+
+```text
+NMC-SCS-LAUNCHER-1.0.0-Setup.exe
+```
+
+Standardziel:
+
+```text
+%LOCALAPPDATA%\Programs\NMC SCS LAUNCHER\
+```
+
+Der Installer benötigt standardmäßig keine Administratorrechte, legt eine Startmenü-Verknüpfung an und kann optional eine Desktop-Verknüpfung erstellen. Die Per-User-Installation ist bewusst gewählt, damit der vorhandene LicenseHub-Updater Programmdateien ohne zusätzliche UAC-Elevation aktualisieren kann. Launcher-Daten und LicenseHub-Credentials werden bei der Deinstallation nicht automatisch gelöscht.
+
+Weitere Details: [`docs/INSTALLER.md`](docs/INSTALLER.md)
+
 ## Start / portable Bereitstellung
 
 Das CI erzeugt ein vollständiges Windows-x64-Publish-Artefakt sowie ein versioniertes ZIP-Paket:
@@ -105,7 +123,7 @@ dotnet build NMC-SCS-LAUNCHER.sln -c Release
 dotnet test NMC-SCS-LAUNCHER.sln -c Release
 ```
 
-GitHub Actions führt Restore, Build, Tests, self-contained Publish, Updater-Publish, Versionsprüfung sowie die Erstellung des versionierten Release-ZIP mit SHA-256-Sidecar aus.
+GitHub Actions führt Restore, Build, Tests, self-contained Publish, Updater-Publish, Versionsprüfung, die Erstellung des versionierten Release-ZIP sowie den Build und einen Install/Uninstall-Smoke-Test des Windows-Installers aus. ZIP und Installer erhalten jeweils ein SHA-256-Sidecar.
 
 ## Architektur
 
