@@ -345,6 +345,7 @@ public partial class MainViewModel : ObservableObject
             if (SelectedModset?.Id != modset.Id) return;
 
             _selectedInspection = inspection;
+            SetLocalMods(inspection.LocalMods);
             SelectedModCountText = _settings.ShowModCount
                 ? $"{inspection.TotalModCount} ({inspection.PackageModCount} .scs + {inspection.ExtractedModCount} Ordner)"
                 : "In Einstellungen ausgeblendet";
@@ -390,6 +391,7 @@ public partial class MainViewModel : ObservableObject
     private void ClearInspection()
     {
         _selectedInspection = null;
+        ClearLocalMods();
         SelectedModCountText = "–";
         SelectedProfileCountText = "–";
         SelectedModDirectory = "–";
