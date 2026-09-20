@@ -6,7 +6,8 @@
         Width="1280" Height="820" MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource WindowBackgroundBrush}"
-        Foreground="{StaticResource PrimaryTextBrush}">
+        Foreground="{StaticResource PrimaryTextBrush}"
+        Icon="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher.ico">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="245" />
@@ -23,9 +24,13 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="NMC" FontSize="28" FontWeight="Bold" />
-                    <TextBlock Text="SCS LAUNCHER" Margin="0,1,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontWeight="SemiBold" />
-                    <Border Margin="0,18,0,20" Height="1" Background="#263342" />
+                    <Image Source="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher-logo.png"
+                           Width="198"
+                           Height="66"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Left"
+                           SnapsToDevicePixels="True" />
+                    <Border Margin="0,14,0,20" Height="1" Background="#263342" />
                 </StackPanel>
 
                 <ListBox Grid.Row="1"
@@ -50,7 +55,7 @@
                         </StackPanel>
                     </Border>
                     <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
-                    <TextBlock Text="NMC Network" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,3,0,0" />
+                    <Image Source="/NmcScsLauncher.App;component/Assets/nmc-it-service-logo.png" Width="105" Height="35" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,5,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -354,6 +359,7 @@
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="38,30,38,28" MaxWidth="850" HorizontalAlignment="Left">
+                            <Image Source="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher-logo.png" Width="340" Height="113" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" />
                             <TextBlock Text="NMC SCS LAUNCHER" FontSize="30" FontWeight="Bold" />
                             <TextBlock Text="Moderner Windows-Launcher für getrennte ETS2- und ATS-Modsets." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
@@ -370,8 +376,12 @@
                 </TabItem>
             </TabControl>
 
-            <Border Grid.Row="1" Background="#0E151E" BorderBrush="#1F2B39" BorderThickness="0,1,0,0" Padding="18,10">
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="NMC SCS LAUNCHER" Foreground="{StaticResource SecondaryTextBrush}" Margin="20,0,0,0"/></Grid>
+            <Border Grid.Row="1" Background="#0E151E" BorderBrush="#1F2B39" BorderThickness="0,1,0,0" Padding="18,8">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <Image Grid.Column="1" Source="/NmcScsLauncher.App;component/Assets/nmc-it-service-logo.png" Width="108" Height="36" Stretch="Uniform" Margin="20,0,0,0" VerticalAlignment="Center"/>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

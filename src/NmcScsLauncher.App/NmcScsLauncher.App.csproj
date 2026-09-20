@@ -7,7 +7,13 @@
     <PublishSingleFile>false</PublishSingleFile>
     <PublishTrimmed>false</PublishTrimmed>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>..\..\branding\nmc-scs-launcher.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="..\..\branding\nmc-scs-launcher-logo.png" Link="Assets\nmc-scs-launcher-logo.png" />
+    <Resource Include="..\..\branding\nmc-it-service-logo.png" Link="Assets\nmc-it-service-logo.png" />
+    <Resource Include="..\..\branding\nmc-scs-launcher.ico" Link="Assets\nmc-scs-launcher.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NmcScsLauncher.Core\NmcScsLauncher.Core.csproj" />
     <ProjectReference Include="..\NmcScsLauncher.Infrastructure\NmcScsLauncher.Infrastructure.csproj" />
