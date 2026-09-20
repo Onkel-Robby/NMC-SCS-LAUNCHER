@@ -31,6 +31,33 @@ public sealed class SteamLibraryLocatorTests
         }
     }
 
+
+    [Fact]
+    public void FindsConfiguredLibraryFromLegacyConfigLocation()
+    {
+        var root = CreateTemporaryDirectory();
+        var secondLibrary = CreateTemporaryDirectory();
+        try
+        {
+            var config = Directory.CreateDirectory(Path.Combine(root, "config"));
+            var encodedSecondLibrary = secondLibrary.Replace("\\", "\\\\");
+            File.WriteAllText(
+                Path.Combine(config.FullName, "libraryfolders.vdf"),
+                $"\"LibraryFolders\"\n{{\n    \"1\"    \"{encodedSecondLibrary}\"\n}}");
+
+            var locator = new SteamLibraryLocator([root]);
+            var libraries = locator.FindLibraryRoots();
+
+            Assert.Contains(Path.GetFullPath(root), libraries, StringComparer.OrdinalIgnoreCase);
+            Assert.Contains(Path.GetFullPath(secondLibrary), libraries, StringComparer.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+            Directory.Delete(secondLibrary, recursive: true);
+        }
+    }
+
     private static string CreateTemporaryDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));

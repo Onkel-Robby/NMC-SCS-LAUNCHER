@@ -47,29 +47,80 @@ public sealed partial class SteamLibraryLocator
 
         if (OperatingSystem.IsWindows())
         {
-            TryReadRegistryValue(Registry.CurrentUser, @"Software\Valve\Steam", "SteamPath", candidates);
-            TryReadRegistryValue(Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", candidates);
-            TryReadRegistryValue(Registry.LocalMachine, @"SOFTWARE\Valve\Steam", "InstallPath", candidates);
+            AddWindowsRegistrySteamCandidates(candidates);
         }
 
-        var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        if (!string.IsNullOrWhiteSpace(programFilesX86))
-        {
-            candidates.Add(Path.Combine(programFilesX86, "Steam"));
-        }
+        AddKnownWindowsSteamFolder(candidates, Environment.SpecialFolder.ProgramFilesX86);
+        AddKnownWindowsSteamFolder(candidates, Environment.SpecialFolder.ProgramFiles);
 
         return candidates;
     }
 
+    private static void AddKnownWindowsSteamFolder(ISet<string> candidates, Environment.SpecialFolder specialFolder)
+    {
+        var basePath = Environment.GetFolderPath(specialFolder);
+        if (!string.IsNullOrWhiteSpace(basePath))
+        {
+            candidates.Add(Path.Combine(basePath, "Steam"));
+        }
+    }
+
     [SupportedOSPlatform("windows")]
-    private static void TryReadRegistryValue(RegistryKey root, string subKeyPath, string valueName, ISet<string> candidates)
+    private static void AddWindowsRegistrySteamCandidates(ISet<string> candidates)
+    {
+        foreach (var view in new[] { RegistryView.Registry32, RegistryView.Registry64 })
+        {
+            try
+            {
+                using var currentUser = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, view);
+                TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "SteamPath", candidates);
+                TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "InstallPath", candidates);
+                TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "SteamExe", candidates, valueIsExecutable: true);
+            }
+            catch (Exception)
+            {
+                // Registry discovery is best-effort. Other views/candidates remain available.
+            }
+
+            try
+            {
+                using var localMachine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "InstallPath", candidates);
+                TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "SteamPath", candidates);
+                TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "SteamExe", candidates, valueIsExecutable: true);
+            }
+            catch (Exception)
+            {
+                // Registry discovery is best-effort. Other views/candidates remain available.
+            }
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void TryReadRegistryValue(
+        RegistryKey root,
+        string subKeyPath,
+        string valueName,
+        ISet<string> candidates,
+        bool valueIsExecutable = false)
     {
         try
         {
             using var key = root.OpenSubKey(subKeyPath);
-            if (key?.GetValue(valueName) is string path && !string.IsNullOrWhiteSpace(path))
+            if (key?.GetValue(valueName) is not string raw || string.IsNullOrWhiteSpace(raw))
             {
-                candidates.Add(path.Replace('/', Path.DirectorySeparatorChar));
+                return;
+            }
+
+            var normalized = raw.Trim().Trim('"').Replace('/', Path.DirectorySeparatorChar);
+            if (valueIsExecutable)
+            {
+                normalized = Path.GetDirectoryName(normalized) ?? string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                candidates.Add(normalized);
             }
         }
         catch (Exception)
@@ -80,7 +131,20 @@ public sealed partial class SteamLibraryLocator
 
     private static void ReadConfiguredLibraries(string steamRoot, ISet<string> libraries)
     {
-        var configPath = Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf");
+        var candidateFiles = new[]
+        {
+            Path.Combine(steamRoot, "steamapps", "libraryfolders.vdf"),
+            Path.Combine(steamRoot, "config", "libraryfolders.vdf")
+        };
+
+        foreach (var configPath in candidateFiles.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            ReadConfiguredLibrariesFile(configPath, libraries);
+        }
+    }
+
+    private static void ReadConfiguredLibrariesFile(string configPath, ISet<string> libraries)
+    {
         if (!File.Exists(configPath))
         {
             return;
@@ -100,15 +164,9 @@ public sealed partial class SteamLibraryLocator
             return;
         }
 
-        var modernMatches = ModernPathRegex().Matches(content);
-        foreach (Match match in modernMatches)
+        foreach (Match match in ModernPathRegex().Matches(content))
         {
             AddVdfPath(libraries, match.Groups["path"].Value);
-        }
-
-        if (modernMatches.Count > 0)
-        {
-            return;
         }
 
         foreach (Match match in LegacyPathRegex().Matches(content))
