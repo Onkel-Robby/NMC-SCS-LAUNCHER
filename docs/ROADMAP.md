@@ -40,7 +40,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [~] realer ETS2-/ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version
 - [x] Live-Lizenztest gegen produktive LicenseHub-Credentials: Aktivierung mit Benutzer-Lizenzschlüssel erfolgreich; gespeicherter Lizenzschlüssel wird nach Neustart automatisch aus dem Windows Credential Manager geladen und serverseitig validiert
 - [x] Live-Test für gesperrte/abgelaufene Lizenz: Launcher bleibt fail-closed und zeigt erneut den Lizenz-Key-Dialog statt die Hauptoberfläche freizugeben; Wechseltest bestätigt: gesperrter gespeicherter Key kann durch einen anderen gültigen Key ersetzt werden, und wird anschließend auch dieser neue Key serverseitig blockiert, erscheint erneut der Lizenz-Key-Dialog
-- [~] Live-Test der LicenseHub-Deaktivierung
+- [x] Live-Test der LicenseHub-Deaktivierung: Geräteaktivierung wurde serverseitig bestätigt, lokaler Lizenz-Key anschließend entfernt, Launcher automatisch beendet und beim nächsten Start korrekt wieder der Lizenz-Key-Dialog angezeigt
 - [x] reales LicenseHub-Release 1.0.0 → 1.0.1: Update erkannt, Paket heruntergeladen, SHA-256 erfolgreich verifiziert, externer Updater angewendet und Launcher automatisch als Version 1.0.1 neu gestartet
 - [~] realer Rollback-Test des externen Updaters bei absichtlich fehlgeschlagenem Update/Neustart
 
@@ -52,4 +52,4 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
-**Release-Stand:** Version 1.0.1 ist als self-contained portable Windows-x64-Build umgesetzt und wurde erfolgreich als reales LicenseHub-Update von 1.0.0 auf einem Windows-Zielsystem eingespielt. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
+**Release-Stand:** Version 1.0.2 ist als self-contained portable Windows-x64-Build umgesetzt. Das reale LicenseHub-Update von 1.0.0 auf 1.0.1 sowie die serverseitige Geräte-Deaktivierung mit anschließendem erneuten Lizenz-Gate wurden auf einem Windows-Zielsystem erfolgreich verifiziert. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
