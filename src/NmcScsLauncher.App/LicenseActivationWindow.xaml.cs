@@ -7,18 +7,15 @@ namespace NmcScsLauncher.App;
 public partial class LicenseActivationWindow : Window
 {
     private readonly ILicenseRuntimeService _runtime;
-    private readonly IProductApiCredentialStore _productApiCredentialStore;
     private readonly string _appVersion;
 
     public LicenseActivationWindow(
         ILicenseRuntimeService runtime,
-        IProductApiCredentialStore productApiCredentialStore,
         LicenseRuntimeSnapshot initialState,
         string appVersion)
     {
         InitializeComponent();
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
-        _productApiCredentialStore = productApiCredentialStore ?? throw new ArgumentNullException(nameof(productApiCredentialStore));
         _appVersion = string.IsNullOrWhiteSpace(appVersion)
             ? throw new ArgumentException("App version is required.", nameof(appVersion))
             : appVersion;
@@ -35,32 +32,6 @@ public partial class LicenseActivationWindow : Window
             return;
         }
 
-        if (ProductCredentialPanel.Visibility == Visibility.Visible)
-        {
-            var productApiKey = ProductApiKeyPasswordBox.Password.Trim();
-            if (productApiKey.Length == 0)
-            {
-                ResultTextBlock.Text = "Bitte den Product-API-Key für die lokale Ersteinrichtung eingeben.";
-                return;
-            }
-
-            if (productApiKey.Length > 64)
-            {
-                ResultTextBlock.Text = "Der Product-API-Key ist ungültig.";
-                return;
-            }
-
-            try
-            {
-                await _productApiCredentialStore.SaveProductApiKeyAsync(productApiKey);
-            }
-            catch
-            {
-                ResultTextBlock.Text = "Der Product-API-Key konnte nicht sicher im Windows Credential Manager gespeichert werden.";
-                return;
-            }
-        }
-
         SetBusy(true, "Lizenz wird bei LicenseHub aktiviert …");
         try
         {
@@ -72,14 +43,13 @@ public partial class LicenseActivationWindow : Window
 
             if (state.State == LicenseRuntimeState.InvalidProductCredentials)
             {
-                ProductApiKeyPasswordBox.Clear();
-                ResultTextBlock.Text = "Der Product-API-Key wurde von LicenseHub abgewiesen. Bitte die Produktkonfiguration prüfen und erneut eingeben.";
+                ResultTextBlock.Text =
+                    "Die Produktkonfiguration dieses Builds wurde von LicenseHub abgewiesen. Bitte installiere einen korrekt bereitgestellten NMC SCS LAUNCHER Build.";
                 return;
             }
 
             if (state.AllowsUse && state.EnforcementEnabled)
             {
-                ProductApiKeyPasswordBox.Clear();
                 LicenseKeyPasswordBox.Clear();
                 ResultTextBlock.Text = "Lizenz wurde erfolgreich aktiviert und bestätigt.";
                 DialogResult = true;
@@ -121,10 +91,6 @@ public partial class LicenseActivationWindow : Window
     private void ApplyState(LicenseRuntimeSnapshot state)
     {
         StatusTextBlock.Text = state.Message;
-        ProductCredentialPanel.Visibility = state.State is LicenseRuntimeState.ConfigurationError
-            or LicenseRuntimeState.InvalidProductCredentials
-            ? Visibility.Visible
-            : Visibility.Collapsed;
         ResultTextBlock.Text = BuildDetails(state);
     }
 
@@ -133,9 +99,11 @@ public partial class LicenseActivationWindow : Window
         ProgressBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         ActivateButton.IsEnabled = !busy;
         RetryButton.IsEnabled = !busy;
-        ProductApiKeyPasswordBox.IsEnabled = !busy;
         LicenseKeyPasswordBox.IsEnabled = !busy;
-        if (!string.IsNullOrWhiteSpace(message)) ResultTextBlock.Text = message;
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            ResultTextBlock.Text = message;
+        }
     }
 
     private static string BuildDetails(LicenseRuntimeSnapshot state)
@@ -152,7 +120,8 @@ public partial class LicenseActivationWindow : Window
 
     private static string SafeMessage(Exception exception) => exception switch
     {
-        LicenseHubConfigurationException => "LicenseHub ist für diesen Build nicht vollständig konfiguriert.",
+        LicenseHubConfigurationException =>
+            "Die Produktkonfiguration dieses Builds fehlt oder ist ungültig. Bitte installiere einen korrekt bereitgestellten Build.",
         HttpRequestException => "LicenseHub ist derzeit nicht erreichbar.",
         OperationCanceledException => "Die Anfrage wurde abgebrochen oder hat das Zeitlimit überschritten.",
         _ => "Details wurden nicht in der Oberfläche offengelegt."

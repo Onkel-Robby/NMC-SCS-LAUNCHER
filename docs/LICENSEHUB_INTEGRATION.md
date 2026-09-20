@@ -34,26 +34,31 @@ Lokal wird berechnet:
 
 `SHA-256("NMC-SCS-LAUNCHER|" + normalizedMachineGuid)`
 
-## Lokale Credential-Ablage
+## Credential-Bereitstellung
 
-Lizenzschlüssel und Product API Key werden getrennt im Windows Credential Manager gespeichert und nicht in `settings.json` geschrieben.
+Der Benutzer-Lizenzschlüssel wird nach erfolgreicher Aktivierung im Windows Credential Manager gespeichert und nicht in `settings.json` geschrieben.
 
-Targets:
+Target:
 
 - Lizenzschlüssel: `NMC Network/NMC SCS LAUNCHER/LicenseKey`
-- Product API Key: `NMC Network/NMC SCS LAUNCHER/ProductApiKey`
 
-Der Product API Key kann bei der Erstprovisionierung über `NMC_LICENSEHUB_PRODUCT_API_KEY` bereitgestellt werden. Erkennt der Launcher diesen Wert, speichert er ihn in Windows Credential Manager. Spätere direkte EXE-Starts laden ihn von dort, sodass keine PowerShell-Umgebungsvariable für jeden Start notwendig ist.
+Der Product API Key wird für veröffentlichte Builds nicht vom Benutzer abgefragt. GitHub Actions übernimmt ihn beim Publish aus dem Repository-Secret:
 
-Echte Product API Keys und Lizenzschlüssel werden weder committed noch geloggt.
+`NMC_LICENSEHUB_PRODUCT_API_KEY`
+
+Der Wert wird nicht in Workflow, Sourcecode oder Logs geschrieben. Er wird als Build-Metadatum in die veröffentlichte Infrastructure-Assembly eingebettet und von der Laufzeit vor einem eventuell vorhandenen lokalen Fallback verwendet.
+
+Das frühere Credential-Manager-Target `NMC Network/NMC SCS LAUNCHER/ProductApiKey` bleibt nur für bestehende Installationen und Entwicklungs-/Migrationsfälle als Fallback lesbar. Neue Release-Builds müssen den Product API Key nicht mehr lokal provisionieren.
 
 ### Sicherheitsgrenze
 
-Da der unveränderte LicenseHub-Server den Product API Key zwingend für den Desktop-Lizenzvertrag verlangt, muss dieses Credential auf dem Client verfügbar sein. Windows Credential Manager verhindert Klartextablage in Projektdateien oder JSON-Konfiguration, bietet aber keinen Schutz gegen einen ausreichend privilegierten lokalen Administrator. Diese Grenze ist eine direkte Folge des bestehenden Serververtrags und wird nicht durch einen eingebetteten zusätzlichen Bearer-Token verschärft.
+Der unveränderte LicenseHub-Server verlangt den Product API Key für den Desktop-Lizenzvertrag. Deshalb muss das Credential technisch im ausgelieferten Client verfügbar sein. Das Entfernen aus dem öffentlichen Repository schützt vor versehentlicher Quellcode-/Workflow-Offenlegung, macht das Credential aber **nicht** zu einem nicht extrahierbaren Geheimnis: Ein ausreichend versierter lokaler Benutzer kann Credentials aus Desktop-Binaries analysieren.
+
+Der Product API Key muss deshalb serverseitig auf die minimal erforderlichen Produkt-/Lizenz-/Updateaktionen beschränkt und unabhängig vom Benutzer-Lizenzschlüssel behandelt werden.
 
 ## Release-Enforcement
 
-Release-Builds erzwingen LicenseHub bereits zur Buildzeit. Fehlt das lokale Product Credential oder kann keine gültige Lizenz bestätigt werden, wird die Hauptoberfläche nicht freigegeben.
+Release-Builds erzwingen LicenseHub bereits zur Buildzeit. Der `main`-CI-Lauf bricht ab, wenn das Repository-Secret `NMC_LICENSEHUB_PRODUCT_API_KEY` fehlt. Kann zur Laufzeit keine gültige Lizenz bestätigt werden, wird die Hauptoberfläche nicht freigegeben.
 
 Debug-Builds dürfen weiterhin den Entwicklungs-Bypass verwenden.
 
@@ -95,17 +100,19 @@ Dieses Paket ist ein Anwendungsupdate und nicht der spätere Windows-Installer.
 - Base URL: `https://licensehub.nmc-it-service.cloud`
 - Product Slug: `NMC-SCS-LAUNCHER`
 
-Provisionierung:
+Release-Build:
 
-- Product API Key einmalig außerhalb des Sourcecodes, danach Windows Credential Manager
-- Test-/Produktivlizenz über den normalen Aktivierungsdialog
+- GitHub Repository Secret `NMC_LICENSEHUB_PRODUCT_API_KEY`
+- Secret wird nur im WPF-Publish-Schritt als Build-Eingabe verwendet
+- Aktivierungsdialog zeigt ausschließlich den Benutzer-Lizenzschlüssel
+- eingebettetes Product-Credential hat Vorrang vor lokalen Fallbacks
 
-Unterstützte Umgebungsvariablen:
+Entwicklung/Migration:
 
-- `NMC_LICENSEHUB_REQUIRED`
 - `NMC_LICENSEHUB_BASE_URL`
 - `NMC_LICENSEHUB_PRODUCT_SLUG`
 - `NMC_LICENSEHUB_PRODUCT_API_KEY`
+- bestehendes Product-Credential im Windows Credential Manager als Legacy-Fallback
 
 Für veröffentlichte Release-Builds kommt die Lizenzpflicht aus dem Build und kann nicht durch Weglassen von `NMC_LICENSEHUB_REQUIRED` umgangen werden.
 
@@ -113,8 +120,8 @@ Für veröffentlichte Release-Builds kommt die Lizenzpflicht aus dem Build und k
 
 Der Installer bleibt blockiert, bis folgende reale End-to-End-Tests bestanden sind:
 
-1. Product API Key einmalig provisionieren und bei späterem direktem EXE-Start aus Windows Credential Manager wiederverwenden.
-2. Lizenz aktivieren und nach Neustart serverseitig validieren.
+1. Release-Build mit gesetztem GitHub-Secret erzeugen und verifizieren, dass kein Product-Key-Eingabefeld erscheint.
+2. Nur den Benutzer-Lizenzschlüssel eingeben, aktivieren und nach Neustart serverseitig validieren.
 3. gesperrte, abgelaufene oder nicht aktivierte Lizenz blockiert den Launcher fail-closed.
 4. direkter EXE-Doppelklick kann die Lizenzprüfung nicht umgehen.
 5. reales LicenseHub-Release wird über den bestehenden Update-Endpunkt erkannt, heruntergeladen, per SHA-256 verifiziert und erfolgreich angewendet.

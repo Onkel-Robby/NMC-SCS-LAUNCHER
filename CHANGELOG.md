@@ -26,6 +26,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Release-Identitätsprüfung in CI: ProductVersion, Launcher/Updater und self-contained Runtime-Dateien werden vor Artefakt-Upload validiert.
 
 ### Changed
+- LicenseHub-Aktivierung fragt Benutzer nur noch nach dem Lizenzschlüssel; das Product-Credential wird für Release-Builds beim CI-Publish aus dem GitHub-Secret `NMC_LICENSEHUB_PRODUCT_API_KEY` eingebettet.
+- Eingebettete Product-Credentials haben Vorrang vor Environment-/Credential-Manager-Fallbacks; bestehende lokale Product-Credentials bleiben für Migration und Entwicklung lesbar.
 - Neue und bearbeitete Modsets verwenden den vom Benutzer ausgewählten Pfad direkt als Mod-Ordner; es wird weder `Euro Truck Simulator 2`/`American Truck Simulator` noch `mod` an diesen Pfad angehängt.
 - Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden und werden bei direkten Modsets nicht pro Modset dupliziert.
 - Der SCS-`-homedir` bleibt intern launcherverwaltet; der direkte Mod-Ordner und die Standardprofilordner werden zur Laufzeit sicher eingebunden.
@@ -42,6 +44,8 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - Startup-Gate ist jetzt auch bei unerwarteten Ausnahmen fail-closed: Ein Fehler bei Initialisierung, Credential-Zugriff oder Aktivierungsdialog kann nicht mehr dazu führen, dass das Hauptfenster trotzdem geöffnet wird.
 - Lizenzstatus wird weiterhin beim Programmstart und unmittelbar vor dem Spielstart serverseitig bestätigt.
 - Product API Key und Benutzer-Lizenzschlüssel werden nicht im Repository oder in `settings.json` gespeichert.
+- `main`-Release-Builds brechen ab, wenn das erforderliche GitHub-Actions-Secret für das Product-Credential nicht gesetzt ist; der geheime Wert wird nicht in Workflow-Text oder Logs ausgegeben.
+- Das eingebettete Desktop-Product-Credential wird ausdrücklich nicht als nicht extrahierbares Geheimnis behandelt und muss serverseitig minimal berechtigt bleiben.
 - Updatepakete werden beim Download und unmittelbar vor dem Anwenden erneut per SHA-256 geprüft.
 
 ### External verification status

@@ -146,11 +146,7 @@ public sealed class ApplicationUpdateService : IApplicationUpdateService
             throw new LicenseHubConfigurationException("LicenseHub update endpoint configuration is incomplete.");
 
         var apiKey = _runtimeConfiguration.ProductApiKey?.Trim();
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            await _productApiCredentialStore.SaveProductApiKeyAsync(apiKey, cancellationToken);
-        }
-        else
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             apiKey = await _productApiCredentialStore.LoadProductApiKeyAsync(cancellationToken);
         }
