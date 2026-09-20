@@ -10,13 +10,20 @@ public interface ILicenseActivationDialogService
 
 public sealed class LicenseActivationDialogService : ILicenseActivationDialogService
 {
+    private readonly IProductApiCredentialStore _productApiCredentialStore;
+
+    public LicenseActivationDialogService(IProductApiCredentialStore productApiCredentialStore)
+    {
+        _productApiCredentialStore = productApiCredentialStore ?? throw new ArgumentNullException(nameof(productApiCredentialStore));
+    }
+
     public bool Show(ILicenseRuntimeService runtime, LicenseRuntimeSnapshot initialState, string appVersion)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(initialState);
         ArgumentException.ThrowIfNullOrWhiteSpace(appVersion);
 
-        var window = new LicenseActivationWindow(runtime, initialState, appVersion);
+        var window = new LicenseActivationWindow(runtime, _productApiCredentialStore, initialState, appVersion);
         if (Application.Current?.MainWindow is { IsVisible: true } owner)
         {
             window.Owner = owner;
