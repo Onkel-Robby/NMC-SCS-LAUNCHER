@@ -48,6 +48,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
+- [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
+- [~] realer Windows-Feldtest des neuen NMC Custom Installers inklusive Migration einer bestehenden Inno-Installation; bis dahin bleibt Inno Setup als Fallback erhalten
 - [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Auswahl, Refresh, lokaler Ordner und Steam-Seite
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion

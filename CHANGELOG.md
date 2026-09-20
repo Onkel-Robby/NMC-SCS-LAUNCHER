@@ -11,6 +11,7 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Neuer vollständig gebrandeter **NMC Custom Installer** auf WiX Toolset 5/Burn mit eigener .NET-10-WPF-Oberfläche, per-user MSI, frei wählbarem Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Silent-Modus und automatisierter Inno-Setup-Migration.
 - Einheitliches NMC-Branding für Launcher, LicenseHub-Aktivierung, Updatefenster, Launcher-/Updater-EXE und Windows-Installer; das freigegebene NMC SCS LAUNCHER Logo wird in der UI verwendet und NMC IT-SERVICE erscheint als Firmenbranding im Footer.
 - Einstellungen enthalten die echte Aktion **„Lizenz auf diesem PC deaktivieren“**. Sie meldet die aktuelle Maschinenaktivierung über den vorhandenen LicenseHub-Deaktivierungsendpunkt ab und beendet danach den Launcher.
 - Vor der Deaktivierung wird ausdrücklich bestätigt, dass der Aktivierungsplatz bei LicenseHub freigegeben wird und beim nächsten Start wieder ein gültiger Lizenz-Key erforderlich ist.
