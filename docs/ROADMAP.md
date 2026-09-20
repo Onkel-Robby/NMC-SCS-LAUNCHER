@@ -43,6 +43,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Live-Test der LicenseHub-Deaktivierung: Geräteaktivierung wurde serverseitig bestätigt, lokaler Lizenz-Key anschließend entfernt, Launcher automatisch beendet und beim nächsten Start korrekt wieder der Lizenz-Key-Dialog angezeigt
 - [x] reales LicenseHub-Release 1.0.0 → 1.0.1: Update erkannt, Paket heruntergeladen, SHA-256 erfolgreich verifiziert, externer Updater angewendet und Launcher automatisch als Version 1.0.1 neu gestartet
 - [x] realer Rollback-Test des externen Updaters: absichtlich ungültiges 1.0.3-Paket wurde nach erfolgreicher SHA-256-Prüfung angewendet, Neustart der ungültigen EXE scheiterte erwartungsgemäß und der vorherige funktionsfähige Stand 1.0.2 wurde wiederhergestellt
+- [x] Reparaturinstallation des finalen 1.0.0-Stands auf Windows bestätigt: Launcher zeigt Version 1.0.0 und die vom Inno-Installer erzeugten `unins000.exe`/`unins000.dat` sind im Installationsverzeichnis wieder vorhanden
 
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
