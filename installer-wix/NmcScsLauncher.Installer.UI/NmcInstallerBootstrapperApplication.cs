@@ -74,7 +74,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         Error += (_, e) =>
         {
             _lastError = $"Fehler {e.ErrorCode}: {e.ErrorMessage}";
-            Ui(() => _window?.SetStatus(_lastError));
+            AppendDiagnostic($"Windows Installer reported: {_lastError}");
         };
 
         ApplyComplete += OnApplyComplete;
@@ -360,9 +360,16 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         if (e.Status >= 0)
         {
             _packageInstalled = _currentAction != LaunchAction.Uninstall;
+            _lastError = string.Empty;
             Ui(() =>
             {
                 _window?.SetInstalled(_packageInstalled);
+                _window?.SetStatus(
+                    _currentAction == LaunchAction.Uninstall
+                        ? "NMC SCS LAUNCHER wurde erfolgreich deinstalliert."
+                        : _currentAction == LaunchAction.Repair
+                            ? "NMC SCS LAUNCHER wurde erfolgreich repariert."
+                            : "NMC SCS LAUNCHER wurde erfolgreich installiert.");
                 _window?.ShowSuccess(
                     _packageInstalled,
                     _currentAction == LaunchAction.Uninstall
