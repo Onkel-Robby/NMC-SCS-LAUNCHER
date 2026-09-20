@@ -63,6 +63,27 @@ public sealed class LicenseHubRuntimeConfigurationTests
     }
 
     [Fact]
+    public void BuiltInProductApiKeyTakesPriorityOverEnvironmentProvisioning()
+    {
+        var previousProductApiKey = Environment.GetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY");
+        try
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", "environment-key");
+
+            var configuration = LicenseHubRuntimeConfiguration.FromEnvironment(
+                requiredByBuild: true,
+                builtInProductApiKey: "embedded-key");
+
+            Assert.Equal("embedded-key", configuration.ProductApiKey);
+            Assert.True(configuration.HasLicenseConfiguration);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("NMC_LICENSEHUB_PRODUCT_API_KEY", previousProductApiKey);
+        }
+    }
+
+    [Fact]
     public void ProductApiKeyCompletesLicenseConfigurationWithPublicDefaults()
     {
         var configuration = new LicenseHubRuntimeConfiguration(
