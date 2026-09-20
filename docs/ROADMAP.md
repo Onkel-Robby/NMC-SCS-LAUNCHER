@@ -54,6 +54,13 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
+- [x] Save-Editor-Fundament: Profil-/Save-Erkennung, vollständiges Save-Backup, Spiel-läuft-Sperre, sichere temporäre Dateiersetzung und erste skalare Profilwerte (Geld/XP) für Klartext-Saves
+- [ ] SCS-Save-Decoder für verschlüsselte/binäre `game.sii` und `profile.sii` mit geeigneter Drittanbieter-Lizenz integrieren
+- [ ] Save-Editor UI: Profil/Save-Auswahl, Backup-Wiederherstellung und Bestätigungsdialoge
+- [ ] Profilfunktionen: Profilname, Geld, XP/Level und Skills
+- [ ] Truck-Funktionen: aktueller Truck, Reparatur, Kraftstoff, Kilometer, Kennzeichen, Motor/Getriebe und Truck-Wechsel
+- [ ] Trailer-Funktionen: aktueller Trailer, Reparatur, Ladungsgewicht, Kennzeichen und Trailer-Wechsel
+- [ ] reale Feldtests der Save-Bearbeitung mit ETS2 und ATS auf Kopien echter Benutzer-Saves
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
 **Release-Stand:** Der finale Produktstand wird wieder als Version 1.0.0 geführt. Die temporären Versionen 1.0.1 bis 1.0.3 dienten ausschließlich den realen LicenseHub-Update-, Deaktivierungs- und Rollback-Feldtests; deren erfolgreich verifizierte Funktionen sind Bestandteil des finalen 1.0.0-Stands. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
