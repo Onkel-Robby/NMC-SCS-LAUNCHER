@@ -39,7 +39,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 - [~] realer ETS2-/ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version
 - [x] Live-Lizenztest gegen produktive LicenseHub-Credentials: Aktivierung mit Benutzer-Lizenzschlüssel erfolgreich; gespeicherter Lizenzschlüssel wird nach Neustart automatisch aus dem Windows Credential Manager geladen und serverseitig validiert
-- [~] Live-Test für gesperrte/abgelaufene Lizenz und Deaktivierung
+- [x] Live-Test für gesperrte/abgelaufene Lizenz: Launcher bleibt fail-closed und zeigt erneut den Lizenz-Key-Dialog statt die Hauptoberfläche freizugeben
+- [~] Live-Test der LicenseHub-Deaktivierung
 - [~] reales LicenseHub-Release inklusive Update, Neustart und Rollback
 
 ## Nach 1.0.0
