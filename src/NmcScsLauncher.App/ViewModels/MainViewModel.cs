@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NmcScsLauncher.App.Services;
 using NmcScsLauncher.Core;
+using NmcScsLauncher.Infrastructure;
 
 namespace NmcScsLauncher.App.ViewModels;
 
