@@ -40,7 +40,20 @@ jobs:
       - name: Test
         run: dotnet test NMC-SCS-LAUNCHER.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
 
+      - name: Validate embedded LicenseHub product credential
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          NMC_LICENSEHUB_PRODUCT_API_KEY: ${{ secrets.NMC_LICENSEHUB_PRODUCT_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NMC_LICENSEHUB_PRODUCT_API_KEY)) {
+            throw "Repository secret NMC_LICENSEHUB_PRODUCT_API_KEY is required for main release builds."
+          }
+          Write-Host "LicenseHub product credential is configured for release embedding."
+
       - name: Publish WPF app
+        env:
+          NMC_LICENSEHUB_PRODUCT_API_KEY: ${{ secrets.NMC_LICENSEHUB_PRODUCT_API_KEY }}
         run: dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
 
       - name: Publish updater
