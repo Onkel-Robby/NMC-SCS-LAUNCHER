@@ -163,6 +163,49 @@ public sealed class LicenseRuntimeServiceTests
         Assert.True(directStartState.AllowsUse);
     }
 
+    [Fact]
+    public async Task RejectedStoredProductCredentialIsClearedAndCanBeReplaced()
+    {
+        var licenseStore = new MemoryCredentialStore();
+        var productStore = new MemoryProductApiCredentialStore("wrong-product-value");
+        var service = new LicenseRuntimeService(
+            new LicenseHubRuntimeConfiguration(
+                true,
+                "https://license.example.test/",
+                "nmc-scs-launcher",
+                null),
+            licenseStore,
+            productStore,
+            new FixedMachineIdentityProvider(),
+            new HttpClient(new SequenceHandler(
+                new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent(
+                        """{"success":false,"error":"Invalid product credentials"}""",
+                        Encoding.UTF8,
+                        "application/json")
+                },
+                new HttpResponseMessage(HttpStatusCode.Created)
+                {
+                    Content = new StringContent(
+                        """{"success":true,"status":"active","license":{"max_activations":1,"current_activations":1}}""",
+                        Encoding.UTF8,
+                        "application/json")
+                })));
+
+        var rejected = await service.ActivateAsync("license-value", "Test PC", "1.0.0");
+
+        Assert.Equal(LicenseRuntimeState.InvalidProductCredentials, rejected.State);
+        Assert.Null(await productStore.LoadProductApiKeyAsync());
+
+        await productStore.SaveProductApiKeyAsync("correct-product-value");
+        var active = await service.ActivateAsync("license-value", "Test PC", "1.0.0");
+
+        Assert.Equal(LicenseRuntimeState.Active, active.State);
+        Assert.True(active.AllowsUse);
+        Assert.Equal("license-value", await licenseStore.LoadLicenseKeyAsync());
+    }
+
     private static LicenseRuntimeService CreateRequiredService(
         MemoryCredentialStore store,
         HttpMessageHandler handler)
@@ -207,6 +250,11 @@ public sealed class LicenseRuntimeServiceTests
     {
         private string? _value;
 
+        public MemoryProductApiCredentialStore(string? initialValue = null)
+        {
+            _value = initialValue;
+        }
+
         public Task<string?> LoadProductApiKeyAsync(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -232,6 +280,23 @@ public sealed class LicenseRuntimeServiceTests
     {
         public Task<string> GetMachineIdAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult("machine-value");
+    }
+
+    private sealed class SequenceHandler : HttpMessageHandler
+    {
+        private readonly Queue<HttpResponseMessage> _responses;
+
+        public SequenceHandler(params HttpResponseMessage[] responses)
+        {
+            _responses = new Queue<HttpResponseMessage>(responses);
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (_responses.Count == 0)
+                throw new InvalidOperationException("No HTTP response configured for this test request.");
+            return Task.FromResult(_responses.Dequeue());
+        }
     }
 
     private sealed class StaticHandler : HttpMessageHandler
