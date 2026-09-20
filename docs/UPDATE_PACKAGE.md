@@ -23,7 +23,9 @@ NmcScsLauncher.App.dll / dependencies as produced by dotnet publish
 
 `NmcScsLauncher.App.exe` MUST exist at the archive root because it is the restart target after a successful update.
 
-The package MUST contain a complete publish output, not only changed files. The updater replaces the application directory as one complete version so obsolete files do not remain accidentally.
+The package MUST contain a complete publish output, not only changed files. The updater replaces the application directory as one complete version so obsolete application files do not remain accidentally.
+
+Installer-owned Inno Setup uninstall files are the exception to that replacement rule. Existing top-level `uninsNNN.exe`, `uninsNNN.dat` and `uninsNNN.msg` files are carried forward from the installed application directory into the staged update. Update ZIPs MUST NOT contain or replace those installer-owned files.
 
 ## Security requirements
 
@@ -33,6 +35,7 @@ The package MUST contain a complete publish output, not only changed files. The 
 - The external updater re-checks SHA-256 immediately before applying the package.
 - ZIP entries may not escape the staging directory (`../`, absolute/path traversal attacks are rejected).
 - The active application directory is never modified in-place file-by-file.
+- Installer-owned Inno Setup uninstall files are preserved across the directory swap and cannot be replaced by an update package.
 - The old application directory is renamed to a rollback backup before the staged version becomes active.
 - If activation of the staged directory fails, the directory swap is rolled back.
 - If launching the updated application fails, the external updater attempts rollback.
