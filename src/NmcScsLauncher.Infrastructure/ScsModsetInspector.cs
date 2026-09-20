@@ -9,6 +9,13 @@ public sealed class ScsModsetInspector : IModsetInspector
         ArgumentNullException.ThrowIfNull(modset);
         cancellationToken.ThrowIfCancellationRequested();
 
+        return Task.Run(() => Inspect(modset, cancellationToken), cancellationToken);
+    }
+
+    private static ModsetInspection Inspect(Modset modset, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var directMode = ScsModsetPathResolver.UsesDirectModDirectory(modset);
         var gameDataDirectory = directMode
             ? ScsModsetPathResolver.GetStandardGameDataDirectory(modset.Game)
@@ -28,7 +35,7 @@ public sealed class ScsModsetInspector : IModsetInspector
                 ? "Der ausgewählte Mod-Ordner existiert nicht."
                 : $"Der SCS-Datenordner '{GameDefinition.For(modset.Game).HomeDirectoryName}' existiert noch nicht.";
 
-            return Task.FromResult(new ModsetInspection(
+            return new ModsetInspection(
                 gameDataDirectory,
                 modDirectory,
                 localProfilesDirectory,
@@ -38,7 +45,7 @@ public sealed class ScsModsetInspector : IModsetInspector
                 ExtractedModCount: 0,
                 Profiles: Array.Empty<ScsProfileInfo>(),
                 Warnings: [warning],
-                ModItems: Array.Empty<LocalModInfo>()));
+                ModItems: Array.Empty<LocalModInfo>());
         }
 
         var mods = ReadMods(modDirectory, warnings, cancellationToken);
@@ -49,7 +56,7 @@ public sealed class ScsModsetInspector : IModsetInspector
         ReadProfiles(localProfilesDirectory, ProfileStorageKind.Local, profiles, warnings, cancellationToken);
         ReadProfiles(steamProfilesDirectory, ProfileStorageKind.Steam, profiles, warnings, cancellationToken);
 
-        return Task.FromResult(new ModsetInspection(
+        return new ModsetInspection(
             gameDataDirectory,
             modDirectory,
             localProfilesDirectory,
@@ -61,7 +68,7 @@ public sealed class ScsModsetInspector : IModsetInspector
                 .ThenBy(static profile => profile.DirectoryName, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             warnings,
-            mods));
+            mods);
     }
 
     private static IReadOnlyList<LocalModInfo> ReadMods(
@@ -116,8 +123,16 @@ public sealed class ScsModsetInspector : IModsetInspector
                 try
                 {
                     var info = new DirectoryInfo(directoryPath);
-                    var size = TryCalculateDirectorySize(info.FullName, cancellationToken, out var complete);
-                    if (!complete)
+                    var isReparsePoint = info.Attributes.HasFlag(FileAttributes.ReparsePoint);
+                    var size = isReparsePoint
+                        ? null
+                        : TryCalculateDirectorySize(info.FullName, cancellationToken, out var complete);
+
+                    if (isReparsePoint)
+                    {
+                        warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' wurde nicht ermittelt, weil der Ordner ein Link/Junction ist.");
+                    }
+                    else if (!complete)
                     {
                         warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' konnte nicht vollständig ermittelt werden.");
                     }
@@ -204,7 +219,7 @@ public sealed class ScsModsetInspector : IModsetInspector
             }
         }
 
-        return total;
+        return complete ? total : null;
     }
 
     private static void ReadProfiles(
