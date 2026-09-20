@@ -44,7 +44,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
-- [ ] optionale SteamUGC-/Workshop-Verwaltungsfunktionen
+- [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Filter, Refresh, lokaler Ordner und Steam-Seite
+- [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
 **Release-Stand:** Version 1.0.0 ist als self-contained portable Windows-x64-Build umgesetzt. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
