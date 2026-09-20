@@ -15,11 +15,12 @@ public sealed class ScsModsetInspectorTests
             var homeBase = Directory.CreateDirectory(Path.Combine(root, "MapCombo")).FullName;
             var gameData = Directory.CreateDirectory(Path.Combine(homeBase, "Euro Truck Simulator 2")).FullName;
             var modDirectory = Directory.CreateDirectory(Path.Combine(gameData, "mod")).FullName;
-            await File.WriteAllTextAsync(Path.Combine(modDirectory, "map.scs"), string.Empty);
-            await File.WriteAllTextAsync(Path.Combine(modDirectory, "truck.SCS"), string.Empty);
-            await File.WriteAllTextAsync(Path.Combine(modDirectory, "notes.txt"), string.Empty);
-            Directory.CreateDirectory(Path.Combine(modDirectory, "unpacked-one"));
+            await File.WriteAllBytesAsync(Path.Combine(modDirectory, "map.scs"), [1, 2, 3, 4]);
+            await File.WriteAllBytesAsync(Path.Combine(modDirectory, "truck.SCS"), [5, 6]);
+            await File.WriteAllTextAsync(Path.Combine(modDirectory, "notes.txt"), "not a mod");
+            var unpackedOne = Directory.CreateDirectory(Path.Combine(modDirectory, "unpacked-one")).FullName;
             Directory.CreateDirectory(Path.Combine(modDirectory, "unpacked-two"));
+            await File.WriteAllBytesAsync(Path.Combine(unpackedOne, "payload.bin"), [1, 2, 3]);
 
             var profiles = Directory.CreateDirectory(Path.Combine(gameData, "profiles")).FullName;
             Directory.CreateDirectory(Path.Combine(profiles, "local-a"));
@@ -33,6 +34,19 @@ public sealed class ScsModsetInspectorTests
             Assert.Equal(2, inspection.PackageModCount);
             Assert.Equal(2, inspection.ExtractedModCount);
             Assert.Equal(4, inspection.TotalModCount);
+            Assert.Equal(4, inspection.LocalMods.Count);
+            Assert.DoesNotContain(inspection.LocalMods, static mod => mod.Name == "notes.txt");
+
+            var map = Assert.Single(inspection.LocalMods, static mod => mod.Name == "map.scs");
+            Assert.Equal(LocalModKind.ScsPackage, map.Kind);
+            Assert.Equal(4, map.SizeBytes);
+            Assert.Equal(Path.GetFullPath(Path.Combine(modDirectory, "map.scs")), map.Path);
+
+            var unpacked = Assert.Single(inspection.LocalMods, static mod => mod.Name == "unpacked-one");
+            Assert.Equal(LocalModKind.ExtractedDirectory, unpacked.Kind);
+            Assert.Equal(3, unpacked.SizeBytes);
+            Assert.Equal(Path.GetFullPath(unpackedOne), unpacked.Path);
+
             Assert.Equal(1, inspection.LocalProfileCount);
             Assert.Equal(2, inspection.SteamProfileCount);
             Assert.Equal(3, inspection.TotalProfileCount);
@@ -67,6 +81,9 @@ public sealed class ScsModsetInspectorTests
             Assert.Equal(1, inspection.PackageModCount);
             Assert.Equal(1, inspection.ExtractedModCount);
             Assert.Equal(2, inspection.TotalModCount);
+            Assert.Equal(2, inspection.LocalMods.Count);
+            Assert.Contains(inspection.LocalMods, static mod => mod.Name == "map.scs" && mod.Kind == LocalModKind.ScsPackage);
+            Assert.Contains(inspection.LocalMods, static mod => mod.Name == "unpacked" && mod.Kind == LocalModKind.ExtractedDirectory);
             Assert.False(Directory.Exists(Path.Combine(modDirectory, "Euro Truck Simulator 2")));
         }
         finally
@@ -85,6 +102,7 @@ public sealed class ScsModsetInspectorTests
 
             Assert.False(inspection.GameDataDirectoryExists);
             Assert.Equal(0, inspection.TotalModCount);
+            Assert.Empty(inspection.LocalMods);
             Assert.Empty(inspection.Profiles);
             Assert.NotEmpty(inspection.Warnings);
             Assert.False(Directory.Exists(Path.Combine(root, "American Truck Simulator")));

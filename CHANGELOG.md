@@ -11,6 +11,9 @@ Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 - README, Release-Dokumentation und Roadmap auf den tatsächlichen Funktionsumfang aktualisiert.
 
 ### Added
+- Lokale Mod-Liste pro Modset mit `.scs`-Paketen und entpackten Mod-Ordnern inklusive Typ, Größe, Änderungsdatum und Pfad.
+- Suche, Sortierung nach Name/Änderungsdatum/Größe/Typ, Typ-Filter sowie Explorer-Aktion für ausgewählte lokale Mods.
+- Größenprüfung entpackter Mods läuft außerhalb des UI-Threads und folgt keinen Junctions/Reparse-Points; unvollständige Größen werden nicht als exakte Werte dargestellt.
 - Read-only Abruf öffentlicher Steam-Workshop-Metadaten für lokal gefundene PublishedFileIds; echte Mod-Titel und Steam-Änderungszeit werden ohne Steam-Login oder API-Key ergänzt.
 - Workshop-Suche über Titel, ID und lokalen Pfad sowie Sortierung nach Name, Änderungsdatum oder PublishedFileId und Filter `Alle` / `Mit Titel` / `Nur ID`.
 - Robuster ID-Fallback, wenn Steam-Metadaten nicht erreichbar oder für einen Workshop-Eintrag nicht verfügbar sind.

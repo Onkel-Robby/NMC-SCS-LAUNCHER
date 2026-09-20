@@ -13,6 +13,7 @@ Aktuelle Version: **1.0.0**
 - Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden (`profiles` / `steam_profiles`).
 - Für den Spielstart erzeugt der Launcher intern eine verwaltete Laufzeit-Home-Basis und bindet den direkten Mod-Ordner sowie die Standardprofile ein.
 - Mods und lokale/Steam-Profile read-only inspizieren.
+- Lokale Mods pro Modset als Liste mit Datei-/Ordnername, Typ, Größe, Änderungsdatum und Pfad anzeigen; Suche, Sortierung, Typ-Filter und Explorer-Aktion sind enthalten.
 - Modsets duplizieren, ohne Junctions oder Hardlinks zu verwenden.
 - ZIP-Backups erstellen und mit Sicherheitsprüfung wiederherstellen.
 - Lokale Steam-Workshop-Verzeichnisse für ETS2/ATS erfassen und im eigenen Workshop-Bereich verwalten.
