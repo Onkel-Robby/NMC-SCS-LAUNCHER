@@ -15,7 +15,8 @@ Aktuelle Version: **1.0.0**
 - Mods und lokale/Steam-Profile read-only inspizieren.
 - Modsets duplizieren, ohne Junctions oder Hardlinks zu verwenden.
 - ZIP-Backups erstellen und mit Sicherheitsprüfung wiederherstellen.
-- Lokale Steam-Workshop-Verzeichnisse read-only erfassen, ohne Abonnements zu verändern.
+- Lokale Steam-Workshop-Verzeichnisse für ETS2/ATS erfassen und im eigenen Workshop-Bereich verwalten.
+- Workshop-Einträge nach Spiel anzeigen, lokal im Explorer öffnen oder die zugehörige Steam-Workshop-Seite im Browser öffnen; Abonnements werden nicht verändert.
 - LicenseHub-Lizenzierung mit Maschinenbindung und Fail-Closed-Verhalten.
 - Lizenzschlüssel und Product API Credential getrennt im Windows Credential Manager speichern.
 - Anwendungsupdates über den vorhandenen LicenseHub-Updatevertrag prüfen, herunterladen und per SHA-256 verifizieren.
