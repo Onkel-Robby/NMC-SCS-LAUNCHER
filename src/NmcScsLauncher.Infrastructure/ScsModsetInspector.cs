@@ -37,11 +37,14 @@ public sealed class ScsModsetInspector : IModsetInspector
                 PackageModCount: 0,
                 ExtractedModCount: 0,
                 Profiles: Array.Empty<ScsProfileInfo>(),
-                Warnings: [warning]));
+                Warnings: [warning],
+                ModItems: Array.Empty<LocalModInfo>()));
         }
 
-        var packageModCount = CountScsPackages(modDirectory, warnings, cancellationToken);
-        var extractedModCount = CountDirectories(modDirectory, warnings, cancellationToken);
+        var mods = ReadMods(modDirectory, warnings, cancellationToken);
+        var packageModCount = mods.Count(static mod => mod.Kind == LocalModKind.ScsPackage);
+        var extractedModCount = mods.Count(static mod => mod.Kind == LocalModKind.ExtractedDirectory);
+
         var profiles = new List<ScsProfileInfo>();
         ReadProfiles(localProfilesDirectory, ProfileStorageKind.Local, profiles, warnings, cancellationToken);
         ReadProfiles(steamProfilesDirectory, ProfileStorageKind.Steam, profiles, warnings, cancellationToken);
@@ -54,61 +57,154 @@ public sealed class ScsModsetInspector : IModsetInspector
             GameDataDirectoryExists: true,
             packageModCount,
             extractedModCount,
-            profiles.OrderBy(static profile => profile.StorageKind).ThenBy(static profile => profile.DirectoryName, StringComparer.OrdinalIgnoreCase).ToArray(),
-            warnings));
+            profiles.OrderBy(static profile => profile.StorageKind)
+                .ThenBy(static profile => profile.DirectoryName, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            warnings,
+            mods));
     }
 
-    private static int CountScsPackages(string directory, ICollection<string> warnings, CancellationToken cancellationToken)
+    private static IReadOnlyList<LocalModInfo> ReadMods(
+        string directory,
+        ICollection<string> warnings,
+        CancellationToken cancellationToken)
     {
         if (!Directory.Exists(directory))
         {
-            return 0;
+            return Array.Empty<LocalModInfo>();
         }
+
+        var mods = new List<LocalModInfo>();
 
         try
         {
-            var count = 0;
             foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (string.Equals(Path.GetExtension(file), ".scs", StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(Path.GetExtension(file), ".scs", StringComparison.OrdinalIgnoreCase))
                 {
-                    count++;
+                    continue;
+                }
+
+                try
+                {
+                    var info = new FileInfo(file);
+                    mods.Add(new LocalModInfo(
+                        info.Name,
+                        info.FullName,
+                        LocalModKind.ScsPackage,
+                        info.Length,
+                        new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    warnings.Add($"Die Mod-Datei '{Path.GetFileName(file)}' konnte nicht vollständig gelesen werden.");
                 }
             }
-
-            return count;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            warnings.Add("Der Mod-Ordner konnte nicht vollständig gelesen werden.");
-            return 0;
-        }
-    }
-
-    private static int CountDirectories(string directory, ICollection<string> warnings, CancellationToken cancellationToken)
-    {
-        if (!Directory.Exists(directory))
-        {
-            return 0;
+            warnings.Add("Der Mod-Ordner konnte nicht vollständig nach .scs-Dateien gelesen werden.");
         }
 
         try
         {
-            var count = 0;
-            foreach (var _ in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
+            foreach (var directoryPath in Directory.EnumerateDirectories(directory, "*", SearchOption.TopDirectoryOnly))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                count++;
-            }
 
-            return count;
+                try
+                {
+                    var info = new DirectoryInfo(directoryPath);
+                    var size = TryCalculateDirectorySize(info.FullName, cancellationToken, out var complete);
+                    if (!complete)
+                    {
+                        warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' konnte nicht vollständig ermittelt werden.");
+                    }
+
+                    mods.Add(new LocalModInfo(
+                        info.Name,
+                        info.FullName,
+                        LocalModKind.ExtractedDirectory,
+                        size,
+                        new DateTimeOffset(info.LastWriteTimeUtc, TimeSpan.Zero)));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    warnings.Add($"Der Mod-Ordner '{Path.GetFileName(directoryPath)}' konnte nicht vollständig gelesen werden.");
+                }
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             warnings.Add("Entpackte Mods konnten nicht vollständig gelesen werden.");
-            return 0;
         }
+
+        return mods
+            .OrderBy(static mod => mod.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(static mod => mod.Kind)
+            .ToArray();
+    }
+
+    private static long? TryCalculateDirectorySize(
+        string root,
+        CancellationToken cancellationToken,
+        out bool complete)
+    {
+        complete = true;
+        long total = 0;
+        var pending = new Stack<string>();
+        pending.Push(root);
+
+        while (pending.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = pending.Pop();
+
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(current, "*", SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        checked
+                        {
+                            total += new FileInfo(file).Length;
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OverflowException)
+                    {
+                        complete = false;
+                    }
+                }
+
+                foreach (var child in Directory.EnumerateDirectories(current, "*", SearchOption.TopDirectoryOnly))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        if (File.GetAttributes(child).HasFlag(FileAttributes.ReparsePoint))
+                        {
+                            complete = false;
+                            continue;
+                        }
+
+                        pending.Push(child);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        complete = false;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                complete = false;
+            }
+        }
+
+        return total;
     }
 
     private static void ReadProfiles(
