@@ -31,7 +31,7 @@ public sealed class ScsSaveEditServiceTests
 
             var result = await service.SetMoneyAsync(save, 250);
 
-            Assert.True(result.Succeeded);
+            Assert.True(result.Succeeded, $"{result.Status}: {result.Message}");
             Assert.NotNull(result.BackupDirectory);
             Assert.Contains("money_account: 250", await File.ReadAllTextAsync(save.GameSiiPath));
             Assert.Contains("experience_points: 25", await File.ReadAllTextAsync(save.GameSiiPath));
