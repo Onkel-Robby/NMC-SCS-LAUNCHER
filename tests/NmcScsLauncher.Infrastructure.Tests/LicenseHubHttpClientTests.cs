@@ -69,6 +69,33 @@ public sealed class LicenseHubHttpClientTests
     }
 
     [Fact]
+    public async Task DeactivateUsesDeployedLicenseHubContract()
+    {
+        string? requestBody = null;
+        Uri? requestUri = null;
+        var handler = new StubHandler(async request =>
+        {
+            requestUri = request.RequestUri;
+            requestBody = await request.Content!.ReadAsStringAsync();
+            return Json(HttpStatusCode.OK, """
+                {"success":true,"message":"Activation deactivated"}
+                """);
+        });
+        using var httpClient = new HttpClient(handler);
+        var client = CreateClient(httpClient);
+
+        await client.DeactivateAsync("license-value", "machine-value");
+
+        Assert.Equal(new Uri("https://license.example.test/api/license/deactivate.php"), requestUri);
+        using var json = JsonDocument.Parse(requestBody!);
+        var root = json.RootElement;
+        Assert.Equal("nmc-scs-launcher", root.GetProperty("product_slug").GetString());
+        Assert.Equal("product-value", root.GetProperty("api_key").GetString());
+        Assert.Equal("license-value", root.GetProperty("license_key").GetString());
+        Assert.Equal("machine-value", root.GetProperty("machine_id").GetString());
+    }
+
+    [Fact]
     public async Task UpdateCheckValidatesLicenseThenUsesExistingProductUpdateEndpoint()
     {
         var call = 0;
