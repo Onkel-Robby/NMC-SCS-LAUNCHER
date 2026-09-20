@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Modset"
         Width="650"
-        Height="620"
+        Height="555"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource WindowBackgroundBrush}"
@@ -31,18 +31,17 @@
                 <TextBlock Text="Beschreibung" Foreground="{StaticResource SecondaryTextBrush}" />
                 <TextBox x:Name="DescriptionTextBox" Margin="0,5,0,15" Height="70" Padding="8,5" TextWrapping="Wrap" AcceptsReturn="True" />
 
-                <TextBlock Text="Home-Verzeichnis" Foreground="{StaticResource SecondaryTextBrush}" />
-                <Grid Margin="0,5,0,15">
+                <TextBlock Text="Mod-Ordner" Foreground="{StaticResource SecondaryTextBrush}" />
+                <Grid Margin="0,5,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="HomePathTextBox" Height="34" Padding="8,5" />
-                    <Button Grid.Column="1" Content="Durchsuchen …" Margin="8,0,0,0" Padding="12,5" Click="BrowseHome_Click" />
+                    <TextBox x:Name="ModPathTextBox" Height="34" Padding="8,5" />
+                    <Button Grid.Column="1" Content="Durchsuchen …" Margin="8,0,0,0" Padding="12,5" Click="BrowseMod_Click" />
                 </Grid>
-
-                <TextBlock Text="Bevorzugtes Profil (optional)" Foreground="{StaticResource SecondaryTextBrush}" />
-                <TextBox x:Name="PreferredProfileTextBox" Margin="0,5,0,15" Height="34" Padding="8,5" />
+                <TextBlock Margin="0,0,0,15" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
+                           Text="Dieser Ordner wird direkt als Mod-Ordner verwendet. Der Launcher hängt weder 'Euro Truck Simulator 2'/'American Truck Simulator' noch '\mod' an. Lokale und Steam-Profile bleiben in den normalen SCS-Dokumentenpfaden." />
 
                 <TextBlock Text="Zusätzliche Startparameter (optional)" Foreground="{StaticResource SecondaryTextBrush}" />
                 <TextBox x:Name="LaunchArgumentsTextBox" Margin="0,5,0,0" Height="34" Padding="8,5" />
