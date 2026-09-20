@@ -106,7 +106,10 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
             app.MainWindow = _window;
 
             _window.PrimaryRequested += (_, _) =>
+            {
+                AppendDiagnostic($"Primary action requested. Installed={_packageInstalled}, Legacy={_legacyInstall is not null}.");
                 BeginInteractiveAction(_packageInstalled ? LaunchAction.Repair : LaunchAction.Install);
+            };
             _window.UninstallRequested += (_, _) => BeginInteractiveAction(LaunchAction.Uninstall);
             _window.FinishRequested += (_, _) =>
             {
@@ -119,6 +122,8 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
 
             _window.SetBusy(true, "Vorhandene Installation wird geprüft …");
             _window.Show();
+            _applyOwner = new WindowInteropHelper(_window).Handle;
+            AppendDiagnostic($"Interactive window shown. ApplyOwner=0x{_applyOwner.ToInt64():X}.");
 
             engine.Detect();
             app.Run();
@@ -214,13 +219,19 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         });
     }
 
-    private void BeginInteractiveAction(LaunchAction action)
+    private async void BeginInteractiveAction(LaunchAction action)
     {
         if (_actionInProgress)
+        {
+            AppendDiagnostic("Primary action ignored because another action is already in progress.");
             return;
+        }
+
+        AppendDiagnostic($"BeginInteractiveAction: {action}.");
 
         if (IsLauncherRunning())
         {
+            AppendDiagnostic("Action blocked because NmcScsLauncher.App is still running.");
             _window?.ShowFailure(
                 "NMC SCS LAUNCHER läuft noch. Bitte den Launcher schließen und den Vorgang erneut starten.");
             return;
@@ -233,6 +244,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         var installPath = _window?.InstallPath ?? GetDefaultInstallPath();
         var desktop = _window?.CreateDesktopShortcut == true;
         ConfigureVariables(installPath, desktop);
+        AppendDiagnostic($"Variables configured. InstallFolder='{installPath}', DesktopShortcut={desktop}.");
 
         _window?.SetBusy(true,
             action == LaunchAction.Uninstall
@@ -240,27 +252,30 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
                 : action == LaunchAction.Repair
                     ? "Reparatur wird vorbereitet …"
                     : "Installation wird vorbereitet …");
+        _window?.SetProgress(1, "Vorgang wird vorbereitet");
 
         if (action == LaunchAction.Install && !_packageInstalled && _legacyInstall?.UninstallerPath is not null)
         {
             var legacy = _legacyInstall;
-            Task.Run(() => MigrateLegacyInnoInstallation(legacy))
-                .ContinueWith(task =>
-                {
-                    if (task.IsFaulted)
-                    {
-                        var message = task.Exception?.GetBaseException().Message
-                                      ?? "Die bisherige Installation konnte nicht entfernt werden.";
-                        Fail(message);
-                        return;
-                    }
+            try
+            {
+                _window?.SetStatus("Bestehende Inno-Installation wird entfernt …");
+                _window?.SetProgress(2, "Vorherige Installation wird entfernt");
+                AppendDiagnostic($"Starting legacy Inno migration from '{legacy.InstallLocation}'.");
 
-                    _legacyInstall = null;
-                    PlanInteractiveAction();
-                }, CancellationToken.None, TaskContinuationOptions.None,
-                    TaskScheduler.FromCurrentSynchronizationContext());
+                await Task.Run(() => MigrateLegacyInnoInstallation(legacy));
 
-            return;
+                _legacyInstall = null;
+                AppendDiagnostic("Legacy Inno migration completed.");
+                _window?.SetStatus("Installation wird geplant …");
+                _window?.SetProgress(5, "Installation wird geplant");
+            }
+            catch (Exception ex)
+            {
+                AppendDiagnostic($"Legacy Inno migration failed: {ex}");
+                Fail($"Die bisherige Installation konnte nicht entfernt werden: {ex.Message}");
+                return;
+            }
         }
 
         PlanInteractiveAction();
@@ -270,10 +285,12 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
     {
         try
         {
+            AppendDiagnostic($"Calling Burn Plan({_currentAction}).");
             engine.Plan(_currentAction);
         }
         catch (Exception ex)
         {
+            AppendDiagnostic($"Burn Plan failed: {ex}");
             Fail($"Planung des Installationsvorgangs fehlgeschlagen: {ex.Message}");
         }
     }
@@ -290,13 +307,12 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
 
         try
         {
-            if (!_silent && _window is not null)
-                _applyOwner = new WindowInteropHelper(_window).Handle;
-
+            AppendDiagnostic($"Plan completed successfully. Calling Burn Apply with owner=0x{_applyOwner.ToInt64():X}.");
             engine.Apply(_applyOwner);
         }
         catch (Exception ex)
         {
+            AppendDiagnostic($"Burn Apply failed: {ex}");
             Fail($"Installation konnte nicht gestartet werden: {ex.Message}");
             if (_silent)
                 _silentDone?.Set();
@@ -305,6 +321,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
 
     private void OnApplyComplete(object? sender, ApplyCompleteEventArgs e)
     {
+        AppendDiagnostic($"Apply complete. Status=0x{e.Status:X8}, Action={_currentAction}.");
         _actionInProgress = false;
         _exitCode = e.Status;
 
@@ -343,9 +360,25 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
 
     private void Fail(string message)
     {
+        AppendDiagnostic($"FAIL: {message}");
         _actionInProgress = false;
         _exitCode = _exitCode == 0 ? 1 : _exitCode;
         Ui(() => _window?.ShowFailure(message));
+    }
+
+    private static void AppendDiagnostic(string message)
+    {
+        try
+        {
+            var path = Path.Combine(Path.GetTempPath(), "NMC-SCS-LAUNCHER-Installer.log");
+            File.AppendAllText(
+                path,
+                $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // Diagnostics must never affect installer execution.
+        }
     }
 
     private void Ui(Action action)
@@ -450,12 +483,16 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
     private static void MigrateLegacyInnoInstallation(LegacyInstallInfo legacy)
     {
         if (legacy.UninstallerPath is null || !File.Exists(legacy.UninstallerPath))
+        {
+            AppendDiagnostic("Legacy migration skipped because no Inno uninstaller exists.");
             return;
+        }
 
+        AppendDiagnostic($"Launching Inno uninstaller '{legacy.UninstallerPath}'.");
         var process = Process.Start(new ProcessStartInfo
         {
             FileName = legacy.UninstallerPath,
-            Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
+            Arguments = "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
             UseShellExecute = true,
             WorkingDirectory = legacy.InstallLocation
         }) ?? throw new InvalidOperationException("Der bisherige Inno-Uninstaller konnte nicht gestartet werden.");
@@ -469,6 +506,8 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         if (process.ExitCode != 0)
             throw new InvalidOperationException(
                 $"Die bisherige Inno-Installation konnte nicht entfernt werden (Exit-Code {process.ExitCode}).");
+
+        AppendDiagnostic("Inno uninstaller exited successfully.");
     }
 
     private void CreateSilentOwnerWindow()
