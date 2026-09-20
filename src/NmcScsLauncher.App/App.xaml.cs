@@ -22,6 +22,7 @@ public partial class App : Application
         services.AddSingleton<IAppLogger, FileAppLogger>();
         services.AddSingleton<SteamLibraryLocator>();
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
+        services.AddSingleton<IWorkshopContentLocator, SteamWorkshopContentLocator>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -47,6 +48,7 @@ public partial class App : Application
         services.AddSingleton<IModsetBackupDialogService, ModsetBackupDialogService>();
         services.AddSingleton<IConfirmationService, ConfirmationService>();
         services.AddSingleton<IExplorerService, ExplorerService>();
+        services.AddSingleton<IExternalUriService, ExternalUriService>();
         services.AddSingleton<IStartCheckDialogService, StartCheckDialogService>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<MainWindow>();
@@ -65,6 +67,9 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IModsetBackupService>(),
             _serviceProvider.GetRequiredService<IModsetRestoreService>(),
             _serviceProvider.GetRequiredService<IModsetBackupDialogService>());
+        viewModel.ConfigureWorkshopServices(
+            _serviceProvider.GetRequiredService<IWorkshopContentLocator>(),
+            _serviceProvider.GetRequiredService<IExternalUriService>());
 
         try
         {
