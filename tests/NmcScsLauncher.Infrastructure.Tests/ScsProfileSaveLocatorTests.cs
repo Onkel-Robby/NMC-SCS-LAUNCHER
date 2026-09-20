@@ -32,11 +32,11 @@ public sealed class ScsProfileSaveLocatorTests
             var profiles = await locator.FindProfilesAsync(GameType.Ets2, root);
 
             Assert.Equal(2, profiles.Count);
-            var local = Assert.Single(profiles.Where(profile => profile.StorageKind == ScsProfileStorageKind.Local));
+            var local = Assert.Single(profiles, profile => profile.StorageKind == ScsProfileStorageKind.Local);
             Assert.Equal("Robby", local.DisplayName);
             Assert.Equal(Path.GetFullPath(localProfile), local.ProfileDirectory);
 
-            var steam = Assert.Single(profiles.Where(profile => profile.StorageKind == ScsProfileStorageKind.SteamCloud));
+            var steam = Assert.Single(profiles, profile => profile.StorageKind == ScsProfileStorageKind.SteamCloud);
             Assert.Equal("76561198000000000", steam.DisplayName);
 
             var saves = await locator.FindSavesAsync(local);
