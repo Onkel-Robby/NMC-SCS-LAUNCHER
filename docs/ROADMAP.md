@@ -44,7 +44,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
-- [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Filter, Refresh, lokaler Ordner und Steam-Seite
+- [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Auswahl, Refresh, lokaler Ordner und Steam-Seite
+- [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
