@@ -52,4 +52,4 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
-**Release-Stand:** Version 1.0.2 ist als self-contained portable Windows-x64-Build umgesetzt. Reales LicenseHub-Update, serverseitige Geräte-Deaktivierung und automatischer Rollback nach einem absichtlich fehlerhaften Update wurden auf einem Windows-Zielsystem erfolgreich verifiziert. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
+**Release-Stand:** Der finale Produktstand wird wieder als Version 1.0.0 geführt. Die temporären Versionen 1.0.1 bis 1.0.3 dienten ausschließlich den realen LicenseHub-Update-, Deaktivierungs- und Rollback-Feldtests; deren erfolgreich verifizierte Funktionen sind Bestandteil des finalen 1.0.0-Stands. Externe Feldtests bleiben separat dokumentiert und ändern nichts am automatisiert geprüften Code-/Build-Stand.
