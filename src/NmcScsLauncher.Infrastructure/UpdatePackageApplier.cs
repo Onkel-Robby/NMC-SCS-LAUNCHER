@@ -29,6 +29,7 @@ public sealed class UpdatePackageApplier
         try
         {
             await ExtractPackageAsync(package, staging, cancellationToken);
+            PreserveInstallerUninstallerFiles(target, staging);
             var stagedRestart = Path.GetFullPath(Path.Combine(staging, restartRelative));
             EnsureWithinRoot(staging, stagedRestart);
             if (!File.Exists(stagedRestart))
@@ -130,6 +131,38 @@ public sealed class UpdatePackageApplier
             await source.CopyToAsync(output, cancellationToken);
             await output.FlushAsync(cancellationToken);
         }
+    }
+
+    private static void PreserveInstallerUninstallerFiles(string sourceDirectory, string stagingDirectory)
+    {
+        foreach (var sourcePath in Directory.EnumerateFiles(sourceDirectory, "unins*.*", SearchOption.TopDirectoryOnly))
+        {
+            var fileName = Path.GetFileName(sourcePath);
+            if (!IsInstallerUninstallerFile(fileName)) continue;
+
+            var destinationPath = Path.Combine(stagingDirectory, fileName);
+            if (File.Exists(destinationPath))
+                throw new InvalidDataException(
+                    $"Update package must not replace installer-owned file '{fileName}'.");
+
+            File.Copy(sourcePath, destinationPath, overwrite: false);
+        }
+    }
+
+    private static bool IsInstallerUninstallerFile(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        if (!extension.Equals(".exe", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".dat", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".msg", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        if (!stem.StartsWith("unins", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var suffix = stem[5..];
+        return suffix.Length == 3 && suffix.All(char.IsDigit);
     }
 
     private static string ValidatePackagePath(string packagePath)
