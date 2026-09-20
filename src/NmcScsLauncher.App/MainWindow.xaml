@@ -192,7 +192,7 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="38,30,38,28">
                             <TextBlock Text="Steam Workshop" FontSize="30" FontWeight="Bold" />
-                            <TextBlock Text="Lokal installierte ETS2-/ATS-Workshop-Inhalte verwalten. Steam-Abonnements werden vom Launcher nicht verändert." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" TextWrapping="Wrap" />
+                            <TextBlock Text="Lokal installierte ETS2-/ATS-Workshop-Inhalte mit Steam-Titeln durchsuchen und verwalten. Steam-Abonnements werden vom Launcher nicht verändert." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" TextWrapping="Wrap" />
 
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
                                 <Grid>
@@ -209,7 +209,29 @@
                                 </Grid>
                             </Border>
 
-                            <Border Margin="0,14,0,12" Padding="14" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
+                            <Border Margin="0,12,0,12" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="180" />
+                                        <ColumnDefinition Width="150" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,12,0">
+                                        <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <TextBox Text="{Binding WorkshopSearchText, UpdateSourceTrigger=PropertyChanged}" Padding="9,7" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                        <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding WorkshopSortModes}" SelectedItem="{Binding WorkshopSortMode}" Height="34" Padding="8,5" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Titel-Filter" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding WorkshopTitleFilters}" SelectedItem="{Binding WorkshopTitleFilter}" Height="34" Padding="8,5" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Margin="0,0,0,12" Padding="14" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
                                 <StackPanel>
                                     <TextBlock Text="{Binding WorkshopStatusText}" TextWrapping="Wrap" />
                                     <TextBlock Text="Gefundene Workshop-Pfade" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,10,0,3" />
@@ -217,11 +239,12 @@
                                 </StackPanel>
                             </Border>
 
-                            <DataGrid ItemsSource="{Binding WorkshopItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330">
+                            <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="PublishedFileId" Binding="{Binding PublishedFileId}" Width="145" />
-                                    <DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="90" />
-                                    <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
+                                    <DataGridTextColumn Header="Mod-Name" Binding="{Binding DisplayName}" Width="260" />
+                                    <DataGridTextColumn Header="PublishedFileId" Binding="{Binding PublishedFileId}" Width="135" />
+                                    <DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="80" />
+                                    <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding DisplayLastUpdatedUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
                                     <DataGridTextColumn Header="Lokaler Workshop-Ordner" Binding="{Binding ContentPath}" Width="*" />
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -232,7 +255,7 @@
                             </StackPanel>
 
                             <Border Margin="0,18,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="14">
-                                <TextBlock Text="Hinweis: Dieser Bereich liest lokale Steam-Workshop-Inhalte und öffnet bestehende Einträge. Subscribe/Unsubscribe und andere SteamUGC-Schreibaktionen sind nicht aktiv, solange dafür kein verifizierter Steam-Authentifizierungs- und API-Vertrag eingebunden ist." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                                <TextBlock Text="Workshop-Titel werden beim Aktualisieren read-only über die öffentliche Steam-Detailabfrage ergänzt. Wenn Steam nicht erreichbar ist oder ein Eintrag keinen Titel liefert, bleibt die PublishedFileId als Fallback sichtbar. Subscribe/Unsubscribe und andere SteamUGC-Schreibaktionen bleiben deaktiviert." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
