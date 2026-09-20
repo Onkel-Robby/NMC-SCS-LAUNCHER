@@ -124,17 +124,21 @@ public sealed class ScsModsetInspector : IModsetInspector
                 {
                     var info = new DirectoryInfo(directoryPath);
                     var isReparsePoint = info.Attributes.HasFlag(FileAttributes.ReparsePoint);
-                    var size = isReparsePoint
-                        ? null
-                        : TryCalculateDirectorySize(info.FullName, cancellationToken, out var complete);
+                    long? size;
+                    var complete = true;
 
                     if (isReparsePoint)
                     {
+                        size = null;
                         warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' wurde nicht ermittelt, weil der Ordner ein Link/Junction ist.");
                     }
-                    else if (!complete)
+                    else
                     {
-                        warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' konnte nicht vollständig ermittelt werden.");
+                        size = TryCalculateDirectorySize(info.FullName, cancellationToken, out complete);
+                        if (!complete)
+                        {
+                            warnings.Add($"Die Größe des Mod-Ordners '{info.Name}' konnte nicht vollständig ermittelt werden.");
+                        }
                     }
 
                     mods.Add(new LocalModInfo(
