@@ -68,7 +68,10 @@ public sealed class ModsetRestoreService : IModsetRestoreService
 
         var target = await GetTargetModsetAsync(request.TargetModsetId, cancellationToken);
         var gameRoot = GetGameDataDirectory(target);
-        Directory.CreateDirectory(gameRoot);
+        Directory.CreateDirectory(
+            ScsModsetPathResolver.UsesDirectModDirectory(target)
+                ? ScsModsetPathResolver.GetModDirectory(target)
+                : gameRoot);
 
         try
         {
@@ -85,7 +88,7 @@ public sealed class ModsetRestoreService : IModsetRestoreService
             foreach (var item in entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                EnsureSafeTargetChain(gameRoot, item.DestinationPath);
+                EnsureSafeTargetChain(item.TargetRoot, item.DestinationPath);
                 var destinationDirectory = Path.GetDirectoryName(item.DestinationPath)
                     ?? throw new ModsetBackupValidationException("Ein Zielpfad im Backup ist ungültig.");
                 Directory.CreateDirectory(destinationDirectory);
@@ -228,8 +231,29 @@ public sealed class ModsetRestoreService : IModsetRestoreService
             if (entry.Length != manifestFile.Length)
                 throw new ModsetBackupValidationException($"Dateigröße stimmt nicht mit dem Manifest überein: {portablePath}");
 
-            var destination = BuildSafeDestinationPath(gameRoot, portablePath);
-            validated.Add(new ValidatedEntry(entry, manifestFile, destination));
+            string targetRoot;
+            string destination;
+            if (ScsModsetPathResolver.UsesDirectModDirectory(target))
+            {
+                const string modPrefix = "mod/";
+                if (!portablePath.StartsWith(modPrefix, StringComparison.OrdinalIgnoreCase))
+                    throw new ModsetBackupValidationException(
+                        "Dieses Backup enthält Konfigurations- oder Profildaten und kann nicht in ein direktes Mod-Ordner-Modset wiederhergestellt werden.");
+
+                var modRelativePath = portablePath[modPrefix.Length..];
+                if (string.IsNullOrWhiteSpace(modRelativePath))
+                    throw new ModsetBackupValidationException("Das Backup enthält einen ungültigen Mod-Dateipfad.");
+
+                targetRoot = ScsModsetPathResolver.GetModDirectory(target);
+                destination = BuildSafeDestinationPath(targetRoot, modRelativePath);
+            }
+            else
+            {
+                targetRoot = gameRoot;
+                destination = BuildSafeDestinationPath(targetRoot, portablePath);
+            }
+
+            validated.Add(new ValidatedEntry(entry, manifestFile, targetRoot, destination));
         }
 
         if (validated.Count != manifestFiles.Count)
@@ -314,11 +338,12 @@ public sealed class ModsetRestoreService : IModsetRestoreService
 
     private static string GetGameDataDirectory(Modset modset)
     {
-        return Path.Combine(Path.GetFullPath(modset.HomeBasePath), GameDefinition.For(modset.Game).HomeDirectoryName);
+        return ScsModsetPathResolver.GetRuntimeGameDataDirectory(modset);
     }
 
     private sealed record ValidatedEntry(
         ZipArchiveEntry Entry,
         ModsetBackupManifestFile ManifestFile,
+        string TargetRoot,
         string DestinationPath);
 }
