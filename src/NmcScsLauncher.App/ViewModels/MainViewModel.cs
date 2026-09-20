@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IConfirmationService _confirmationService;
     private readonly IExplorerService _explorerService;
     private readonly IStartCheckDialogService _startCheckDialogService;
+    private readonly ILicenseDeactivationService _licenseDeactivationService;
     private LauncherSettings _settings = new();
     private ModsetInspection? _selectedInspection;
     private bool _initializingSelection;
@@ -66,7 +67,8 @@ public partial class MainViewModel : ObservableObject
         IModsetEditorService modsetEditor,
         IConfirmationService confirmationService,
         IExplorerService explorerService,
-        IStartCheckDialogService startCheckDialogService)
+        IStartCheckDialogService startCheckDialogService,
+        ILicenseDeactivationService licenseDeactivationService)
     {
         _gameDetector = gameDetector ?? throw new ArgumentNullException(nameof(gameDetector));
         _gameLaunchService = gameLaunchService ?? throw new ArgumentNullException(nameof(gameLaunchService));
@@ -79,6 +81,7 @@ public partial class MainViewModel : ObservableObject
         _confirmationService = confirmationService ?? throw new ArgumentNullException(nameof(confirmationService));
         _explorerService = explorerService ?? throw new ArgumentNullException(nameof(explorerService));
         _startCheckDialogService = startCheckDialogService ?? throw new ArgumentNullException(nameof(startCheckDialogService));
+        _licenseDeactivationService = licenseDeactivationService ?? throw new ArgumentNullException(nameof(licenseDeactivationService));
     }
 
     public async Task InitializeAsync(LauncherSettings settings, CancellationToken cancellationToken = default)
@@ -114,6 +117,22 @@ public partial class MainViewModel : ObservableObject
         if (selected is not null)
         {
             SettingsDefaultModsetRoot = selected;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeactivateLicenseAsync()
+    {
+        if (IsBusy) return;
+
+        IsBusy = true;
+        try
+        {
+            await _licenseDeactivationService.DeactivateCurrentComputerAsync();
+        }
+        finally
+        {
+            IsBusy = false;
         }
     }
 
