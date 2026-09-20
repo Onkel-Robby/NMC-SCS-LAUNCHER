@@ -188,7 +188,7 @@ public partial class MainViewModel : ObservableObject
 
             var processId = await _gameLaunchService.LaunchAsync(plan);
             await _modsetManager.MarkStartedAsync(selected.Id, DateTimeOffset.UtcNow);
-            await _logger.WriteAsync("INFO", $"Started {selected.Game} with modset {selected.Id}. ProcessId={processId}; HomeBase={selected.HomeBasePath}");
+            await _logger.WriteAsync("INFO", $"Started {selected.Game} with modset {selected.Id}. ProcessId={processId}; ModDirectory={ScsModsetPathResolver.GetModDirectory(selected)}");
             await LoadModsetsAsync();
             SelectedModset = Modsets.FirstOrDefault(item => item.Id == selected.Id);
             StatusText = $"{GameDefinition.For(selected.Game).DisplayName} wurde mit '{selected.Name}' gestartet (PID {processId}).";
@@ -211,7 +211,7 @@ public partial class MainViewModel : ObservableObject
             GameType.Ets2,
             "Neues Modset",
             null,
-            BuildSuggestedHomePath(GameType.Ets2, "Neues Modset"),
+            BuildSuggestedModPath(GameType.Ets2, "Neues Modset"),
             null,
             null));
         if (result is null) return;
@@ -241,7 +241,7 @@ public partial class MainViewModel : ObservableObject
             selected.Game,
             selected.Name,
             selected.Description,
-            selected.HomeBasePath,
+            ScsModsetPathResolver.GetModDirectory(selected),
             selected.PreferredProfile,
             selected.AdditionalLaunchArguments));
         if (result is null) return;
@@ -274,11 +274,11 @@ public partial class MainViewModel : ObservableObject
         if (selected is null) return;
         try
         {
-            _explorerService.OpenFolder(selected.HomeBasePath);
+            _explorerService.OpenFolder(ScsModsetPathResolver.GetModDirectory(selected));
         }
         catch (Exception ex)
         {
-            await HandleModsetErrorAsync("Das Home-Verzeichnis konnte nicht geöffnet werden.", ex);
+            await HandleModsetErrorAsync("Der Mod-Ordner konnte nicht geöffnet werden.", ex);
         }
     }
 
@@ -311,7 +311,7 @@ public partial class MainViewModel : ObservableObject
         SettingsDefaultModsetRoot = _settings.DefaultModsetRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
             "NMC SCS Launcher",
-            "Homes");
+            "Mods");
         SettingsShowStartCheck = _settings.ShowStartCheck;
         SettingsShowModCount = _settings.ShowModCount;
         SettingsRememberLastModset = _settings.RememberLastModset;
@@ -450,7 +450,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(AtsModsetCountText));
     }
 
-    private string BuildSuggestedHomePath(GameType game, string name)
+    private string BuildSuggestedModPath(GameType game, string name)
     {
         var root = _settings.DefaultModsetRoot;
         if (string.IsNullOrWhiteSpace(root))
@@ -458,7 +458,7 @@ public partial class MainViewModel : ObservableObject
             root = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "NMC SCS Launcher",
-                "Homes");
+                "Mods");
         }
 
         return Path.Combine(root, game == GameType.Ets2 ? "ETS2" : "ATS", name);
@@ -468,9 +468,10 @@ public partial class MainViewModel : ObservableObject
         data.Game,
         data.Name,
         data.Description,
-        data.HomeBasePath,
+        string.Empty,
         data.PreferredProfile,
-        data.AdditionalLaunchArguments);
+        data.AdditionalLaunchArguments,
+        data.ModDirectoryPath);
 
     private async Task DetectAllAsync(bool useSavedPaths, CancellationToken cancellationToken)
     {
