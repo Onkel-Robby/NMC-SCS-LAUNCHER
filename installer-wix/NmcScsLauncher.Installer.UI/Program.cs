@@ -1,3 +1,4 @@
+using System.IO;
 using WixToolset.BootstrapperApplicationApi;
 
 namespace NmcScsLauncher.Installer;
