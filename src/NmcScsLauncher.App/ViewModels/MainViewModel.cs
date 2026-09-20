@@ -52,7 +52,7 @@ public partial class MainViewModel : ObservableObject
     public string AtsModsetCountText => AtsModsets.Count == 1 ? "1 Modset" : $"{AtsModsets.Count} Modsets";
     public string SelectedModsetName => SelectedModset?.Name ?? "Kein Modset ausgewählt";
     public string SelectedModsetGameText => SelectedModset is null ? "–" : GameDefinition.For(SelectedModset.Game).DisplayName;
-    public string VersionText => "Version 0.5.0-dev";
+    public string VersionText => AppVersionInfo.Display;
 
     public MainViewModel(
         IGameInstallationDetector gameDetector,
