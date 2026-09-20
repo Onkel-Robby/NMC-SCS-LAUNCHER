@@ -67,6 +67,7 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
         var client = await RequireClientAsync(cancellationToken);
         var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
         var result = await client.ActivateAsync(licenseKey, machineId, deviceName, appVersion, cancellationToken);
+        await ForgetRejectedProductCredentialAsync(result, cancellationToken);
         Current = Map(result);
 
         if (result.AllowsUse)
@@ -137,8 +138,31 @@ public sealed class LicenseRuntimeService : ILicenseRuntimeService
 
         var machineId = await _machineIdentityProvider.GetMachineIdAsync(cancellationToken);
         var result = await client.ValidateAsync(licenseKey, machineId, appVersion, cancellationToken);
+        await ForgetRejectedProductCredentialAsync(result, cancellationToken);
         Current = Map(result);
         return Current;
+    }
+
+    private async Task ForgetRejectedProductCredentialAsync(
+        LicenseAccessSnapshot result,
+        CancellationToken cancellationToken)
+    {
+        if (result.State != LicenseAccessState.InvalidProductCredentials) return;
+
+        _licenseClient = null;
+        try
+        {
+            await _productApiCredentialStore.ClearProductApiKeyAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // A rejected product credential must never stay cached in-memory.
+            // Persistent cleanup is best effort; a replacement value can still overwrite it.
+        }
     }
 
     private async Task<ILicenseHubLicenseClient?> TryGetClientAsync(CancellationToken cancellationToken)
