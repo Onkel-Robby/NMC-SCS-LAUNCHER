@@ -41,6 +41,71 @@ public sealed class UpdatePackageApplierTests
     }
 
     [Fact]
+    public async Task ApplyPreservesInnoUninstallerFiles()
+    {
+        var root = CreateRoot();
+        try
+        {
+            var target = Path.Combine(root, "app");
+            Directory.CreateDirectory(target);
+            await File.WriteAllTextAsync(Path.Combine(target, "NmcScsLauncher.App.exe"), "old");
+            await File.WriteAllTextAsync(Path.Combine(target, "unins000.exe"), "installer-exe");
+            await File.WriteAllTextAsync(Path.Combine(target, "unins000.dat"), "installer-data");
+            await File.WriteAllTextAsync(Path.Combine(target, "unins000.msg"), "installer-message");
+            await File.WriteAllTextAsync(Path.Combine(target, "obsolete.txt"), "old-only");
+
+            var package = Path.Combine(root, "update.zip");
+            CreateZip(package, ("NmcScsLauncher.App.exe", "new"));
+
+            await new UpdatePackageApplier().ApplyAsync(
+                package,
+                target,
+                "NmcScsLauncher.App.exe");
+
+            Assert.Equal("new", await File.ReadAllTextAsync(Path.Combine(target, "NmcScsLauncher.App.exe")));
+            Assert.Equal("installer-exe", await File.ReadAllTextAsync(Path.Combine(target, "unins000.exe")));
+            Assert.Equal("installer-data", await File.ReadAllTextAsync(Path.Combine(target, "unins000.dat")));
+            Assert.Equal("installer-message", await File.ReadAllTextAsync(Path.Combine(target, "unins000.msg")));
+            Assert.False(File.Exists(Path.Combine(target, "obsolete.txt")));
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyRejectsUpdatePackageThatReplacesInstallerOwnedUninstaller()
+    {
+        var root = CreateRoot();
+        try
+        {
+            var target = Path.Combine(root, "app");
+            Directory.CreateDirectory(target);
+            await File.WriteAllTextAsync(Path.Combine(target, "NmcScsLauncher.App.exe"), "old");
+            await File.WriteAllTextAsync(Path.Combine(target, "unins000.exe"), "installer-exe");
+
+            var package = Path.Combine(root, "update.zip");
+            CreateZip(package,
+                ("NmcScsLauncher.App.exe", "new"),
+                ("unins000.exe", "replacement"));
+
+            await Assert.ThrowsAsync<InvalidDataException>(() =>
+                new UpdatePackageApplier().ApplyAsync(
+                    package,
+                    target,
+                    "NmcScsLauncher.App.exe"));
+
+            Assert.Equal("old", await File.ReadAllTextAsync(Path.Combine(target, "NmcScsLauncher.App.exe")));
+            Assert.Equal("installer-exe", await File.ReadAllTextAsync(Path.Combine(target, "unins000.exe")));
+        }
+        finally
+        {
+            DeleteRoot(root);
+        }
+    }
+
+    [Fact]
     public async Task ApplyRejectsZipTraversalBeforeMovingTarget()
     {
         var root = CreateRoot();
