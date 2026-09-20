@@ -2,15 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="NMC SCS LAUNCHER – LicenseHub"
-        Width="580" Height="585"
-        MinWidth="540" MinHeight="500"
+        Width="580" Height="500"
+        MinWidth="540" MinHeight="450"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
         Background="{StaticResource WindowBackgroundBrush}"
         Foreground="{StaticResource PrimaryTextBrush}">
     <Grid Margin="30">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -21,47 +20,71 @@
         <StackPanel>
             <TextBlock Text="LicenseHub-Aktivierung" FontSize="27" FontWeight="Bold" />
             <TextBlock Text="NMC SCS LAUNCHER benötigt für diesen Build eine gültige LicenseHub-Lizenz."
-                       Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                       Margin="0,7,0,0"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       TextWrapping="Wrap" />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,22,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="9" Padding="14">
+        <Border Grid.Row="1"
+                Margin="0,22,0,0"
+                Background="#111A24"
+                BorderBrush="#263342"
+                BorderThickness="1"
+                CornerRadius="9"
+                Padding="14">
             <StackPanel>
-                <TextBlock Text="Aktueller Status" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
-                <TextBlock x:Name="StatusTextBlock" Margin="0,5,0,0" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="Aktueller Status"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           FontSize="11" />
+                <TextBlock x:Name="StatusTextBlock"
+                           Margin="0,5,0,0"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
             </StackPanel>
         </Border>
 
-        <StackPanel x:Name="ProductCredentialPanel" Grid.Row="2" Margin="0,22,0,0" Visibility="Collapsed">
-            <TextBlock Text="Product-API-Key" FontWeight="SemiBold" />
-            <PasswordBox x:Name="ProductApiKeyPasswordBox"
-                         Margin="0,8,0,0"
-                         Padding="10,8"
-                         MaxLength="64"
-                         PasswordChar="●" />
-            <TextBlock Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
-                       Text="Nur für die einmalige lokale Ersteinrichtung. Der Product-API-Key wird getrennt vom Lizenzschlüssel im Windows Credential Manager gespeichert." />
-        </StackPanel>
-
-        <StackPanel Grid.Row="3" Margin="0,22,0,0">
+        <StackPanel Grid.Row="2" Margin="0,22,0,0">
             <TextBlock Text="Lizenzschlüssel" FontWeight="SemiBold" />
             <PasswordBox x:Name="LicenseKeyPasswordBox"
                          Margin="0,8,0,0"
                          Padding="10,8"
                          MaxLength="100"
                          PasswordChar="●" />
-            <TextBlock Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap"
-                       Text="Der Lizenzschlüssel wird nach erfolgreicher Aktivierung im Windows Credential Manager gespeichert und nicht in settings.json geschrieben." />
+            <TextBlock Margin="0,7,0,0"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       FontSize="11"
+                       TextWrapping="Wrap"
+                       Text="Der Product-Key ist Bestandteil des bereitgestellten Builds. Hier wird nur dein Lizenzschlüssel benötigt. Nach erfolgreicher Aktivierung wird der Lizenzschlüssel im Windows Credential Manager gespeichert." />
         </StackPanel>
 
-        <StackPanel Grid.Row="4" Margin="0,18,0,0">
-            <ProgressBar x:Name="ProgressBar" Height="6" IsIndeterminate="True" Visibility="Collapsed" />
-            <TextBlock x:Name="ResultTextBlock" Margin="0,12,0,0" TextWrapping="Wrap" />
+        <StackPanel Grid.Row="3" Margin="0,18,0,0">
+            <ProgressBar x:Name="ProgressBar"
+                         Height="6"
+                         IsIndeterminate="True"
+                         Visibility="Collapsed" />
+            <TextBlock x:Name="ResultTextBlock"
+                       Margin="0,12,0,0"
+                       TextWrapping="Wrap" />
         </StackPanel>
 
-        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
-            <Button Content="Später" Width="105" Margin="0,0,9,0" IsCancel="True" />
-            <Button x:Name="RetryButton" Content="Status erneut prüfen" Width="145" Margin="0,0,9,0" Click="Retry_OnClick" />
-            <Button x:Name="ActivateButton" Content="Lizenz aktivieren" Width="135" Style="{StaticResource PrimaryButtonStyle}" Click="Activate_OnClick" />
+        <StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,22,0,0">
+            <Button Content="Später"
+                    Width="105"
+                    Margin="0,0,9,0"
+                    IsCancel="True" />
+            <Button x:Name="RetryButton"
+                    Content="Status erneut prüfen"
+                    Width="145"
+                    Margin="0,0,9,0"
+                    Click="Retry_OnClick" />
+            <Button x:Name="ActivateButton"
+                    Content="Lizenz aktivieren"
+                    Width="135"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Click="Activate_OnClick" />
         </StackPanel>
     </Grid>
 </Window>
