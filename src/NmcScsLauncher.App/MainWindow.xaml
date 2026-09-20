@@ -184,6 +184,63 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,14,0,0"><Button Content="Mod-Ordner öffnen" Command="{Binding OpenModDirectoryCommand}" Margin="0,0,7,0"/><Button Content="Lokale Profile öffnen" Command="{Binding OpenLocalProfilesDirectoryCommand}" Margin="0,0,7,0"/><Button Content="Steam-Profile öffnen" Command="{Binding OpenSteamProfilesDirectoryCommand}"/></StackPanel>
                                 </StackPanel>
                             </Border>
+                            <Border Margin="0,14,0,0" Padding="18" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Lokale Mods" FontSize="20" FontWeight="SemiBold" />
+                                            <TextBlock Text="Inhalte des ausgewählten Mod-Ordners – read-only, ähnlich zur Workshop-Liste." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,3,0,0" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding LocalModItemCountText}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+                                    </Grid>
+
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="210" />
+                                            <ColumnDefinition Width="150" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="0,0,12,0">
+                                            <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                            <TextBox Text="{Binding LocalModSearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                                            <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                            <ComboBox ItemsSource="{Binding LocalModSortModes}" SelectedItem="{Binding LocalModSortMode}" Height="34" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Typ" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                            <ComboBox ItemsSource="{Binding LocalModTypeFilters}" SelectedItem="{Binding LocalModTypeFilter}" Height="34" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <DataGrid ItemsSource="{Binding LocalModVisibleItems}"
+                                              SelectedItem="{Binding SelectedLocalMod}"
+                                              AutoGenerateColumns="False"
+                                              IsReadOnly="True"
+                                              CanUserAddRows="False"
+                                              HeadersVisibility="Column"
+                                              MinHeight="260"
+                                              MaxHeight="420">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Mod-Name / Datei" Binding="{Binding Name}" Width="260" />
+                                            <DataGridTextColumn Header="Typ" Binding="{Binding TypeText}" Width="85" />
+                                            <DataGridTextColumn Header="Größe" Binding="{Binding SizeText}" Width="105" />
+                                            <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
+                                            <DataGridTextColumn Header="Pfad" Binding="{Binding Path}" Width="*" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button Content="Im Explorer öffnen" Command="{Binding OpenSelectedLocalModCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
