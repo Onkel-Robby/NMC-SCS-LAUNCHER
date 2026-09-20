@@ -16,7 +16,8 @@ Aktuelle Version: **1.0.0**
 - Modsets duplizieren, ohne Junctions oder Hardlinks zu verwenden.
 - ZIP-Backups erstellen und mit Sicherheitsprüfung wiederherstellen.
 - Lokale Steam-Workshop-Verzeichnisse für ETS2/ATS erfassen und im eigenen Workshop-Bereich verwalten.
-- Workshop-Einträge nach Spiel anzeigen, lokal im Explorer öffnen oder die zugehörige Steam-Workshop-Seite im Browser öffnen; Abonnements werden nicht verändert.
+- Workshop-Einträge nach Spiel anzeigen, mit echten Steam-Workshop-Titeln anreichern, durchsuchen, nach Name/Änderungsdatum/ID sortieren und nach Titelverfügbarkeit filtern.
+- Workshop-Einträge lokal im Explorer öffnen oder die zugehörige Steam-Workshop-Seite im Browser öffnen; Abonnements werden nicht verändert.
 - LicenseHub-Lizenzierung mit Maschinenbindung und Fail-Closed-Verhalten.
 - Lizenzschlüssel und Product API Credential getrennt im Windows Credential Manager speichern.
 - Anwendungsupdates über den vorhandenen LicenseHub-Updatevertrag prüfen, herunterladen und per SHA-256 verifizieren.
@@ -146,7 +147,7 @@ Roadmap und Verifikationsstatus: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ## Datenschutz
 
-Keine Telemetrie und kein Tracking. Netzwerkzugriffe dienen der LicenseHub-Lizenzprüfung und dem LicenseHub-basierten Updatecheck.
+Keine Telemetrie und kein Tracking. Netzwerkzugriffe dienen der LicenseHub-Lizenzprüfung, dem LicenseHub-basierten Updatecheck und – nur beim manuellen Aktualisieren der Workshop-Ansicht – der read-only Abfrage öffentlicher Steam-Workshop-Metadaten für die bereits lokal gefundenen PublishedFileIds.
 
 ## Hinweis zu Marken
 
