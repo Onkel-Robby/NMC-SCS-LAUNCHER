@@ -24,6 +24,45 @@ public sealed class ModsetManagerTests
     }
 
     [Fact]
+    public async Task DirectModsetUsesSelectedFolderWithoutAppendingGameDirectory()
+    {
+        var root = CreateTemporaryDirectory();
+        Modset? created = null;
+        try
+        {
+            using var manager = new ModsetManager(new JsonModsetStore(Path.Combine(root, "modsets.json")));
+            var modDirectory = Path.Combine(root, "My Exact Mods");
+
+            created = await manager.CreateAsync(new ModsetDraft(
+                GameType.Ets2,
+                "Direct Mods",
+                null,
+                string.Empty,
+                null,
+                null,
+                modDirectory));
+
+            Assert.Equal(Path.GetFullPath(modDirectory), created.ModDirectoryPath);
+            Assert.Equal(Path.GetFullPath(modDirectory), created.ModFolderDisplayPath);
+            Assert.True(Directory.Exists(modDirectory));
+            Assert.NotEqual(Path.GetFullPath(modDirectory), Path.GetFullPath(created.HomeBasePath));
+            Assert.DoesNotContain(
+                GameDefinition.For(GameType.Ets2).HomeDirectoryName,
+                Path.GetRelativePath(root, modDirectory),
+                StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            if (created is not null && Directory.Exists(created.HomeBasePath))
+            {
+                Directory.Delete(created.HomeBasePath, recursive: true);
+            }
+
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task RemovingImportedModsetNeverDeletesImportedDirectory()
     {
         var root = CreateTemporaryDirectory();
