@@ -125,19 +125,7 @@ jobs:
           if (-not (Test-Path $installer)) { throw "Windows installer was not created." }
 
           $sha256 = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($sha256 -notmatch '^[0-9a-f]{64}        uses: actions/upload-artifact@v4
-        with:
-          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-win-x64
-          path: artifacts/publish
-          if-no-files-found: error
-
-      - name: Upload LicenseHub release bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-licensehub-release
-          path: artifacts/release
-          if-no-files-found: error
-) { throw "Invalid installer SHA-256 result." }
+          if ($sha256 -notmatch '^[0-9a-f]{64}$') { throw "Invalid installer SHA-256 result." }
           $installerName = Split-Path $installer -Leaf
           Set-Content -Path "$installer.sha256" -Value "$sha256  $installerName" -Encoding ascii -NoNewline
 
