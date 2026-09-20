@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="NMC SCS LAUNCHER"
+      Manufacturer="NMC IT-SERVICE"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="CB2D6DC0-61D8-4D5D-BE5D-2237C570F8F1"
+      Scope="perUser"
+      InstallerVersion="500"
+      Compressed="yes">
+
+    <SummaryInformation Description="NMC SCS LAUNCHER" />
+    <MajorUpgrade DowngradeErrorMessage="Eine neuere Version von NMC SCS LAUNCHER ist bereits installiert." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="NmcLauncherIcon" SourceFile="$(var.BrandingRoot)\nmc-scs-launcher.ico" />
+    <Property Id="ARPPRODUCTICON" Value="NmcLauncherIcon" />
+    <Property Id="INSTALLDESKTOPSHORTCUT" Value="0" Secure="yes" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="NMC SCS LAUNCHER" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="NMC SCS LAUNCHER" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="MainFeature" Title="NMC SCS LAUNCHER" Level="1">
+      <ComponentGroupRef Id="PublishedFiles" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+      <ComponentRef Id="DesktopShortcutComponent" />
+      <ComponentRef Id="InstallMarkerComponent" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="PublishedFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="StartMenuShortcutComponent" Guid="FB2C9036-437E-4574-BFA3-6579D408CC6F">
+        <Shortcut
+            Id="StartMenuShortcut"
+            Directory="ApplicationProgramsFolder"
+            Name="NMC SCS LAUNCHER"
+            Description="NMC SCS LAUNCHER"
+            Target="[INSTALLFOLDER]NmcScsLauncher.App.exe"
+            WorkingDirectory="INSTALLFOLDER"
+            Icon="NmcLauncherIcon" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
+            Name="StartMenuShortcut"
+            Type="integer"
+            Value="1"
+            KeyPath="yes" />
+      </Component>
+
+      <Component
+          Id="DesktopShortcutComponent"
+          Guid="547A8644-B08C-48BD-BBF0-A51819C0DB58"
+          Condition="INSTALLDESKTOPSHORTCUT = 1"
+          Transitive="yes">
+        <Shortcut
+            Id="DesktopShortcut"
+            Directory="DesktopFolder"
+            Name="NMC SCS LAUNCHER"
+            Description="NMC SCS LAUNCHER"
+            Target="[INSTALLFOLDER]NmcScsLauncher.App.exe"
+            WorkingDirectory="INSTALLFOLDER"
+            Icon="NmcLauncherIcon" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
+            Name="DesktopShortcut"
+            Type="integer"
+            Value="1"
+            KeyPath="yes" />
+      </Component>
+
+      <Component Id="InstallMarkerComponent" Guid="E9B23A82-0753-47E1-BCF3-9DEABF49D2D9">
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
+            Name="InstallPath"
+            Type="string"
+            Value="[INSTALLFOLDER]"
+            KeyPath="yes" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
+            Name="Version"
+            Type="string"
+            Value="$(var.ProductVersion)" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>
