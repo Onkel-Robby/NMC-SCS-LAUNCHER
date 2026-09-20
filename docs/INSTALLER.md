@@ -1,6 +1,6 @@
 # Windows-Installer
 
-Der klassische Windows-Installer ist eine zusätzliche Bereitstellungsform neben dem portablen ZIP.
+Neben dem portablen ZIP existieren zwei Installerpfade: der neue **NMC Custom Installer** auf WiX 5/Burn mit eigener .NET-10-WPF-Oberfläche sowie das bisherige Inno Setup als vorläufiger Fallback bis zum abgeschlossenen Feldtest.
 
 ## Installationsmodell
 
@@ -14,7 +14,13 @@ Der klassische Windows-Installer ist eine zusätzliche Bereitstellungsform neben
 
 Die Installation unter `%LOCALAPPDATA%` ist absichtlich gewählt. Der LicenseHub-Updater kann dadurch die installierten Programmdateien im Benutzerkontext austauschen, ohne für normale Updates eine Administrator-Elevation zu benötigen.
 
-## CI-Artefakt
+## NMC Custom Installer
+
+Der neue Installer besitzt eine vollständig eigene NMC-Oberfläche mit Branding, Installationspfad, optionaler Desktop-Verknüpfung, Fortschrittsanzeige sowie Install/Repair/Uninstall. Die Installationsengine bleibt WiX/MSI-basiert; die UI ist nicht an die festen Inno-Wizard-Flächen gebunden. Details stehen in `docs/NMC_CUSTOM_INSTALLER.md`.
+
+Das bestehende Inno Setup bleibt bis zur realen Windows-Feldverifikation als Fallback verfügbar.
+
+## CI-Artefakte
 
 GitHub Actions erzeugt zusätzlich zum portablen Build:
 
@@ -23,7 +29,7 @@ NMC-SCS-LAUNCHER-1.0.0-Setup.exe
 NMC-SCS-LAUNCHER-1.0.0-Setup.exe.sha256
 ```
 
-Der CI-Smoke-Test installiert das Setup still in ein temporäres Verzeichnis, prüft Launcher, Updater und self-contained Runtime-Dateien und deinstalliert die Testinstallation anschließend wieder.
+Für beide Installerpfade existieren automatisierte Smoke-Tests. Der neue NMC Custom Installer wird still installiert, Launcher/Updater und self-contained Runtime werden geprüft und anschließend über Burn/MSI wieder deinstalliert.
 
 ## Signierung
 
