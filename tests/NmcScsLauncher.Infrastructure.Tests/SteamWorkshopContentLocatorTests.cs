@@ -35,6 +35,38 @@ public sealed class SteamWorkshopContentLocatorTests
     }
 
     [Fact]
+    public async Task ScanUsesSteamLibraryInferredFromGameInstallPath()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+
+        var installPath = Path.Combine(
+            root,
+            "steamapps",
+            "common",
+            GameDefinition.For(GameType.Ets2).DefaultInstallDirectoryName);
+        Directory.CreateDirectory(installPath);
+
+        var workshopRoot = Path.Combine(
+            root,
+            "steamapps",
+            "workshop",
+            "content",
+            GameDefinition.For(GameType.Ets2).SteamAppId.ToString());
+        var workshopItemPath = Path.Combine(workshopRoot, "2468013579");
+        Directory.CreateDirectory(workshopItemPath);
+
+        var locator = new SteamWorkshopContentLocator(new SteamLibraryLocator(Array.Empty<string>()));
+        var snapshot = await locator.ScanAsync(GameType.Ets2, installPath);
+
+        var item = Assert.Single(snapshot.Items);
+        Assert.Equal(2468013579UL, item.PublishedFileId);
+        Assert.Equal(Path.GetFullPath(root), item.SteamLibraryRoot);
+        Assert.Equal(Path.GetFullPath(workshopItemPath), item.ContentPath);
+        Assert.Equal(Path.GetFullPath(workshopRoot), Assert.Single(snapshot.ScannedContentRoots));
+    }
+
+    [Fact]
     public async Task ScanReturnsEmptySnapshotWhenWorkshopRootDoesNotExist()
     {
         var root = Path.Combine(Path.GetTempPath(), "NmcScsLauncherTests", Guid.NewGuid().ToString("N"));
