@@ -12,18 +12,29 @@ public sealed class ScsCareerSkillsTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task ReadsAndWritesAllCareerSkillsWithBackup()
+    public async Task ReadsAndWritesEconomyCareerSkillsWithoutTouchingAiDriverSkills()
     {
         var (save, editor) = await CreateAsync(
             """
             SiiNunit
             {
+            economy : _nameless.economy {
              adr: 5
              long_dist: 1
              heavy: 2
              fragile: 3
              urgent: 4
              mechanical: 5
+            }
+            driver_ai : driver.1 {
+             adr: 1
+             long_dist: 2
+             heavy: 3
+             fragile: 4
+             urgent: 5
+             mechanical: 6
+             experience_points: 999
+            }
             }
             """);
 
@@ -48,13 +59,15 @@ public sealed class ScsCareerSkillsTests : IDisposable
 
         Assert.True(File.Exists(result.BackupPath));
 
-        var text = await File.ReadAllTextAsync(save.GameSiiPath);
-        Assert.Contains(" adr: 63", text);
-        Assert.Contains(" long_dist: 6", text);
-        Assert.Contains(" heavy: 5", text);
-        Assert.Contains(" fragile: 4", text);
-        Assert.Contains(" urgent: 3", text);
-        Assert.Contains(" mechanical: 2", text);
+        var text = (await File.ReadAllTextAsync(save.GameSiiPath))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        Assert.Contains(
+            "economy : _nameless.economy {\n adr: 63\n long_dist: 6\n heavy: 5\n fragile: 4\n urgent: 3\n mechanical: 2",
+            text);
+        Assert.Contains(
+            "driver_ai : driver.1 {\n adr: 1\n long_dist: 2\n heavy: 3\n fragile: 4\n urgent: 5\n mechanical: 6\n experience_points: 999",
+            text);
     }
 
     [Fact]
@@ -64,12 +77,14 @@ public sealed class ScsCareerSkillsTests : IDisposable
             """
             SiiNunit
             {
+            economy : _nameless.economy {
              adr: 0
              long_dist: 0
              heavy: 0
              fragile: 0
              urgent: 0
              mechanical: 0
+            }
             }
             """);
         var before = await File.ReadAllTextAsync(save.GameSiiPath);
@@ -83,12 +98,13 @@ public sealed class ScsCareerSkillsTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadCareerSkillsFailsClosedWhenFieldIsAmbiguous()
+    public async Task ReadCareerSkillsFailsClosedWhenEconomyFieldIsAmbiguous()
     {
         var (save, editor) = await CreateAsync(
             """
             SiiNunit
             {
+            economy : _nameless.economy {
              adr: 0
              long_dist: 1
              long_dist: 2
@@ -96,6 +112,15 @@ public sealed class ScsCareerSkillsTests : IDisposable
              fragile: 0
              urgent: 0
              mechanical: 0
+            }
+            driver_ai : driver.1 {
+             adr: 63
+             long_dist: 6
+             heavy: 6
+             fragile: 6
+             urgent: 6
+             mechanical: 6
+            }
             }
             """);
 
