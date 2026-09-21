@@ -40,7 +40,7 @@ internal sealed class ScsSiiUnitDocument
             .ToArray();
     }
 
-    public IReadOnlyList<string> GetIndexedUnitScalars(ScsSiiUnit unit, string prefix)
+    public IReadOnlyList<ScsIndexedScalar> GetIndexedUnitScalars(ScsSiiUnit unit, string prefix)
     {
         if (string.IsNullOrWhiteSpace(prefix))
             throw new ArgumentException("SII-Array-Präfix ist erforderlich.", nameof(prefix));
@@ -62,7 +62,9 @@ internal sealed class ScsSiiUnitDocument
             }
         }
 
-        return values.Values.ToArray();
+        return values
+            .Select(item => new ScsIndexedScalar(item.Key, item.Value))
+            .ToArray();
     }
 
     public string GetRequiredUniqueScalar(string key)
@@ -322,3 +324,7 @@ internal sealed record ScsSiiUnit(
     string Id,
     int StartLine,
     int EndLine);
+
+internal sealed record ScsIndexedScalar(
+    int Index,
+    string Value);
