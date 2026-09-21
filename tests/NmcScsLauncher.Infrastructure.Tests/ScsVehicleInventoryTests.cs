@@ -91,10 +91,21 @@ public sealed class ScsVehicleInventoryTests : IDisposable
     [Fact]
     public async Task SwitchTrailerFailsClosedOnConflictingPlayerVehicleReferences()
     {
-        var source = CreateSave().Replace(
-            "player_vehicles : _nameless.player_vehicle.2 {\n vehicle: _nameless.truck.1\n trailer: _nameless.trailer.1",
-            "player_vehicles : _nameless.player_vehicle.2 {\n vehicle: _nameless.truck.1\n trailer: _nameless.trailer.3",
+        var source = CreateSave();
+        var unitStart = source.IndexOf(
+            "player_vehicles : _nameless.player_vehicle.2",
             StringComparison.Ordinal);
+        Assert.True(unitStart >= 0);
+
+        const string oldTrailer = "trailer: _nameless.trailer.1";
+        var trailerStart = source.IndexOf(
+            oldTrailer,
+            unitStart,
+            StringComparison.Ordinal);
+        Assert.True(trailerStart >= 0);
+
+        source = source.Remove(trailerStart, oldTrailer.Length)
+            .Insert(trailerStart, "trailer: _nameless.trailer.3");
 
         var (save, codec, saveEdit) = await CreateAsync(source);
         var editor = new ScsVehicleEditService(codec, saveEdit);
