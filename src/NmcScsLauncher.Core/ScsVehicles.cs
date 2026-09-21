@@ -17,6 +17,10 @@ public sealed record ScsVehicleInventory(
     IReadOnlyList<ScsVehicleInventoryItem> Trucks,
     IReadOnlyList<ScsVehicleInventoryItem> Trailers);
 
+public sealed record ScsActiveTruckPowertrain(
+    string EngineDataPath,
+    string TransmissionDataPath);
+
 public interface IScsVehicleEditService
 {
     Task<ScsActiveVehicleState> InspectActiveVehiclesAsync(
@@ -74,5 +78,19 @@ public interface IScsVehicleEditService
         string countryCode,
         string backgroundRgb,
         string textRgb,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsActiveTruckPowertrain> GetActiveTruckPowertrainAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTruckEngineAsync(
+        ScsSaveReference save,
+        string engineDataPath,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTruckTransmissionAsync(
+        ScsSaveReference save,
+        string transmissionDataPath,
         CancellationToken cancellationToken = default);
 }

@@ -686,6 +686,90 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<ScsActiveTruckPowertrain> GetActiveTruckPowertrainAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var powertrain = ResolveActiveTruckPowertrain(document, refs.TruckId);
+
+        return new ScsActiveTruckPowertrain(
+            powertrain.Engine.DataPath,
+            powertrain.Transmission.DataPath);
+    }
+
+    public async Task<ScsSaveEditResult> SetActiveTruckEngineAsync(
+        ScsSaveReference save,
+        string engineDataPath,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+        var normalizedPath = ValidateTruckDefinitionPath(
+            engineDataPath,
+            "engine",
+            nameof(engineDataPath));
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var powertrain = ResolveActiveTruckPowertrain(document, refs.TruckId);
+
+        var updated = document.SetRequiredUnitScalar(
+            powertrain.Engine.Unit,
+            "data_path",
+            QuoteSiiString(normalizedPath));
+
+        ValidateUpdatedPowertrainPath(
+            updated,
+            powertrain.Engine.Unit.Id,
+            normalizedPath,
+            "engine");
+
+        return await ApplyAsync(
+            save,
+            $"Motor des aktiven Trucks ändern: {normalizedPath}",
+            updated,
+            cancellationToken);
+    }
+
+    public async Task<ScsSaveEditResult> SetActiveTruckTransmissionAsync(
+        ScsSaveReference save,
+        string transmissionDataPath,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+        var normalizedPath = ValidateTruckDefinitionPath(
+            transmissionDataPath,
+            "transmission",
+            nameof(transmissionDataPath));
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var powertrain = ResolveActiveTruckPowertrain(document, refs.TruckId);
+
+        var updated = document.SetRequiredUnitScalar(
+            powertrain.Transmission.Unit,
+            "data_path",
+            QuoteSiiString(normalizedPath));
+
+        ValidateUpdatedPowertrainPath(
+            updated,
+            powertrain.Transmission.Unit.Id,
+            normalizedPath,
+            "transmission");
+
+        return await ApplyAsync(
+            save,
+            $"Getriebe des aktiven Trucks ändern: {normalizedPath}",
+            updated,
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> ApplyAsync(
         ScsSaveReference save,
         string operation,
@@ -697,6 +781,169 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
                 operation,
                 updated.ToText()),
             cancellationToken);
+
+    private static ActiveTruckPowertrain ResolveActiveTruckPowertrain(
+        ScsSiiUnitDocument document,
+        string truckId)
+    {
+        var truckUnit = document.GetRequiredUniqueUnit(truckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+
+        var accessories = document.GetIndexedUnitScalars(truckUnit, "accessories");
+        if (accessories.Count == 0)
+        {
+            throw new ScsSaveEditException(
+                "Der aktive Truck enthält keine auflösbaren accessories[n]-Referenzen.");
+        }
+
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        var engine = new List<PowertrainAccessory>();
+        var transmission = new List<PowertrainAccessory>();
+
+        foreach (var item in accessories)
+        {
+            var accessoryId = NormalizeReference(item.Value, "accessories");
+            if (!seenIds.Add(accessoryId))
+            {
+                throw new ScsSaveEditException(
+                    $"Der aktive Truck referenziert Accessory '{accessoryId}' mehrfach.");
+            }
+
+            var accessoryUnit = document.GetRequiredUniqueUnit(accessoryId);
+            var rawDataPath = document.TryGetOptionalUnitScalar(
+                accessoryUnit,
+                "data_path");
+
+            if (rawDataPath is null)
+                continue;
+
+            var dataPath = ParseSiiString(rawDataPath, "data_path");
+
+            var isEngine = HasPathSegment(dataPath, "engine");
+            var isTransmission = HasPathSegment(dataPath, "transmission");
+
+            if (isEngine && isTransmission)
+            {
+                throw new ScsSaveEditException(
+                    $"Accessory '{accessoryId}' kann nicht eindeutig als Engine oder Transmission klassifiziert werden.");
+            }
+
+            if (isEngine)
+            {
+                engine.Add(new PowertrainAccessory(accessoryUnit, dataPath));
+            }
+
+            if (isTransmission)
+            {
+                transmission.Add(new PowertrainAccessory(accessoryUnit, dataPath));
+            }
+        }
+
+        if (engine.Count != 1)
+        {
+            throw new ScsSaveEditException(
+                $"Der aktive Truck enthält {engine.Count} eindeutig erkennbare Engine-Accessories; erwartet wird genau 1.");
+        }
+
+        if (transmission.Count != 1)
+        {
+            throw new ScsSaveEditException(
+                $"Der aktive Truck enthält {transmission.Count} eindeutig erkennbare Transmission-Accessories; erwartet wird genau 1.");
+        }
+
+        return new ActiveTruckPowertrain(engine[0], transmission[0]);
+    }
+
+    private static string ValidateTruckDefinitionPath(
+        string value,
+        string requiredSegment,
+        string parameterName)
+    {
+        var path = value?.Trim() ?? string.Empty;
+        if (path.Length is < 1 or > 260)
+        {
+            throw new ArgumentException(
+                "Der Truck-Definition-Pfad ist leer oder zu lang.",
+                parameterName);
+        }
+
+        var hasEngine = HasPathSegment(path, "engine");
+        var hasTransmission = HasPathSegment(path, "transmission");
+        var hasRequiredSegment = string.Equals(
+            requiredSegment,
+            "engine",
+            StringComparison.Ordinal)
+                ? hasEngine && !hasTransmission
+                : hasTransmission && !hasEngine;
+
+        if (!path.StartsWith("/def/vehicle/truck/", StringComparison.Ordinal) ||
+            !path.EndsWith(".sii", StringComparison.OrdinalIgnoreCase) ||
+            !hasRequiredSegment)
+        {
+            throw new ArgumentException(
+                $"Der Definition-Pfad muss ein eindeutiger Truck-{requiredSegment}-Pfad unter /def/vehicle/truck/ sein.",
+                parameterName);
+        }
+
+        if (path.Any(character =>
+                !(character is >= 'A' and <= 'Z') &&
+                !(character is >= 'a' and <= 'z') &&
+                !(character is >= '0' and <= '9') &&
+                character != '/' &&
+                character != '_' &&
+                character != '-' &&
+                character != '.'))
+        {
+            throw new ArgumentException(
+                "Der Truck-Definition-Pfad enthält nicht unterstützte Zeichen.",
+                parameterName);
+        }
+
+        return path;
+    }
+
+    private static bool HasPathSegment(string path, string segment) =>
+        path.Split(
+                '/',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(item => string.Equals(item, segment, StringComparison.OrdinalIgnoreCase));
+
+    private static string ParseSiiString(string rawValue, string field)
+    {
+        var value = rawValue.Trim();
+        if (value.Length < 2 || value[0] != '"' || value[^1] != '"')
+        {
+            throw new ScsSaveEditException(
+                $"SII-Feld '{field}' enthält keinen unterstützten String-Wert.");
+        }
+
+        var content = value[1..^1];
+        if (content.Contains('"') || content.Contains('\r') || content.Contains('\n'))
+        {
+            throw new ScsSaveEditException(
+                $"SII-Feld '{field}' enthält einen nicht unterstützten String-Wert.");
+        }
+
+        return content;
+    }
+
+    private static void ValidateUpdatedPowertrainPath(
+        ScsSiiUnitDocument document,
+        string accessoryId,
+        string expectedPath,
+        string requiredSegment)
+    {
+        var unit = document.GetRequiredUniqueUnit(accessoryId);
+        var actualRaw = document.GetRequiredUnitScalar(unit, "data_path");
+        var actual = ParseSiiString(actualRaw, "data_path");
+
+        if (!string.Equals(actual, expectedPath, StringComparison.Ordinal) ||
+            !HasPathSegment(actual, requiredSegment))
+        {
+            throw new ScsSaveEditException(
+                $"Der neue {requiredSegment}-Pfad konnte vor dem Schreiben nicht validiert werden.");
+        }
+    }
 
     private static IReadOnlyList<ScsSiiUnit> GetPlayerVehicleUnitsForTruck(
         ScsSiiUnitDocument document,
@@ -1066,6 +1313,14 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             throw new ScsSaveEditException("Ungültige game.sii-Auswahl.");
         }
     }
+
+    private sealed record PowertrainAccessory(
+        ScsSiiUnit Unit,
+        string DataPath);
+
+    private sealed record ActiveTruckPowertrain(
+        PowertrainAccessory Engine,
+        PowertrainAccessory Transmission);
 
     private sealed record GarageSlot(
         string GarageId,
