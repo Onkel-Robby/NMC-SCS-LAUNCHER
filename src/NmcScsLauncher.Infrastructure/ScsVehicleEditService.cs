@@ -241,7 +241,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             document,
             refs.TruckId);
 
-        if (matchingPlayerVehicleUnits.Length == 0)
+        if (matchingPlayerVehicleUnits.Count == 0)
         {
             throw new ScsSaveEditException(
                 "Es wurde keine player_vehicles-Unit für den aktiven Truck gefunden.");
