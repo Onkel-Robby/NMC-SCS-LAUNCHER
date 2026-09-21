@@ -61,7 +61,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [ ] Profil-Editor: Skills und weitere Karrierewerte auf verifiziertem Save-Format
 - [x] Truck-Editor-Grundlage: aktiven Truck eindeutig auflösen, reparieren und Kraftstoffwert 0..1 setzen
 - [x] Fahrzeug-Inventar: eigene Trucks/Trailer aus den validierten `trucks[n]`-/`trailers[n]`-Referenzen lesen und aktiven Zustand markieren
-- [ ] Truck-Editor: Truck wechseln; danach Motor/Getriebe/Kennzeichen/Kilometer
+- [x] Truck-Editor: sicheren Wechsel auf einen vorhandenen eigenen Truck inklusive player_vehicles-, Garage-/Driver- und HQ-Konsistenzprüfung
+- [ ] Truck-Editor: Motor/Getriebe/Kennzeichen/Kilometer
 - [x] Trailer-Editor-Grundlage: aktiven Trailer samt Slave-Kette eindeutig auflösen und reparieren
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen
 - [ ] Trailer-Editor: Gewicht/Kennzeichen
