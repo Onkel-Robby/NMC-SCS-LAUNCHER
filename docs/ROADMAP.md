@@ -59,7 +59,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [~] realer Feldtest des Decoders mit einem aktuellen verschlüsselten ETS2-Save und ATS-Save
 - [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
 - [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
-- [ ] Profil-Editor: Skills und weitere Karrierewerte auf verifiziertem Save-Format
+- [x] Profil-Editor: Karriere-Skills ADR, Fernfahrten, hochwertige Fracht, zerbrechliche Fracht, Eilaufträge und Eco-Driving mit validierten Wertebereichen
+- [ ] Profil-Editor: weitere Karrierewerte erst nach konkretem Bedarf und realer Save-Verifikation
 - [x] Truck-Editor-Grundlage: aktiven Truck eindeutig auflösen, reparieren und Kraftstoffwert 0..1 setzen
 - [x] Fahrzeug-Inventar: eigene Trucks/Trailer aus den validierten `trucks[n]`-/`trailers[n]`-Referenzen lesen und aktiven Zustand markieren
 - [x] Truck-Editor: sicheren Wechsel auf einen vorhandenen eigenen Truck inklusive player_vehicles-, Garage-/Driver- und HQ-Konsistenzprüfung
