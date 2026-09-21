@@ -60,9 +60,17 @@ public interface IScsProfileEditService
         string newName,
         CancellationToken cancellationToken = default);
 
+    Task<long> GetMoneyAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
     Task<ScsSaveEditResult> SetMoneyAsync(
         ScsSaveReference save,
         long amount,
+        CancellationToken cancellationToken = default);
+
+    Task<long> GetExperienceAsync(
+        ScsSaveReference save,
         CancellationToken cancellationToken = default);
 
     Task<ScsSaveEditResult> SetExperienceAsync(
