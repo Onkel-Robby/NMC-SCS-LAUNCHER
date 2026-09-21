@@ -35,7 +35,7 @@ Status: `[ ]` geplant · `[~]` externe Verifikation offen · `[x]` implementiert
 - [x] Windows-CI: Restore, Build, Tests, Publish, Release-Identitätsprüfung und Artefakte
 
 ## Externe Feldverifikation
-Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI ausgeführt dargestellt:
+Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI ausgeführt dargestellt. Die vollständige Abschlussreihenfolge steht in [`FINAL_FIELD_TEST.md`](FINAL_FIELD_TEST.md).
 
 - [x] realer ETS2-Praxistest auf einem Windows-PC mit installierter Steam-Version: Spielstart über ein ausgewähltes Modset erfolgreich; es wurde ausschließlich der direkt gewählte Mod-Ordner eingebunden
 - [x] realer ATS-Praxistest auf einem Windows-PC mit installierter Steam-Version: Spielstart über ein ausgewähltes Modset erfolgreich; es wurde ausschließlich der direkt gewählte Mod-Ordner eingebunden
