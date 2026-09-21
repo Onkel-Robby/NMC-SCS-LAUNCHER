@@ -67,7 +67,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Truck-Editor: Kilometerstand inklusive korrespondierendem `truck_profit_logs[n]` sicher ändern
 - [x] Truck-Editor: Kennzeichen des aktiven Trucks mit validiertem SCS-Format ändern
 - [x] Truck-Editor-Backend: aktive Engine-/Transmission-Accessory eindeutig über `accessories[n]` und `data_path` auflösen und validierten Definition-Pfad ändern
-- [ ] Truck-Definition-Katalog: verfügbare Motoren/Getriebe aus installierter Spiel-/Mod-Umgebung verifizieren und kompatible Auswahl für die UI bereitstellen
+- [x] sicherer Powertrain-Auswahlkatalog: Motoren/Getriebe aus bereits vorhandenen eigenen Trucks desselben Modells im aktuellen Save ableiten und als UI-Auswahl anbieten
+- [ ] optionaler erweiterter Definition-Katalog aus installierten Game-/Mod-Archiven erst mit verifiziertem SCS-Archivparser und Kompatibilitätsprüfung
 - [~] realer ETS2-/ATS-Feldtest für Engine-/Transmission-`data_path` auf aktuellen Saves
 - [x] Trailer-Editor-Grundlage: aktiven Trailer samt Slave-Kette eindeutig auflösen und reparieren
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen
