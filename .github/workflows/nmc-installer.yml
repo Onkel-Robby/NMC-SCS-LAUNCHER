@@ -30,7 +30,32 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) { throw "Project version could not be resolved." }
 
           $parts = $version.Split('.')
-          $nonNumericParts = @($parts | Where-Object { $_ -notmatch '^\d+
+          if ($parts.Length -ne 3) {
+            throw "Project version must use numeric major.minor.patch format."
+          }
+          foreach ($part in $parts) {
+            $parsedPart = 0
+            if (-not [int]::TryParse($part, [ref]$parsedPart)) {
+              throw "Project version must use numeric major.minor.patch format."
+            }
+          }
+
+          $installerBuild = [int]$env:GITHUB_RUN_NUMBER
+          if ($installerBuild -lt 1 -or $installerBuild -gt 65535) {
+            throw "GitHub run number is outside the MSI build range 1..65535."
+          }
+
+          $packageVersion = "$($parts[0]).$($parts[1]).$installerBuild"
+          $bundleVersion = "$version.$installerBuild"
+
+          "NMC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "NMC_PACKAGE_VERSION=$packageVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "NMC_BUNDLE_VERSION=$bundleVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          Write-Host "NMC SCS LAUNCHER version: $version"
+          Write-Host "MSI package version: $packageVersion"
+          Write-Host "Burn bundle version: $bundleVersion"
+
       - name: Restore launcher
         run: dotnet restore NMC-SCS-LAUNCHER.sln
 
@@ -134,143 +159,6 @@ jobs:
           }
           if ([string]$marker.InstallerPackageVersion -ne $env:NMC_PACKAGE_VERSION) {
             throw "Registered MSI package version does not match NMC_PACKAGE_VERSION."
-          }
-
-          $uninstall = Start-Process -FilePath $installer -ArgumentList @("/uninstall", "/quiet", "/norestart") -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw "NMC custom installer smoke uninstall failed with exit code $($uninstall.ExitCode)." }
-          if (Test-Path (Join-Path $target "NmcScsLauncher.App.exe")) {
-            throw "NMC custom installer uninstall left the launcher executable behind."
-          }
-
-          Write-Host "NMC custom installer install/uninstall smoke test passed."
-
-      - name: Upload NMC custom installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-nmc-installer
-          path: |
-            artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe
-            artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe.sha256
-          if-no-files-found: error
- })
-          if ($parts.Length -ne 3 -or $nonNumericParts.Count -gt 0) {
-            throw "Project version must use numeric major.minor.patch format."
-          }
-
-          $installerBuild = [int]$env:GITHUB_RUN_NUMBER
-          if ($installerBuild -lt 1 -or $installerBuild -gt 65535) {
-            throw "GitHub run number is outside the MSI build range 1..65535."
-          }
-
-          $packageVersion = "$($parts[0]).$($parts[1]).$installerBuild"
-          $bundleVersion = "$version.$installerBuild"
-
-          "NMC_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "NMC_PACKAGE_VERSION=$packageVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "NMC_BUNDLE_VERSION=$bundleVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          Write-Host "NMC SCS LAUNCHER version: $version"
-          Write-Host "MSI package version: $packageVersion"
-          Write-Host "Burn bundle version: $bundleVersion"
-
-      - name: Restore launcher
-        run: dotnet restore NMC-SCS-LAUNCHER.sln
-
-      - name: Validate embedded LicenseHub product credential
-        if: github.event_name == 'push'
-        shell: pwsh
-        env:
-          NMC_LICENSEHUB_PRODUCT_API_KEY: ${{ secrets.NMC_LICENSEHUB_PRODUCT_API_KEY }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:NMC_LICENSEHUB_PRODUCT_API_KEY)) {
-            throw "Repository secret NMC_LICENSEHUB_PRODUCT_API_KEY is required for main installer builds."
-          }
-
-      - name: Publish launcher
-        shell: pwsh
-        env:
-          NMC_LICENSEHUB_PRODUCT_API_KEY: ${{ secrets.NMC_LICENSEHUB_PRODUCT_API_KEY }}
-        run: |
-          dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
-          if ($LASTEXITCODE -ne 0) { throw "Launcher publish failed." }
-
-      - name: Prepare pinned SCS save decoder
-        shell: pwsh
-        run: ./scripts/prepare-scs-decoder.ps1 -Destination "artifacts/publish/third-party/decrypt-truck"
-
-      - name: Publish updater
-        shell: pwsh
-        run: |
-          dotnet publish src/NmcScsLauncher.Updater/NmcScsLauncher.Updater.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --no-restore --output artifacts/updater
-          if ($LASTEXITCODE -ne 0) { throw "Updater publish failed." }
-          Copy-Item artifacts/updater/NmcScsLauncher.Updater.exe artifacts/publish/NmcScsLauncher.Updater.exe -Force
-
-      - name: Publish NMC installer UI
-        shell: pwsh
-        run: |
-          dotnet publish installer-wix/NmcScsLauncher.Installer.UI/NmcScsLauncher.Installer.UI.csproj --configuration Release --runtime win-x64 --self-contained true --output artifacts/wix/ui
-          if ($LASTEXITCODE -ne 0) { throw "NMC Installer UI publish failed." }
-          if (-not (Test-Path "artifacts/wix/ui/NmcScsLauncher.Installer.UI.exe")) {
-            throw "NMC Installer UI executable is missing."
-          }
-
-      - name: Build NMC WiX MSI
-        shell: pwsh
-        run: |
-          $publishDir = (Resolve-Path "artifacts/publish").Path
-          dotnet build installer-wix/NmcScsLauncher.Installer.Msi/NmcScsLauncher.Installer.Msi.wixproj --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:PublishDir=$publishDir"
-          if ($LASTEXITCODE -ne 0) { throw "NMC WiX MSI build failed." }
-
-          $msi = Get-ChildItem "artifacts/wix/msi" -Filter "NMC-SCS-LAUNCHER-$env:NMC_VERSION.msi" -Recurse | Select-Object -First 1
-          if (-not $msi) { throw "NMC WiX MSI was not created." }
-          "NMC_WIX_MSI=$($msi.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Build NMC Burn installer
-        shell: pwsh
-        run: |
-          $bootstrapper = (Resolve-Path "artifacts/wix/ui/NmcScsLauncher.Installer.UI.exe").Path
-          $bundleVersion = "$($env:NMC_VERSION).0"
-
-          dotnet build installer-wix/NmcScsLauncher.Installer.Bundle/NmcScsLauncher.Installer.Bundle.wixproj --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:BundleVersion=$bundleVersion" "-p:MsiPath=$env:NMC_WIX_MSI" "-p:BootstrapperExe=$bootstrapper"
-          if ($LASTEXITCODE -ne 0) { throw "NMC WiX Burn bundle build failed." }
-
-          $bundle = Get-ChildItem "artifacts/wix/installer" -Filter "NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe" -Recurse | Select-Object -First 1
-          if (-not $bundle) { throw "NMC custom installer was not created." }
-
-          New-Item -ItemType Directory -Path "artifacts/nmc-installer" -Force | Out-Null
-          $installer = "artifacts/nmc-installer/NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe"
-          Copy-Item $bundle.FullName $installer -Force
-
-          $sha256 = (Get-FileHash -Path $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($sha256.Length -ne 64) { throw "Invalid installer SHA-256 result." }
-          Set-Content -Path "$installer.sha256" -Value "$sha256  NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe" -Encoding ascii -NoNewline
-
-      - name: Smoke test NMC custom installer
-        shell: pwsh
-        run: |
-          $installer = (Resolve-Path "artifacts/nmc-installer/NMC-SCS-LAUNCHER-$env:NMC_VERSION-Setup.exe").Path
-          $target = Join-Path $env:LOCALAPPDATA "Programs\NMC SCS LAUNCHER"
-          if (Test-Path $target) { Remove-Item $target -Recurse -Force }
-
-          $install = Start-Process -FilePath $installer -ArgumentList @("/quiet", "/norestart") -Wait -PassThru
-          if ($install.ExitCode -ne 0) { throw "NMC custom installer smoke install failed with exit code $($install.ExitCode)." }
-
-          foreach ($required in @(
-            "NmcScsLauncher.App.exe",
-            "NmcScsLauncher.Updater.exe",
-            "coreclr.dll",
-            "hostfxr.dll",
-            "third-party\decrypt-truck\decrypt_truck_windows.exe",
-            "third-party\decrypt-truck\LICENSE.txt"
-          )) {
-            if (-not (Test-Path (Join-Path $target $required))) {
-              throw "NMC custom installer payload is missing $required."
-            }
-          }
-
-          $marker = Get-ItemProperty -Path "HKCU:\Software\NMC IT-SERVICE\NMC SCS LAUNCHER" -ErrorAction Stop
-          if ([string]::IsNullOrWhiteSpace([string]$marker.InstallPath)) {
-            throw "NMC custom installer did not register the install path."
           }
 
           $uninstall = Start-Process -FilePath $installer -ArgumentList @("/uninstall", "/quiet", "/norestart") -Wait -PassThru
