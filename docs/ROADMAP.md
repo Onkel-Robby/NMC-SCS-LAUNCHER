@@ -49,10 +49,16 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
-- [~] realer Windows-Feldtest des neuen NMC Custom Installers inklusive Migration einer bestehenden Inno-Installation; bis dahin bleibt Inno Setup als Fallback erhalten
+- [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair, Desktop-Verknüpfung, LicenseHub-Update, Rollback und Uninstall mit erhaltenen Benutzerdaten bestätigt
 - [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Auswahl, Refresh, lokaler Ordner und Steam-Seite
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
+- [x] Save-Editor-Grundlage: nur game.sii/profile.sii, textuelles SiiNunit, automatisches Backup, SHA-256, atomarer Austausch, Restore und Sperre bei laufendem ETS2/ATS
+- [ ] Decoder-Adapter für binäre/verschlüsselte SCS-Saves mit fail-closed Fallback
+- [ ] Profil-Editor: Profilname, Geld/XP und Skills auf verifiziertem Save-Format
+- [ ] Truck-Editor: aktuellen Truck wechseln, reparieren, Kraftstoff; danach Motor/Getriebe/Kennzeichen/Kilometer
+- [ ] Trailer-Editor: aktuellen Trailer wechseln, reparieren; danach Gewicht/Kennzeichen
+- [ ] Save-Editor-UI mit Save-Auswahl, Vorschau, Änderungsbestätigung und Backup-Wiederherstellung
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
