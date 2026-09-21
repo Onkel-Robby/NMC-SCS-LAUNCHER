@@ -6,9 +6,24 @@ public sealed record ScsActiveVehicleState(
     int TrailerUnits,
     decimal? FuelRelative);
 
+public sealed record ScsVehicleInventoryItem(
+    string Id,
+    int Slot,
+    bool IsActive);
+
+public sealed record ScsVehicleInventory(
+    string ActiveTruckId,
+    string? ActiveTrailerId,
+    IReadOnlyList<ScsVehicleInventoryItem> Trucks,
+    IReadOnlyList<ScsVehicleInventoryItem> Trailers);
+
 public interface IScsVehicleEditService
 {
     Task<ScsActiveVehicleState> InspectActiveVehiclesAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsVehicleInventory> GetVehicleInventoryAsync(
         ScsSaveReference save,
         CancellationToken cancellationToken = default);
 
@@ -23,5 +38,10 @@ public interface IScsVehicleEditService
 
     Task<ScsSaveEditResult> RepairActiveTrailerAsync(
         ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SwitchActiveTrailerAsync(
+        ScsSaveReference save,
+        string targetTrailerId,
         CancellationToken cancellationToken = default);
 }
