@@ -59,4 +59,20 @@ public interface IScsVehicleEditService
         ScsSaveReference save,
         decimal cargoMass,
         CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTruckLicensePlateAsync(
+        ScsSaveReference save,
+        string plateText,
+        string countryCode,
+        string backgroundRgb,
+        string textRgb,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTrailerLicensePlateAsync(
+        ScsSaveReference save,
+        string plateText,
+        string countryCode,
+        string backgroundRgb,
+        string textRgb,
+        CancellationToken cancellationToken = default);
 }
