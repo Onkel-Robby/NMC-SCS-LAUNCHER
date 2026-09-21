@@ -29,6 +29,42 @@ internal sealed class ScsSiiUnitDocument
 
     public string ToText() => string.Join(Newline, _lines);
 
+
+    public IReadOnlyList<ScsSiiUnit> GetUnitsByType(string type)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+            throw new ArgumentException("SII-Unit-Typ ist erforderlich.", nameof(type));
+
+        return FindUnits()
+            .Where(unit => string.Equals(unit.Type, type, StringComparison.Ordinal))
+            .ToArray();
+    }
+
+    public IReadOnlyList<string> GetIndexedUnitScalars(ScsSiiUnit unit, string prefix)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+            throw new ArgumentException("SII-Array-Präfix ist erforderlich.", nameof(prefix));
+
+        var values = new SortedDictionary<int, string>();
+
+        for (var i = unit.StartLine + 1; i < unit.EndLine; i++)
+        {
+            if (!TryParseScalar(_lines[i], out var key, out var value))
+                continue;
+
+            if (!TryParseIndexedKey(key, prefix, out var index))
+                continue;
+
+            if (!values.TryAdd(index, value))
+            {
+                throw new ScsSaveEditException(
+                    $"SII-Array '{prefix}' enthält den Index {index} mehrfach in Unit '{unit.Id}'.");
+            }
+        }
+
+        return values.Values.ToArray();
+    }
+
     public string GetRequiredUniqueScalar(string key)
     {
         var matches = new List<string>();
@@ -232,8 +268,12 @@ internal sealed class ScsSiiUnitDocument
         return result;
     }
 
-    private static bool IsIndexedKey(string key, string prefix)
+    private static bool IsIndexedKey(string key, string prefix) =>
+        TryParseIndexedKey(key, prefix, out _);
+
+    private static bool TryParseIndexedKey(string key, string prefix, out int index)
     {
+        index = -1;
         var expectedPrefix = prefix + "[";
         if (!key.StartsWith(expectedPrefix, StringComparison.Ordinal) ||
             !key.EndsWith("]", StringComparison.Ordinal))
@@ -241,8 +281,10 @@ internal sealed class ScsSiiUnitDocument
             return false;
         }
 
-        var index = key[expectedPrefix.Length..^1];
-        return index.Length > 0 && index.All(char.IsDigit);
+        var value = key[expectedPrefix.Length..^1];
+        return value.Length > 0 &&
+               int.TryParse(value, out index) &&
+               index >= 0;
     }
 
     private static bool TryParseScalar(string line, out string key, out string value)
