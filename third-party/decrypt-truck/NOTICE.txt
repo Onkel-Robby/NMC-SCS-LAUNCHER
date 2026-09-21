@@ -1,0 +1,15 @@
+DecryptTruck third-party component
+
+Project: CoffeSiberian/DecryptTruck
+Version: 1.3.7
+License: MIT
+Source: https://github.com/CoffeSiberian/DecryptTruck
+Pinned Windows release asset:
+  decrypt_truck_windows.exe
+Expected SHA-256:
+  7d8521e482646f11ac986d97063dbe0cc8c7b98716a6fe02cf7b621c19a64e2d
+
+NMC SCS LAUNCHER uses this component only as a separate process to decode
+ETS2/ATS SII save files into textual SiiNunit form. The original save is not
+passed as the decoder output target; decoding first happens into a temporary
+file and the NMC backup/validation pipeline controls any later replacement.

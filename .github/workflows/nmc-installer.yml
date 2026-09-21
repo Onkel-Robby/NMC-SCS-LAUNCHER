@@ -52,6 +52,10 @@ jobs:
           dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
           if ($LASTEXITCODE -ne 0) { throw "Launcher publish failed." }
 
+      - name: Prepare pinned SCS save decoder
+        shell: pwsh
+        run: ./scripts/prepare-scs-decoder.ps1 -Destination "artifacts/publish/third-party/decrypt-truck"
+
       - name: Publish updater
         shell: pwsh
         run: |
@@ -109,7 +113,14 @@ jobs:
           $install = Start-Process -FilePath $installer -ArgumentList @("/quiet", "/norestart") -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "NMC custom installer smoke install failed with exit code $($install.ExitCode)." }
 
-          foreach ($required in @("NmcScsLauncher.App.exe", "NmcScsLauncher.Updater.exe", "coreclr.dll", "hostfxr.dll")) {
+          foreach ($required in @(
+            "NmcScsLauncher.App.exe",
+            "NmcScsLauncher.Updater.exe",
+            "coreclr.dll",
+            "hostfxr.dll",
+            "third-party\decrypt-truck\decrypt_truck_windows.exe",
+            "third-party\decrypt-truck\LICENSE.txt"
+          )) {
             if (-not (Test-Path (Join-Path $target $required))) {
               throw "NMC custom installer payload is missing $required."
             }

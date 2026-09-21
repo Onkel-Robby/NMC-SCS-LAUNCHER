@@ -56,6 +56,10 @@ jobs:
           NMC_LICENSEHUB_PRODUCT_API_KEY: ${{ secrets.NMC_LICENSEHUB_PRODUCT_API_KEY }}
         run: dotnet publish src/NmcScsLauncher.App/NmcScsLauncher.App.csproj --configuration Release --no-restore --output artifacts/publish
 
+      - name: Prepare pinned SCS save decoder
+        shell: pwsh
+        run: ./scripts/prepare-scs-decoder.ps1 -Destination "artifacts/publish/third-party/decrypt-truck"
+
       - name: Publish updater
         run: dotnet publish src/NmcScsLauncher.Updater/NmcScsLauncher.Updater.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true --no-restore --output artifacts/updater
 
@@ -71,8 +75,17 @@ jobs:
         run: |
           $launcher = "artifacts/publish/NmcScsLauncher.App.exe"
           $updater = "artifacts/publish/NmcScsLauncher.Updater.exe"
+          $decoder = "artifacts/publish/third-party/decrypt-truck/decrypt_truck_windows.exe"
+          $decoderLicense = "artifacts/publish/third-party/decrypt-truck/LICENSE.txt"
           if (-not (Test-Path $launcher)) { throw "Launcher executable is missing." }
           if (-not (Test-Path $updater)) { throw "Updater executable is missing." }
+          if (-not (Test-Path $decoder)) { throw "Pinned SCS save decoder is missing." }
+          if (-not (Test-Path $decoderLicense)) { throw "SCS save decoder license is missing." }
+
+          $decoderSha256 = (Get-FileHash -Path $decoder -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($decoderSha256 -ne "7d8521e482646f11ac986d97063dbe0cc8c7b98716a6fe02cf7b621c19a64e2d") {
+            throw "Pinned SCS save decoder SHA-256 does not match the expected release asset."
+          }
 
           $productVersion = (Get-Item $launcher).VersionInfo.ProductVersion
           if ([string]::IsNullOrWhiteSpace($productVersion) -or -not $productVersion.StartsWith($env:NMC_VERSION)) {
@@ -107,6 +120,8 @@ jobs:
             $names = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\','/') })
             if ($names -notcontains "NmcScsLauncher.App.exe") { throw "Release ZIP is missing NmcScsLauncher.App.exe at archive root." }
             if ($names -notcontains "NmcScsLauncher.Updater.exe") { throw "Release ZIP is missing NmcScsLauncher.Updater.exe at archive root." }
+            if ($names -notcontains "third-party/decrypt-truck/decrypt_truck_windows.exe") { throw "Release ZIP is missing the pinned SCS save decoder." }
+            if ($names -notcontains "third-party/decrypt-truck/LICENSE.txt") { throw "Release ZIP is missing the decoder license." }
           }
           finally {
             $archive.Dispose()
@@ -166,6 +181,8 @@ jobs:
             "NmcScsLauncher.Updater.exe",
             "coreclr.dll",
             "hostfxr.dll",
+            "third-party\decrypt-truck\decrypt_truck_windows.exe",
+            "third-party\decrypt-truck\LICENSE.txt",
             "unins000.exe"
           )) {
             if (-not (Test-Path (Join-Path $target $required))) {
