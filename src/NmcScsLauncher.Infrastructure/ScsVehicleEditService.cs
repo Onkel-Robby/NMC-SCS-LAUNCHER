@@ -299,6 +299,107 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<ScsSaveEditResult> SwitchActiveTruckAsync(
+        ScsSaveReference save,
+        string targetTruckId,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var targetId = NormalizeReference(targetTruckId, nameof(targetTruckId));
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+
+        if (string.Equals(refs.TruckId, targetId, StringComparison.Ordinal))
+            throw new ScsSaveEditException("Der ausgewählte Truck ist bereits aktiv.");
+
+        var inventory = BuildInventory(document, refs);
+        if (!inventory.Trucks.Any(item => string.Equals(item.Id, targetId, StringComparison.Ordinal)))
+        {
+            throw new ScsSaveEditException(
+                "Der ausgewählte Truck ist im Besitz-Array des Profils nicht eindeutig vorhanden.");
+        }
+
+        var targetTruckUnit = document.GetRequiredUniqueUnit(targetId);
+        EnsureUnitType(targetTruckUnit, "vehicle", "Ziel-Truck");
+
+        var currentGarage = ResolveGarageSlot(document, refs.TruckId);
+        var targetGarage = ResolveGarageSlot(document, targetId);
+        var targetCity = ResolveGarageCity(targetGarage.GarageId);
+
+        var player = ResolvePlayerUnit(document);
+        _ = document.GetRequiredUnitScalar(player, "hq_city");
+
+        var matchingPlayerVehicleUnits = GetPlayerVehicleUnitsForTruck(document, refs.TruckId);
+        if (matchingPlayerVehicleUnits.Count == 0)
+        {
+            throw new ScsSaveEditException(
+                "Es wurde keine player_vehicles-Unit für den aktiven Truck gefunden.");
+        }
+
+        var updated = document;
+        foreach (var unit in matchingPlayerVehicleUnits)
+        {
+            var currentUnit = updated.GetRequiredUniqueUnit(unit.Id);
+            updated = updated.SetRequiredUnitScalar(currentUnit, "vehicle", targetId);
+        }
+
+        var currentGarageUnit = updated.GetRequiredUniqueUnit(currentGarage.GarageId);
+        updated = updated.SetRequiredIndexedUnitScalar(
+            currentGarageUnit,
+            "drivers",
+            currentGarage.Slot,
+            targetGarage.DriverValue);
+
+        var targetGarageUnit = updated.GetRequiredUniqueUnit(targetGarage.GarageId);
+        updated = updated.SetRequiredIndexedUnitScalar(
+            targetGarageUnit,
+            "drivers",
+            targetGarage.Slot,
+            currentGarage.DriverValue);
+
+        var updatedPlayer = updated.GetRequiredUniqueUnit(player.Id);
+        updated = updated.SetRequiredUnitScalar(updatedPlayer, "hq_city", targetCity);
+
+        var resultRefs = ResolveActiveReferences(updated);
+        if (!string.Equals(resultRefs.TruckId, targetId, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die Truck-Zuordnung konnte nach der Änderung nicht konsistent validiert werden.");
+        }
+
+        var validatedCurrentGarage = ResolveGarageSlot(updated, refs.TruckId);
+        var validatedTargetGarage = ResolveGarageSlot(updated, targetId);
+
+        if (!string.Equals(
+                validatedCurrentGarage.DriverValue,
+                targetGarage.DriverValue,
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                validatedTargetGarage.DriverValue,
+                currentGarage.DriverValue,
+                StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die Fahrer-Zuordnung der beteiligten Garagen konnte nicht konsistent validiert werden.");
+        }
+
+        var validatedPlayer = ResolvePlayerUnit(updated);
+        var validatedHq = updated.GetRequiredUnitScalar(validatedPlayer, "hq_city").Trim();
+        if (!string.Equals(validatedHq, targetCity, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die neue HQ-Stadt konnte nach dem Truck-Wechsel nicht konsistent validiert werden.");
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Aktiven Truck wechseln: {refs.TruckId} -> {targetId}",
+            updated,
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> ApplyAsync(
         ScsSaveReference save,
         string operation,
@@ -310,6 +411,95 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
                 operation,
                 updated.ToText()),
             cancellationToken);
+
+    private static IReadOnlyList<ScsSiiUnit> GetPlayerVehicleUnitsForTruck(
+        ScsSiiUnitDocument document,
+        string truckId)
+    {
+        return document
+            .GetUnitsByType("player_vehicles")
+            .Where(unit =>
+            {
+                var vehicle = document.TryGetOptionalUnitScalar(unit, "vehicle");
+                return vehicle is not null &&
+                       string.Equals(
+                           NormalizeReference(vehicle, "vehicle"),
+                           truckId,
+                           StringComparison.Ordinal);
+            })
+            .ToArray();
+    }
+
+    private static GarageSlot ResolveGarageSlot(
+        ScsSiiUnitDocument document,
+        string truckId)
+    {
+        var matches = new List<GarageSlot>();
+
+        foreach (var garage in document.GetUnitsByType("garage"))
+        {
+            var vehicles = document.GetIndexedUnitScalars(garage, "vehicles");
+            if (vehicles.Count == 0)
+                continue;
+
+            var drivers = document
+                .GetIndexedUnitScalars(garage, "drivers")
+                .ToDictionary(item => item.Index);
+
+            foreach (var vehicle in vehicles)
+            {
+                var vehicleId = NormalizeReference(vehicle.Value, "garage vehicles");
+                if (!string.Equals(vehicleId, truckId, StringComparison.Ordinal))
+                    continue;
+
+                if (!drivers.TryGetValue(vehicle.Index, out var driver))
+                {
+                    throw new ScsSaveEditException(
+                        $"Garage '{garage.Id}' enthält für Fahrzeug-Slot {vehicle.Index} keinen passenden Fahrer-Slot.");
+                }
+
+                var driverValue = NormalizeNullableReference(
+                    driver.Value,
+                    $"drivers[{vehicle.Index}]");
+
+                matches.Add(new GarageSlot(
+                    garage.Id,
+                    vehicle.Index,
+                    driverValue));
+            }
+        }
+
+        return matches.Count switch
+        {
+            1 => matches[0],
+            0 => throw new ScsSaveEditException(
+                $"Truck '{truckId}' wurde in keiner eindeutigen Garage gefunden."),
+            _ => throw new ScsSaveEditException(
+                $"Truck '{truckId}' ist in mehreren Garagen/Fahrzeug-Slots referenziert.")
+        };
+    }
+
+    private static string ResolveGarageCity(string garageId)
+    {
+        const string prefix = "garage.";
+        if (!garageId.StartsWith(prefix, StringComparison.Ordinal) ||
+            garageId.Length <= prefix.Length)
+        {
+            throw new ScsSaveEditException(
+                $"Garage-ID '{garageId}' kann keiner HQ-Stadt sicher zugeordnet werden.");
+        }
+
+        return NormalizeReference(garageId[prefix.Length..], "garage city");
+    }
+
+    private static string NormalizeNullableReference(string value, string field)
+    {
+        var reference = value.Trim();
+        if (string.Equals(reference, "null", StringComparison.OrdinalIgnoreCase))
+            return "null";
+
+        return NormalizeReference(reference, field);
+    }
 
     private static ScsVehicleInventory BuildInventory(
         ScsSiiUnitDocument document,
@@ -493,6 +683,11 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             throw new ScsSaveEditException("Ungültige game.sii-Auswahl.");
         }
     }
+
+    private sealed record GarageSlot(
+        string GarageId,
+        int Slot,
+        string DriverValue);
 
     private sealed record ActiveReferences(string TruckId, string? TrailerId);
 }
