@@ -61,6 +61,78 @@ public sealed class ScsVehicleEditServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task InspectUsesEconomyPlayerReferenceWhenMultiplePlayerUnitsExist()
+    {
+        var profileDirectory = Path.Combine(_root, "profiles", "TEST");
+        var saveDirectory = Path.Combine(profileDirectory, "save", "economy-player");
+        Directory.CreateDirectory(saveDirectory);
+
+        var gameSii = Path.Combine(saveDirectory, "game.sii");
+        var source = CreateSave().Replace(
+            "player : _nameless.player {",
+            "player : _nameless.player.stale {\n assigned_vehicles: _nameless.missing\n}\nplayer : _nameless.player {",
+            StringComparison.Ordinal);
+        await File.WriteAllTextAsync(gameSii, source);
+
+        var codec = new ScsPlainTextSaveCodec();
+        var saveEdit = new ScsSaveEditService(
+            codec,
+            new NeverRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+
+        var state = await editor.InspectActiveVehiclesAsync(
+            CreateReference(profileDirectory, saveDirectory, gameSii));
+
+        Assert.Equal("_nameless.truck.1", state.TruckId);
+        Assert.Equal("_nameless.trailer.1", state.TrailerId);
+    }
+
+    [Fact]
+    public async Task InspectSupportsLegacyAssignedTruckWhenAssignedVehiclesIsMissing()
+    {
+        var profileDirectory = Path.Combine(_root, "profiles", "TEST");
+        var saveDirectory = Path.Combine(profileDirectory, "save", "legacy");
+        Directory.CreateDirectory(saveDirectory);
+
+        var gameSii = Path.Combine(saveDirectory, "game.sii");
+        await File.WriteAllTextAsync(
+            gameSii,
+            """
+            SiiNunit
+            {
+            economy : _nameless.economy {
+             player: _nameless.player
+            }
+            player : _nameless.player {
+             assigned_truck: _nameless.truck.legacy
+             assigned_trailer: _nameless.trailer.legacy
+            }
+            vehicle : _nameless.truck.legacy {
+             fuel_relative: 0.5
+            }
+            trailer : _nameless.trailer.legacy {
+             slave_trailer: null
+            }
+            }
+            """);
+
+        var codec = new ScsPlainTextSaveCodec();
+        var saveEdit = new ScsSaveEditService(
+            codec,
+            new NeverRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+
+        var state = await editor.InspectActiveVehiclesAsync(
+            CreateReference(profileDirectory, saveDirectory, gameSii));
+
+        Assert.Equal("_nameless.truck.legacy", state.TruckId);
+        Assert.Equal("_nameless.trailer.legacy", state.TrailerId);
+        Assert.Equal(0.5m, state.FuelRelative);
+    }
+
+    [Fact]
     public async Task RepairTruck_DoesNotTouchOtherTruck()
     {
         var profileDirectory = Path.Combine(_root, "profiles", "TEST");
@@ -167,6 +239,9 @@ public sealed class ScsVehicleEditServiceTests : IDisposable
         """
         SiiNunit
         {
+        economy : _nameless.economy {
+         player: _nameless.player
+        }
         player : _nameless.player {
          assigned_vehicles: _nameless.player_vehicle.1
         }
