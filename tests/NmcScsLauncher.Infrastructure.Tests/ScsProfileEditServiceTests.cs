@@ -12,7 +12,7 @@ public sealed class ScsProfileEditServiceTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task RenamesProfileAndEditsMoneyAndExperienceWithBackups()
+    public async Task RenamesProfileReadsAndEditsReferencedBankAndEconomyValues()
     {
         var profileDirectory = Path.Combine(_root, "profiles", "524F424259");
         var saveDirectory = Path.Combine(profileDirectory, "save", "1");
@@ -27,7 +27,21 @@ public sealed class ScsProfileEditServiceTests : IDisposable
             "SiiNunit\n{\nprofile_name: \"Old Name\"\n}\n");
         await File.WriteAllTextAsync(
             gameSii,
-            "SiiNunit\n{\nmoney_account: 10\n\texperience_points: 20\n}\n");
+            """
+            SiiNunit
+            {
+            economy : _nameless.economy {
+             bank: _nameless.bank
+             experience_points: 20
+            }
+            bank : _nameless.bank {
+             money_account: 10
+            }
+            driver_ai : driver.1 {
+             experience_points: 999
+            }
+            }
+            """);
 
         var codec = new ScsPlainTextSaveCodec();
         var saveEdit = new ScsSaveEditService(codec, new NeverRunningGuard(), backupRoot);
@@ -52,6 +66,9 @@ public sealed class ScsProfileEditServiceTests : IDisposable
             gameSii,
             DateTimeOffset.UtcNow);
 
+        Assert.Equal(10, await editor.GetMoneyAsync(save));
+        Assert.Equal(20, await editor.GetExperienceAsync(save));
+
         var renameResult = await editor.RenameProfileAsync(profile, "NMC Robby");
         var moneyResult = await editor.SetMoneyAsync(save, 123456);
         var experienceResult = await editor.SetExperienceAsync(save, 98765);
@@ -59,17 +76,27 @@ public sealed class ScsProfileEditServiceTests : IDisposable
         Assert.True(File.Exists(renameResult.BackupPath));
         Assert.True(File.Exists(moneyResult.BackupPath));
         Assert.True(File.Exists(experienceResult.BackupPath));
+        Assert.Equal(123456, await editor.GetMoneyAsync(save));
+        Assert.Equal(98765, await editor.GetExperienceAsync(save));
 
         var profileText = await File.ReadAllTextAsync(profileSii);
-        var gameText = await File.ReadAllTextAsync(gameSii);
+        var gameText = (await File.ReadAllTextAsync(gameSii))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
 
         Assert.Contains("profile_name: \"NMC Robby\"", profileText);
-        Assert.Contains("money_account: 123456", gameText);
-        Assert.Contains("experience_points: 98765", gameText);
+        Assert.Contains(
+            "economy : _nameless.economy {\n bank: _nameless.bank\n experience_points: 98765",
+            gameText);
+        Assert.Contains(
+            "bank : _nameless.bank {\n money_account: 123456",
+            gameText);
+        Assert.Contains(
+            "driver_ai : driver.1 {\n experience_points: 999",
+            gameText);
     }
 
     [Fact]
-    public async Task SetMoney_FailsClosedWhenMoneyFieldIsAmbiguous()
+    public async Task SetMoney_FailsClosedWhenReferencedBankFieldIsAmbiguous()
     {
         var profileDirectory = Path.Combine(_root, "profiles", "TEST");
         var saveDirectory = Path.Combine(profileDirectory, "save", "1");
@@ -77,7 +104,7 @@ public sealed class ScsProfileEditServiceTests : IDisposable
 
         var gameSii = Path.Combine(saveDirectory, "game.sii");
         const string original =
-            "SiiNunit\n{\n money_account: 10\n money_account: 20\n}\n";
+            "SiiNunit\n{\neconomy : .economy {\n bank: .bank\n}\nbank : .bank {\n money_account: 10\n money_account: 20\n}\n}\n";
         await File.WriteAllTextAsync(gameSii, original);
 
         var codec = new ScsPlainTextSaveCodec();

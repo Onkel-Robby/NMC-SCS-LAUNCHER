@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- Save-Editor: Player und Bank werden in echten SCS-Saves über die Referenzen `economy.player` bzw. `economy.bank` aufgelöst. Die aktive Fahrzeugzuordnung nutzt primär `assigned_vehicles -> player_vehicles` und unterstützt ältere Saves zusätzlich über `assigned_truck` / `assigned_trailer`.
+- Save-Editor: Geld, XP und Karriere-Skills werden beim Auswählen eines Saves aus den korrekt referenzierten Units gelesen. Gleichnamige Felder von KI-Fahrern können die Spielerwerte dadurch nicht mehr als „mehrdeutig“ blockieren.
 - Custom Installer: trennt die sichtbare Launcher-Version von der internen MSI-/Burn-Buildversion. Dadurch ersetzt ein neuer 1.0.0-Build zuverlässig einen bereits installierten älteren 1.0.0-Build, statt nur denselben MSI-Stand zu reparieren.
 - CI: zusätzlicher Upgrade-Smoke-Test installiert zuerst einen gleich benannten 1.0.0-Basisstand, manipuliert dessen Launcher-Payload absichtlich und prüft anschließend, dass der neue Custom Installer die Datei vollständig durch den aktuellen Build ersetzt.
 

@@ -39,7 +39,16 @@ public sealed class ScsProfileEditService : IScsProfileEditService
             cancellationToken);
     }
 
-    public Task<ScsSaveEditResult> SetMoneyAsync(
+    public async Task<long> GetMoneyAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var bank = ScsSaveStructureResolver.ResolveBankUnit(document);
+        return ParseLongScalar(document, bank, "money_account", "Geld");
+    }
+
+    public async Task<ScsSaveEditResult> SetMoneyAsync(
         ScsSaveReference save,
         long amount,
         CancellationToken cancellationToken = default)
@@ -47,15 +56,30 @@ public sealed class ScsProfileEditService : IScsProfileEditService
         if (amount < 0)
             throw new ArgumentOutOfRangeException(nameof(amount), "Geld darf nicht negativ sein.");
 
-        return SetSaveScalarAsync(
-            save,
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var bank = ScsSaveStructureResolver.ResolveBankUnit(document);
+        var updated = document.SetRequiredUnitScalar(
+            bank,
             "money_account",
-            amount.ToString(CultureInfo.InvariantCulture),
+            amount.ToString(CultureInfo.InvariantCulture));
+
+        return await ApplySaveDocumentAsync(
+            save,
+            updated,
             $"Geld ändern: {amount}",
             cancellationToken);
     }
 
-    public Task<ScsSaveEditResult> SetExperienceAsync(
+    public async Task<long> GetExperienceAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var economy = ScsSaveStructureResolver.ResolveEconomyUnit(document);
+        return ParseLongScalar(document, economy, "experience_points", "Erfahrungspunkte");
+    }
+
+    public async Task<ScsSaveEditResult> SetExperienceAsync(
         ScsSaveReference save,
         long experiencePoints,
         CancellationToken cancellationToken = default)
@@ -65,10 +89,16 @@ public sealed class ScsProfileEditService : IScsProfileEditService
                 nameof(experiencePoints),
                 "Erfahrungspunkte dürfen nicht negativ sein.");
 
-        return SetSaveScalarAsync(
-            save,
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var economy = ScsSaveStructureResolver.ResolveEconomyUnit(document);
+        var updated = document.SetRequiredUnitScalar(
+            economy,
             "experience_points",
-            experiencePoints.ToString(CultureInfo.InvariantCulture),
+            experiencePoints.ToString(CultureInfo.InvariantCulture));
+
+        return await ApplySaveDocumentAsync(
+            save,
+            updated,
             $"Erfahrung ändern: {experiencePoints}",
             cancellationToken);
     }
@@ -77,19 +107,16 @@ public sealed class ScsProfileEditService : IScsProfileEditService
         ScsSaveReference save,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(save);
-        ValidateSaveReference(save);
-
-        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
-        var document = ScsSiiTextDocument.Parse(source.Content);
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var economy = ScsSaveStructureResolver.ResolveEconomyUnit(document);
 
         return new ScsCareerSkills(
-            ParseSkillScalar(document, "adr", 0, 63),
-            ParseSkillScalar(document, "long_dist", 0, 6),
-            ParseSkillScalar(document, "heavy", 0, 6),
-            ParseSkillScalar(document, "fragile", 0, 6),
-            ParseSkillScalar(document, "urgent", 0, 6),
-            ParseSkillScalar(document, "mechanical", 0, 6));
+            ParseSkillScalar(document, economy, "adr", 0, 63),
+            ParseSkillScalar(document, economy, "long_dist", 0, 6),
+            ParseSkillScalar(document, economy, "heavy", 0, 6),
+            ParseSkillScalar(document, economy, "fragile", 0, 6),
+            ParseSkillScalar(document, economy, "urgent", 0, 6),
+            ParseSkillScalar(document, economy, "mechanical", 0, 6));
     }
 
     public async Task<ScsSaveEditResult> SetCareerSkillsAsync(
@@ -97,58 +124,108 @@ public sealed class ScsProfileEditService : IScsProfileEditService
         ScsCareerSkills skills,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(skills);
-        ValidateSaveReference(save);
         ValidateSkills(skills);
 
-        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
-        var document = ScsSiiTextDocument.Parse(source.Content);
+        var document = await ReadSaveDocumentAsync(save, cancellationToken);
+        var economy = ScsSaveStructureResolver.ResolveEconomyUnit(document);
 
         var updated = document
-            .SetScalar("adr", skills.AdrMask.ToString(CultureInfo.InvariantCulture))
-            .SetScalar("long_dist", skills.LongDistance.ToString(CultureInfo.InvariantCulture))
-            .SetScalar("heavy", skills.HighValueCargo.ToString(CultureInfo.InvariantCulture))
-            .SetScalar("fragile", skills.FragileCargo.ToString(CultureInfo.InvariantCulture))
-            .SetScalar("urgent", skills.UrgentDelivery.ToString(CultureInfo.InvariantCulture))
-            .SetScalar("mechanical", skills.EcoDriving.ToString(CultureInfo.InvariantCulture))
-            .ToText();
+            .SetRequiredUnitScalar(
+                economy,
+                "adr",
+                skills.AdrMask.ToString(CultureInfo.InvariantCulture));
 
-        return await _saveEditService.ApplyAsync(
-            new ScsSaveEditRequest(
-                save.GameSiiPath,
-                "Karriere-Skills ändern",
-                updated),
+        economy = ScsSaveStructureResolver.ResolveEconomyUnit(updated);
+        updated = updated.SetRequiredUnitScalar(
+            economy,
+            "long_dist",
+            skills.LongDistance.ToString(CultureInfo.InvariantCulture));
+
+        economy = ScsSaveStructureResolver.ResolveEconomyUnit(updated);
+        updated = updated.SetRequiredUnitScalar(
+            economy,
+            "heavy",
+            skills.HighValueCargo.ToString(CultureInfo.InvariantCulture));
+
+        economy = ScsSaveStructureResolver.ResolveEconomyUnit(updated);
+        updated = updated.SetRequiredUnitScalar(
+            economy,
+            "fragile",
+            skills.FragileCargo.ToString(CultureInfo.InvariantCulture));
+
+        economy = ScsSaveStructureResolver.ResolveEconomyUnit(updated);
+        updated = updated.SetRequiredUnitScalar(
+            economy,
+            "urgent",
+            skills.UrgentDelivery.ToString(CultureInfo.InvariantCulture));
+
+        economy = ScsSaveStructureResolver.ResolveEconomyUnit(updated);
+        updated = updated.SetRequiredUnitScalar(
+            economy,
+            "mechanical",
+            skills.EcoDriving.ToString(CultureInfo.InvariantCulture));
+
+        return await ApplySaveDocumentAsync(
+            save,
+            updated,
+            "Karriere-Skills ändern",
             cancellationToken);
     }
 
-    private async Task<ScsSaveEditResult> SetSaveScalarAsync(
+    private async Task<ScsSiiUnitDocument> ReadSaveDocumentAsync(
         ScsSaveReference save,
-        string key,
-        string value,
-        string operation,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(save);
         ValidateSaveReference(save);
 
         var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
-        var document = ScsSiiTextDocument.Parse(source.Content);
-        var updated = document.SetScalar(key, value).ToText();
+        return ScsSiiUnitDocument.Parse(source.Content);
+    }
 
-        return await _saveEditService.ApplyAsync(
-            new ScsSaveEditRequest(save.GameSiiPath, operation, updated),
+    private Task<ScsSaveEditResult> ApplySaveDocumentAsync(
+        ScsSaveReference save,
+        ScsSiiUnitDocument document,
+        string operation,
+        CancellationToken cancellationToken) =>
+        _saveEditService.ApplyAsync(
+            new ScsSaveEditRequest(
+                save.GameSiiPath,
+                operation,
+                document.ToText()),
             cancellationToken);
+
+    private static long ParseLongScalar(
+        ScsSiiUnitDocument document,
+        ScsSiiUnit unit,
+        string key,
+        string displayName)
+    {
+        var value = document.GetRequiredUnitScalar(unit, key);
+        if (!long.TryParse(
+                value.Trim(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var parsed) ||
+            parsed < 0)
+        {
+            throw new ScsSaveEditException(
+                $"{displayName} enthält keinen unterstützten nichtnegativen Ganzzahlwert.");
+        }
+
+        return parsed;
     }
 
     private static int ParseSkillScalar(
-        ScsSiiTextDocument document,
+        ScsSiiUnitDocument document,
+        ScsSiiUnit economy,
         string key,
         int min,
         int max)
     {
-        if (!document.TryGetScalar(key, out var value) ||
-            !int.TryParse(
+        var value = document.GetRequiredUnitScalar(economy, key);
+        if (!int.TryParse(
                 value.Trim(),
                 NumberStyles.Integer,
                 CultureInfo.InvariantCulture,
@@ -157,7 +234,7 @@ public sealed class ScsProfileEditService : IScsProfileEditService
             parsed > max)
         {
             throw new ScsSaveEditException(
-                $"Skill-Feld '{key}' fehlt, ist mehrdeutig oder enthält einen ungültigen Wert.");
+                $"Skill-Feld '{key}' in economy enthält einen ungültigen Wert.");
         }
 
         return parsed;

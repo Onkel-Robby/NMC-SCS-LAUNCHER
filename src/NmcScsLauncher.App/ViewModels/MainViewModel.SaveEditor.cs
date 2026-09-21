@@ -468,6 +468,19 @@ public partial class MainViewModel
         {
             try
             {
+                var money = await _saveEditorProfileEditService.GetMoneyAsync(save);
+                var experience = await _saveEditorProfileEditService.GetExperienceAsync(save);
+                SaveEditorMoneyText = money.ToString(CultureInfo.CurrentCulture);
+                SaveEditorExperienceText = experience.ToString(CultureInfo.CurrentCulture);
+            }
+            catch (ScsSaveEditException)
+            {
+                SaveEditorMoneyText = string.Empty;
+                SaveEditorExperienceText = string.Empty;
+            }
+
+            try
+            {
                 var skills = await _saveEditorProfileEditService.GetCareerSkillsAsync(save);
                 SaveEditorAdrMaskText = skills.AdrMask.ToString(CultureInfo.CurrentCulture);
                 SaveEditorLongDistanceText = skills.LongDistance.ToString(CultureInfo.CurrentCulture);
@@ -658,6 +671,8 @@ public partial class MainViewModel
         SaveEditorSelectedTrailer = null;
         SaveEditorActiveTruckText = "–";
         SaveEditorActiveTrailerText = "–";
+        SaveEditorMoneyText = string.Empty;
+        SaveEditorExperienceText = string.Empty;
         SaveEditorFuelText = string.Empty;
         SaveEditorMileageText = string.Empty;
         ClearSaveEditorCareerSkills();
