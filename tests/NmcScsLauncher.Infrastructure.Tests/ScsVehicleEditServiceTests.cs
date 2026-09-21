@@ -82,7 +82,8 @@ public sealed class ScsVehicleEditServiceTests : IDisposable
         await editor.RepairActiveTruckAsync(
             CreateReference(profileDirectory, saveDirectory, gameSii));
 
-        var text = await File.ReadAllTextAsync(gameSii);
+        var text = (await File.ReadAllTextAsync(gameSii))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
         Assert.Contains("vehicle : _nameless.truck.2 {\n engine_wear: 0.9", text);
     }
 
