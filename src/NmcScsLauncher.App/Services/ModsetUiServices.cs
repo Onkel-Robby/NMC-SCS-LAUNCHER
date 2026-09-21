@@ -71,7 +71,7 @@ public sealed class ConfirmationService : IConfirmationService
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
 
         var result = MessageBox.Show(
-            message + "\n\nVor jeder Änderung wird automatisch ein Backup erstellt.",
+            message + "\n\nReguläre Save-Änderungen erstellen automatisch ein Backup. Das Spiel muss beendet sein.",
             title,
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
