@@ -73,6 +73,55 @@ public sealed class ScsProfileEditService : IScsProfileEditService
             cancellationToken);
     }
 
+    public async Task<ScsCareerSkills> GetCareerSkillsAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        ValidateSaveReference(save);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiTextDocument.Parse(source.Content);
+
+        return new ScsCareerSkills(
+            ParseSkillScalar(document, "adr", 0, 63),
+            ParseSkillScalar(document, "long_dist", 0, 6),
+            ParseSkillScalar(document, "heavy", 0, 6),
+            ParseSkillScalar(document, "fragile", 0, 6),
+            ParseSkillScalar(document, "urgent", 0, 6),
+            ParseSkillScalar(document, "mechanical", 0, 6));
+    }
+
+    public async Task<ScsSaveEditResult> SetCareerSkillsAsync(
+        ScsSaveReference save,
+        ScsCareerSkills skills,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(save);
+        ArgumentNullException.ThrowIfNull(skills);
+        ValidateSaveReference(save);
+        ValidateSkills(skills);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiTextDocument.Parse(source.Content);
+
+        var updated = document
+            .SetScalar("adr", skills.AdrMask.ToString(CultureInfo.InvariantCulture))
+            .SetScalar("long_dist", skills.LongDistance.ToString(CultureInfo.InvariantCulture))
+            .SetScalar("heavy", skills.HighValueCargo.ToString(CultureInfo.InvariantCulture))
+            .SetScalar("fragile", skills.FragileCargo.ToString(CultureInfo.InvariantCulture))
+            .SetScalar("urgent", skills.UrgentDelivery.ToString(CultureInfo.InvariantCulture))
+            .SetScalar("mechanical", skills.EcoDriving.ToString(CultureInfo.InvariantCulture))
+            .ToText();
+
+        return await _saveEditService.ApplyAsync(
+            new ScsSaveEditRequest(
+                save.GameSiiPath,
+                "Karriere-Skills ändern",
+                updated),
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> SetSaveScalarAsync(
         ScsSaveReference save,
         string key,
@@ -90,6 +139,54 @@ public sealed class ScsProfileEditService : IScsProfileEditService
         return await _saveEditService.ApplyAsync(
             new ScsSaveEditRequest(save.GameSiiPath, operation, updated),
             cancellationToken);
+    }
+
+    private static int ParseSkillScalar(
+        ScsSiiTextDocument document,
+        string key,
+        int min,
+        int max)
+    {
+        if (!document.TryGetScalar(key, out var value) ||
+            !int.TryParse(
+                value.Trim(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var parsed) ||
+            parsed < min ||
+            parsed > max)
+        {
+            throw new ScsSaveEditException(
+                $"Skill-Feld '{key}' fehlt, ist mehrdeutig oder enthält einen ungültigen Wert.");
+        }
+
+        return parsed;
+    }
+
+    private static void ValidateSkills(ScsCareerSkills skills)
+    {
+        if (skills.AdrMask is < 0 or > 63)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(skills),
+                "ADR muss als Bitmaske zwischen 0 und 63 angegeben werden.");
+        }
+
+        ValidateSkillLevel(skills.LongDistance, nameof(skills.LongDistance));
+        ValidateSkillLevel(skills.HighValueCargo, nameof(skills.HighValueCargo));
+        ValidateSkillLevel(skills.FragileCargo, nameof(skills.FragileCargo));
+        ValidateSkillLevel(skills.UrgentDelivery, nameof(skills.UrgentDelivery));
+        ValidateSkillLevel(skills.EcoDriving, nameof(skills.EcoDriving));
+    }
+
+    private static void ValidateSkillLevel(int value, string parameterName)
+    {
+        if (value is < 0 or > 6)
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                "Skill-Level müssen zwischen 0 und 6 liegen.");
+        }
     }
 
     private static void ValidateProfileReference(ScsProfileReference profile)
