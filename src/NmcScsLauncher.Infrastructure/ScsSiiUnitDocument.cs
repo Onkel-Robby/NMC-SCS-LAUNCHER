@@ -149,6 +149,32 @@ internal sealed class ScsSiiUnitDocument
         return new ScsSiiUnitDocument(clone, Newline);
     }
 
+    public ScsSiiUnitDocument SetRequiredIndexedUnitScalar(
+        ScsSiiUnit unit,
+        string prefix,
+        int index,
+        string value)
+    {
+        if (index < 0)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        ValidateScalarValue(value);
+
+        var key = $"{prefix}[{index}]";
+        var matches = FindUnitScalarLines(unit, key, includeIndexed: false);
+
+        if (matches.Count == 0)
+            throw new ScsSaveEditException(
+                $"SII-Feld '{key}' wurde in Unit '{unit.Id}' nicht gefunden.");
+        if (matches.Count > 1)
+            throw new ScsSaveEditException(
+                $"SII-Feld '{key}' ist in Unit '{unit.Id}' mehrfach vorhanden.");
+
+        var clone = (string[])_lines.Clone();
+        var match = matches[0];
+        clone[match.Index] = $"{match.Indent}{match.Key}: {value}";
+        return new ScsSiiUnitDocument(clone, Newline);
+    }
+
     public ScsSiiUnitDocument SetUnitScalarFamily(
         ScsSiiUnit unit,
         IReadOnlySet<string> exactKeys,
