@@ -49,7 +49,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 ## Nach 1.0.0
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
-- [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair, Desktop-Verknüpfung, LicenseHub-Update, Rollback und Uninstall mit erhaltenen Benutzerdaten bestätigt
+- [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair vor dem LicenseHub-Update, Desktop-Verknüpfung, LicenseHub-Update und Uninstall mit erhaltenen Benutzerdaten bestätigt
+- [ ] Repair nach einem LicenseHub-Update testen, damit MSI-Dateibesitz und Updater-Dateibesitz keinen Versions-Rollback verursachen
 - [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Auswahl, Refresh, lokaler Ordner und Steam-Seite
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
@@ -72,7 +73,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: `cargo_mass` der aktiven Trailer-/Slave-Kette sicher ändern
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
 - [~] realer Feldtest der Kennzeichen-Formatierung in aktuellem ETS2 und ATS
-- [ ] Save-Editor-UI mit Save-Auswahl, Vorschau, Änderungsbestätigung und Backup-Wiederherstellung
+- [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
+- [~] reale Save-Editor-Feldtests mit aktuellen ETS2-/ATS-Profilen, verschlüsselten Saves und anschließendem Spielstart
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
