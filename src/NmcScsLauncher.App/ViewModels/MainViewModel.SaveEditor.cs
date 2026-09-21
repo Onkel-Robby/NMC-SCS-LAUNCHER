@@ -40,6 +40,8 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorPlateTextRgb = "000000";
     [ObservableProperty] private string _saveEditorEnginePath = string.Empty;
     [ObservableProperty] private string _saveEditorTransmissionPath = string.Empty;
+    [ObservableProperty] private ScsPowertrainCatalogItem? _saveEditorSelectedEngine;
+    [ObservableProperty] private ScsPowertrainCatalogItem? _saveEditorSelectedTransmission;
     [ObservableProperty] private string _saveEditorActiveTruckText = "–";
     [ObservableProperty] private string _saveEditorActiveTrailerText = "–";
     [ObservableProperty] private string _saveEditorLastBackupPath = "–";
@@ -49,6 +51,8 @@ public partial class MainViewModel
     public ObservableCollection<ScsSaveReference> SaveEditorSaves { get; } = new();
     public ObservableCollection<ScsVehicleInventoryItem> SaveEditorTrucks { get; } = new();
     public ObservableCollection<ScsVehicleInventoryItem> SaveEditorTrailers { get; } = new();
+    public ObservableCollection<ScsPowertrainCatalogItem> SaveEditorEngines { get; } = new();
+    public ObservableCollection<ScsPowertrainCatalogItem> SaveEditorTransmissions { get; } = new();
 
     public void ConfigureSaveEditorServices(
         IScsProfileSaveLocator locator,
@@ -351,23 +355,37 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task SetSaveEditorEngineAsync()
     {
+        var selected = SaveEditorSelectedEngine;
+        if (selected is null)
+        {
+            SaveEditorStatusText = "Kein sicherer Motor aus dem aktuellen Save-Katalog ausgewählt.";
+            return;
+        }
+
         await ExecuteSelectedVehicleEditAsync(
             "Motor ändern",
-            $"Engine-data_path auf '{SaveEditorEnginePath.Trim()}' setzen?",
+            $"Motor auf '{selected.DataPath}' setzen?",
             () => _saveEditorVehicleEditService!.SetActiveTruckEngineAsync(
                 SaveEditorSelectedSave!,
-                SaveEditorEnginePath));
+                selected.DataPath));
     }
 
     [RelayCommand]
     private async Task SetSaveEditorTransmissionAsync()
     {
+        var selected = SaveEditorSelectedTransmission;
+        if (selected is null)
+        {
+            SaveEditorStatusText = "Kein sicheres Getriebe aus dem aktuellen Save-Katalog ausgewählt.";
+            return;
+        }
+
         await ExecuteSelectedVehicleEditAsync(
             "Getriebe ändern",
-            $"Transmission-data_path auf '{SaveEditorTransmissionPath.Trim()}' setzen?",
+            $"Getriebe auf '{selected.DataPath}' setzen?",
             () => _saveEditorVehicleEditService!.SetActiveTruckTransmissionAsync(
                 SaveEditorSelectedSave!,
-                SaveEditorTransmissionPath));
+                selected.DataPath));
     }
 
     [RelayCommand]
@@ -490,13 +508,34 @@ public partial class MainViewModel
             try
             {
                 var powertrain = await _saveEditorVehicleEditService.GetActiveTruckPowertrainAsync(save);
+                var catalog = await _saveEditorVehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
+
                 SaveEditorEnginePath = powertrain.EngineDataPath;
                 SaveEditorTransmissionPath = powertrain.TransmissionDataPath;
+
+                SaveEditorEngines.Clear();
+                foreach (var item in catalog.Engines)
+                    SaveEditorEngines.Add(item);
+
+                SaveEditorTransmissions.Clear();
+                foreach (var item in catalog.Transmissions)
+                    SaveEditorTransmissions.Add(item);
+
+                SaveEditorSelectedEngine =
+                    SaveEditorEngines.FirstOrDefault(item => item.IsCurrent)
+                    ?? SaveEditorEngines.FirstOrDefault();
+                SaveEditorSelectedTransmission =
+                    SaveEditorTransmissions.FirstOrDefault(item => item.IsCurrent)
+                    ?? SaveEditorTransmissions.FirstOrDefault();
             }
             catch (ScsSaveEditException)
             {
                 SaveEditorEnginePath = string.Empty;
                 SaveEditorTransmissionPath = string.Empty;
+                SaveEditorEngines.Clear();
+                SaveEditorTransmissions.Clear();
+                SaveEditorSelectedEngine = null;
+                SaveEditorSelectedTransmission = null;
             }
 
             SaveEditorStatusText =
@@ -625,6 +664,10 @@ public partial class MainViewModel
         SaveEditorCargoMassText = string.Empty;
         SaveEditorEnginePath = string.Empty;
         SaveEditorTransmissionPath = string.Empty;
+        SaveEditorEngines.Clear();
+        SaveEditorTransmissions.Clear();
+        SaveEditorSelectedEngine = null;
+        SaveEditorSelectedTransmission = null;
     }
 
     private bool CanSwitchSaveEditorTruck() =>
