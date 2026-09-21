@@ -63,11 +63,13 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Fahrzeug-Inventar: eigene Trucks/Trailer aus den validierten `trucks[n]`-/`trailers[n]`-Referenzen lesen und aktiven Zustand markieren
 - [x] Truck-Editor: sicheren Wechsel auf einen vorhandenen eigenen Truck inklusive player_vehicles-, Garage-/Driver- und HQ-Konsistenzprüfung
 - [x] Truck-Editor: Kilometerstand inklusive korrespondierendem `truck_profit_logs[n]` sicher ändern
-- [ ] Truck-Editor: Motor/Getriebe/Kennzeichen
+- [x] Truck-Editor: Kennzeichen des aktiven Trucks mit validiertem SCS-Format ändern
+- [ ] Truck-Editor: Motor/Getriebe
 - [x] Trailer-Editor-Grundlage: aktiven Trailer samt Slave-Kette eindeutig auflösen und reparieren
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen
 - [x] Trailer-Editor: `cargo_mass` der aktiven Trailer-/Slave-Kette sicher ändern
-- [ ] Trailer-Editor: Kennzeichen
+- [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
+- [~] realer Feldtest der Kennzeichen-Formatierung in aktuellem ETS2 und ATS
 - [ ] Save-Editor-UI mit Save-Auswahl, Vorschau, Änderungsbestätigung und Backup-Wiederherstellung
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
