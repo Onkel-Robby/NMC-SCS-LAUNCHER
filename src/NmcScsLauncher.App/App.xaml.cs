@@ -31,6 +31,7 @@ public partial class App : Application
         services.AddSingleton<IScsSaveEditService, ScsSaveEditService>();
         services.AddSingleton<IScsProfileSaveLocator, ScsProfileSaveLocator>();
         services.AddSingleton<IScsProfileEditService, ScsProfileEditService>();
+        services.AddSingleton<IScsVehicleEditService, ScsVehicleEditService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
