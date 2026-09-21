@@ -725,21 +725,21 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         foreach (var truck in inventory.Trucks)
         {
             PowertrainPair powertrain;
+            string modelRoot;
             try
             {
                 var resolved = ResolveActiveTruckPowertrain(document, truck.Id);
                 powertrain = new PowertrainPair(
                     resolved.Engine.DataPath,
                     resolved.Transmission.DataPath);
+                modelRoot = ResolveTruckModelRoot(
+                    powertrain.EngineDataPath,
+                    powertrain.TransmissionDataPath);
             }
             catch (ScsSaveEditException) when (!truck.IsActive)
             {
                 continue;
             }
-
-            var modelRoot = ResolveTruckModelRoot(
-                powertrain.EngineDataPath,
-                powertrain.TransmissionDataPath);
 
             if (!string.Equals(
                     modelRoot,
