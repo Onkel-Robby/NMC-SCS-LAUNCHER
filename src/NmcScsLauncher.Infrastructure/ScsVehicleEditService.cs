@@ -819,12 +819,21 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
             var dataPath = ParseSiiString(rawDataPath, "data_path");
 
-            if (HasPathSegment(dataPath, "engine"))
+            var isEngine = HasPathSegment(dataPath, "engine");
+            var isTransmission = HasPathSegment(dataPath, "transmission");
+
+            if (isEngine && isTransmission)
+            {
+                throw new ScsSaveEditException(
+                    $"Accessory '{accessoryId}' kann nicht eindeutig als Engine oder Transmission klassifiziert werden.");
+            }
+
+            if (isEngine)
             {
                 engine.Add(new PowertrainAccessory(accessoryUnit, dataPath));
             }
 
-            if (HasPathSegment(dataPath, "transmission"))
+            if (isTransmission)
             {
                 transmission.Add(new PowertrainAccessory(accessoryUnit, dataPath));
             }
@@ -858,12 +867,21 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
                 parameterName);
         }
 
+        var hasEngine = HasPathSegment(path, "engine");
+        var hasTransmission = HasPathSegment(path, "transmission");
+        var hasRequiredSegment = string.Equals(
+            requiredSegment,
+            "engine",
+            StringComparison.Ordinal)
+                ? hasEngine && !hasTransmission
+                : hasTransmission && !hasEngine;
+
         if (!path.StartsWith("/def/vehicle/truck/", StringComparison.Ordinal) ||
             !path.EndsWith(".sii", StringComparison.OrdinalIgnoreCase) ||
-            !HasPathSegment(path, requiredSegment))
+            !hasRequiredSegment)
         {
             throw new ArgumentException(
-                $"Der Definition-Pfad muss ein Truck-{requiredSegment}-Pfad unter /def/vehicle/truck/ sein.",
+                $"Der Definition-Pfad muss ein eindeutiger Truck-{requiredSegment}-Pfad unter /def/vehicle/truck/ sein.",
                 parameterName);
         }
 
