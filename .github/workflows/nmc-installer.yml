@@ -30,7 +30,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($version)) { throw "Project version could not be resolved." }
 
           $parts = $version.Split('.')
-          if ($parts.Length -ne 3 -or $parts | Where-Object { $_ -notmatch '^\d+
+          $nonNumericParts = @($parts | Where-Object { $_ -notmatch '^\d+
       - name: Restore launcher
         run: dotnet restore NMC-SCS-LAUNCHER.sln
 
@@ -87,6 +87,7 @@ jobs:
         shell: pwsh
         run: |
           $bootstrapper = (Resolve-Path "artifacts/wix/ui/NmcScsLauncher.Installer.UI.exe").Path
+
           dotnet build installer-wix/NmcScsLauncher.Installer.Bundle/NmcScsLauncher.Installer.Bundle.wixproj --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:BundleVersion=$env:NMC_BUNDLE_VERSION" "-p:MsiPath=$env:NMC_WIX_MSI" "-p:BootstrapperExe=$bootstrapper"
           if ($LASTEXITCODE -ne 0) { throw "NMC WiX Burn bundle build failed." }
 
@@ -129,10 +130,10 @@ jobs:
             throw "NMC custom installer did not register the install path."
           }
           if ([string]$marker.Version -ne $env:NMC_VERSION) {
-            throw "Registered public version '$($marker.Version)' does not match '$env:NMC_VERSION'."
+            throw "Registered public version does not match NMC_VERSION."
           }
           if ([string]$marker.InstallerPackageVersion -ne $env:NMC_PACKAGE_VERSION) {
-            throw "Registered MSI package version '$($marker.InstallerPackageVersion)' does not match '$env:NMC_PACKAGE_VERSION'."
+            throw "Registered MSI package version does not match NMC_PACKAGE_VERSION."
           }
 
           $uninstall = Start-Process -FilePath $installer -ArgumentList @("/uninstall", "/quiet", "/norestart") -Wait -PassThru
@@ -151,13 +152,14 @@ jobs:
             artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe
             artifacts/nmc-installer/NMC-SCS-LAUNCHER-${{ env.NMC_VERSION }}-Setup.exe.sha256
           if-no-files-found: error
- }) {
+ })
+          if ($parts.Length -ne 3 -or $nonNumericParts.Count -gt 0) {
             throw "Project version must use numeric major.minor.patch format."
           }
 
           $installerBuild = [int]$env:GITHUB_RUN_NUMBER
           if ($installerBuild -lt 1 -or $installerBuild -gt 65535) {
-            throw "GitHub run number '$installerBuild' is outside the MSI build range 1..65535."
+            throw "GitHub run number is outside the MSI build range 1..65535."
           }
 
           $packageVersion = "$($parts[0]).$($parts[1]).$installerBuild"
