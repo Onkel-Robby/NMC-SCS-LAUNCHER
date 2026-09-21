@@ -134,7 +134,7 @@ jobs:
           $bootstrapper = (Resolve-Path "artifacts/wix/ui/NmcScsLauncher.Installer.UI.exe").Path
 
           $baselineMsiOut = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/msi" -Force).FullName
-          $baselineMsiObj = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/obj-msi" -Force).FullName
+          $baselineMsiObj = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/obj-msi" -Force).FullName + [IO.Path]::DirectorySeparatorChar
           dotnet build installer-wix/NmcScsLauncher.Installer.Msi/NmcScsLauncher.Installer.Msi.wixproj -t:Rebuild --configuration Release "-p:AppVersion=$env:NMC_VERSION" "-p:PackageVersion=$env:NMC_VERSION" "-p:PublishDir=$publishDir" "-p:OutputPath=$baselineMsiOut" "-p:BaseIntermediateOutputPath=$baselineMsiObj"
           if ($LASTEXITCODE -ne 0) { throw "Baseline MSI build failed." }
 
@@ -142,7 +142,7 @@ jobs:
           if (-not $baselineMsi) { throw "Baseline MSI was not created." }
 
           $baselineBundleOut = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/bundle" -Force).FullName
-          $baselineBundleObj = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/obj-bundle" -Force).FullName
+          $baselineBundleObj = (New-Item -ItemType Directory -Path "artifacts/wix/baseline/obj-bundle" -Force).FullName + [IO.Path]::DirectorySeparatorChar
           $baselineBundleVersion = "$env:NMC_VERSION.0"
           dotnet build installer-wix/NmcScsLauncher.Installer.Bundle/NmcScsLauncher.Installer.Bundle.wixproj -t:Rebuild --configuration Release "-p:ProductVersion=$env:NMC_VERSION" "-p:BundleVersion=$baselineBundleVersion" "-p:MsiPath=$($baselineMsi.FullName)" "-p:BootstrapperExe=$bootstrapper" "-p:OutputPath=$baselineBundleOut" "-p:BaseIntermediateOutputPath=$baselineBundleObj"
           if ($LASTEXITCODE -ne 0) { throw "Baseline Burn bundle build failed." }
