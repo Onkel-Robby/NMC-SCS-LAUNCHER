@@ -49,4 +49,14 @@ public interface IScsVehicleEditService
         ScsSaveReference save,
         string targetTruckId,
         CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTruckMileageAsync(
+        ScsSaveReference save,
+        decimal kilometers,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetActiveTrailerCargoMassAsync(
+        ScsSaveReference save,
+        decimal cargoMass,
+        CancellationToken cancellationToken = default);
 }

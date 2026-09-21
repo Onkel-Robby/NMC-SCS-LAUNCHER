@@ -391,6 +391,182 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<ScsSaveEditResult> SetActiveTruckMileageAsync(
+        ScsSaveReference save,
+        decimal kilometers,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        if (kilometers < 0m)
+            throw new ArgumentOutOfRangeException(
+                nameof(kilometers),
+                "Der Kilometerstand darf nicht negativ sein.");
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var inventory = BuildInventory(document, refs);
+
+        var activeTrucks = inventory.Trucks.Where(item => item.IsActive).ToArray();
+        if (activeTrucks.Length != 1)
+        {
+            throw new ScsSaveEditException(
+                "Der aktive Truck konnte im Besitz-Array nicht eindeutig einem Slot zugeordnet werden.");
+        }
+
+        var activeTruck = activeTrucks[0];
+        var player = ResolvePlayerUnit(document);
+        var profitLogEntries = document
+            .GetIndexedUnitScalars(player, "truck_profit_logs")
+            .Where(item => item.Index == activeTruck.Slot)
+            .ToArray();
+
+        if (profitLogEntries.Length != 1)
+        {
+            throw new ScsSaveEditException(
+                $"Für Truck-Slot {activeTruck.Slot} wurde kein eindeutiger truck_profit_logs-Eintrag gefunden.");
+        }
+
+        var profitLogId = NormalizeReference(
+            profitLogEntries[0].Value,
+            $"truck_profit_logs[{activeTruck.Slot}]");
+
+        var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+
+        _ = document.GetRequiredUniqueUnit(profitLogId);
+
+        var value = kilometers.ToString(
+            "0.############################",
+            CultureInfo.InvariantCulture);
+
+        var updated = document.SetRequiredUnitScalar(
+            truckUnit,
+            "odometer",
+            value);
+
+        var currentTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
+        if (updated.TryGetOptionalUnitScalar(currentTruckUnit, "integrity_odometer") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentTruckUnit,
+                "integrity_odometer",
+                value);
+            currentTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
+        }
+
+        if (updated.TryGetOptionalUnitScalar(currentTruckUnit, "trip_distance_km") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentTruckUnit,
+                "trip_distance_km",
+                value);
+        }
+
+        var currentProfitLogUnit = updated.GetRequiredUniqueUnit(profitLogId);
+        updated = updated.SetRequiredUnitScalar(
+            currentProfitLogUnit,
+            "acc_distance_on_job",
+            value);
+
+        currentProfitLogUnit = updated.GetRequiredUniqueUnit(profitLogId);
+        if (updated.TryGetOptionalUnitScalar(currentProfitLogUnit, "acc_distance_free") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentProfitLogUnit,
+                "acc_distance_free",
+                "0");
+        }
+
+        var validatedTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
+        var validatedOdometer = updated.GetRequiredUnitScalar(
+            validatedTruckUnit,
+            "odometer");
+
+        if (!string.Equals(validatedOdometer.Trim(), value, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Der neue Kilometerstand konnte vor dem Schreiben nicht validiert werden.");
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Kilometerstand des aktiven Trucks ändern: {value} km",
+            updated,
+            cancellationToken);
+    }
+
+    public async Task<ScsSaveEditResult> SetActiveTrailerCargoMassAsync(
+        ScsSaveReference save,
+        decimal cargoMass,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        if (cargoMass < 0m)
+            throw new ArgumentOutOfRangeException(
+                nameof(cargoMass),
+                "Das Frachtgewicht darf nicht negativ sein.");
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+
+        if (refs.TrailerId is null)
+        {
+            throw new ScsSaveEditException(
+                "Am aktiven Truck ist kein Trailer im Save referenziert.");
+        }
+
+        var chain = ResolveTrailerChain(document, refs.TrailerId);
+        var value = cargoMass.ToString(
+            "0.############################",
+            CultureInfo.InvariantCulture);
+
+        var updated = document;
+        var replacements = 0;
+
+        foreach (var trailerId in chain)
+        {
+            var unit = updated.GetRequiredUniqueUnit(trailerId);
+            EnsureUnitType(unit, "trailer", "aktiver Trailer");
+
+            if (updated.TryGetOptionalUnitScalar(unit, "cargo_mass") is null)
+                continue;
+
+            updated = updated.SetRequiredUnitScalar(
+                unit,
+                "cargo_mass",
+                value);
+            replacements++;
+        }
+
+        if (replacements == 0)
+        {
+            throw new ScsSaveEditException(
+                "In der aktiven Trailer-Kette wurde kein cargo_mass-Feld gefunden.");
+        }
+
+        foreach (var trailerId in chain)
+        {
+            var unit = updated.GetRequiredUniqueUnit(trailerId);
+            var cargo = updated.TryGetOptionalUnitScalar(unit, "cargo_mass");
+            if (cargo is not null &&
+                !string.Equals(cargo.Trim(), value, StringComparison.Ordinal))
+            {
+                throw new ScsSaveEditException(
+                    $"Das Frachtgewicht von Trailer-Unit '{trailerId}' konnte nicht validiert werden.");
+            }
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Frachtgewicht des aktiven Trailers ändern: {value}",
+            updated,
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> ApplyAsync(
         ScsSaveReference save,
         string operation,

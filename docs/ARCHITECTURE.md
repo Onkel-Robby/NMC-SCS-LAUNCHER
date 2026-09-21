@@ -47,6 +47,8 @@ Ein Trailer-Wechsel ist zunächst nur zulässig, wenn bereits ein aktiver Traile
 
 Der Truck-Wechsel arbeitet ebenfalls nur mit einem Truck aus dem validierten `trucks[n]`-Besitz-Array. Vor dem Schreiben werden der aktuelle und der Ziel-Truck jeweils genau einem `garage`-Fahrzeug-Slot zugeordnet. Für beide Slots muss ein korrespondierender `drivers[n]`-Eintrag existieren. Anschließend werden alle `player_vehicles`-Units des bisher aktiven Trucks auf den Ziel-Truck umgestellt, die beiden Driver-Slots vertauscht und `hq_city` auf die Stadt der Zielgarage gesetzt. Die Garage-ID muss dazu eindeutig dem Schema `garage.<city>` folgen. Doppelte Garage-Referenzen, fehlende Driver-Slots oder nicht auflösbare HQ-Städte führen fail-closed zum Abbruch. Nach der Änderung werden aktive Truck-Referenz, Driver-Swap und HQ-Stadt erneut validiert, bevor die zentrale Backup-/Replace-Pipeline schreiben darf.
 
+Der Kilometer-Editor ordnet den aktiven Truck zusätzlich über dessen Slot im `trucks[n]`-Array dem korrespondierenden `truck_profit_logs[n]`-Eintrag zu. `odometer` und `acc_distance_on_job` sind dabei Pflichtfelder; `integrity_odometer`, `trip_distance_km` und `acc_distance_free` werden nur geändert, wenn sie im Save vorhanden sind. Negative Kilometerstände werden abgelehnt. Für aktive Trailer wird `cargo_mass` ausschließlich innerhalb der bereits validierten aktiven Trailer-/Slave-Kette geändert; fehlen dort sämtliche `cargo_mass`-Felder, wird fail-closed abgebrochen.
+
 ## Sicherheitsregeln
 
 - Savegame-Änderungen nur über den zentralen Save-Editing-Service.
