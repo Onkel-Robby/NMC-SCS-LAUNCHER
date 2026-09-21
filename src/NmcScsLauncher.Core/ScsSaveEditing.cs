@@ -79,7 +79,7 @@ public sealed class ScsSiiTextDocument
         if (string.IsNullOrWhiteSpace(content))
             throw new ScsSaveEditException("Die SII-Datei ist leer.");
 
-        var normalized = content.TrimStart('﻿', ' ', '\t', '\r', '\n');
+        var normalized = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
         if (!normalized.StartsWith("SiiNunit", StringComparison.Ordinal))
             throw new ScsSaveEditException("Die Datei ist kein unterstütztes textuelles SII-Dokument.");
 
@@ -93,19 +93,16 @@ public sealed class ScsSiiTextDocument
     public bool TryGetScalar(string key, out string value)
     {
         ValidateKey(key);
-        var prefix = $" {key}:";
+        var matches = FindScalarMatches(key);
 
-        foreach (var line in _lines)
+        if (matches.Count != 1)
         {
-            if (!line.StartsWith(prefix, StringComparison.Ordinal))
-                continue;
-
-            value = line[prefix.Length..].Trim();
-            return true;
+            value = string.Empty;
+            return false;
         }
 
-        value = string.Empty;
-        return false;
+        value = matches[0].Value;
+        return true;
     }
 
     public ScsSiiTextDocument SetScalar(string key, string value)
@@ -113,19 +110,66 @@ public sealed class ScsSiiTextDocument
         ValidateKey(key);
         ValidateValue(value);
 
-        var prefix = $" {key}:";
+        var matches = FindScalarMatches(key);
+        if (matches.Count == 0)
+            throw new ScsSaveEditException($"SII-Wert '{key}' wurde nicht gefunden.");
+        if (matches.Count > 1)
+            throw new ScsSaveEditException(
+                $"SII-Wert '{key}' ist mehrfach vorhanden und wird deshalb nicht automatisch verändert.");
+
+        var match = matches[0];
         var clone = (string[])_lines.Clone();
+        clone[match.Index] = $"{match.Indent}{key}: {value}";
+        return new ScsSiiTextDocument(clone, Newline);
+    }
 
-        for (var index = 0; index < clone.Length; index++)
+    private List<ScalarMatch> FindScalarMatches(string key)
+    {
+        var result = new List<ScalarMatch>();
+
+        for (var index = 0; index < _lines.Length; index++)
         {
-            if (!clone[index].StartsWith(prefix, StringComparison.Ordinal))
-                continue;
-
-            clone[index] = $"{prefix} {value}";
-            return new ScsSiiTextDocument(clone, Newline);
+            if (TryParseScalarLine(_lines[index], key, out var indent, out var value))
+                result.Add(new ScalarMatch(index, indent, value));
         }
 
-        throw new ScsSaveEditException($"SII-Wert '{key}' wurde nicht gefunden.");
+        return result;
+    }
+
+    private static bool TryParseScalarLine(
+        string line,
+        string key,
+        out string indent,
+        out string value)
+    {
+        indent = string.Empty;
+        value = string.Empty;
+
+        var position = 0;
+        while (position < line.Length && (line[position] == ' ' || line[position] == '\t'))
+            position++;
+
+        var keyStart = position;
+        if (line.Length - position < key.Length ||
+            !line.AsSpan(position, key.Length).SequenceEqual(key.AsSpan()))
+        {
+            return false;
+        }
+
+        position += key.Length;
+        while (position < line.Length && (line[position] == ' ' || line[position] == '\t'))
+            position++;
+
+        if (position >= line.Length || line[position] != ':')
+            return false;
+
+        position++;
+        while (position < line.Length && (line[position] == ' ' || line[position] == '\t'))
+            position++;
+
+        indent = line[..keyStart];
+        value = line[position..].TrimEnd();
+        return true;
     }
 
     private static void ValidateKey(string key)
@@ -139,4 +183,6 @@ public sealed class ScsSiiTextDocument
         if (value.Contains('\r') || value.Contains('\n'))
             throw new ArgumentException("SII-Werte dürfen keine Zeilenumbrüche enthalten.", nameof(value));
     }
+
+    private sealed record ScalarMatch(int Index, string Indent, string Value);
 }

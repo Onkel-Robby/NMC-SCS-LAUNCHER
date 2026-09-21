@@ -55,7 +55,9 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
 - [x] Save-Editor-Grundlage: nur game.sii/profile.sii, textuelles SiiNunit, automatisches Backup, SHA-256, atomarer Austausch, Restore und Sperre bei laufendem ETS2/ATS
 - [ ] Decoder-Adapter für binäre/verschlüsselte SCS-Saves mit fail-closed Fallback
-- [ ] Profil-Editor: Profilname, Geld/XP und Skills auf verifiziertem Save-Format
+- [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
+- [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
+- [ ] Profil-Editor: Skills und weitere Karrierewerte auf verifiziertem Save-Format
 - [ ] Truck-Editor: aktuellen Truck wechseln, reparieren, Kraftstoff; danach Motor/Getriebe/Kennzeichen/Kilometer
 - [ ] Trailer-Editor: aktuellen Trailer wechseln, reparieren; danach Gewicht/Kennzeichen
 - [ ] Save-Editor-UI mit Save-Auswahl, Vorschau, Änderungsbestätigung und Backup-Wiederherstellung

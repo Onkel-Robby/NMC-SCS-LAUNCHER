@@ -19,6 +19,35 @@ public sealed class ScsSiiTextDocumentTests
         Assert.DoesNotContain("\"Old Name\"", updated.ToText());
     }
 
+
+    [Fact]
+    public void SetScalar_AcceptsScalarWithoutLeadingIndent()
+    {
+        const string source =
+            "SiiNunit\n{\nmoney_account: 10\n experience_points: 20\n}\n";
+
+        var updated = ScsSiiTextDocument.Parse(source)
+            .SetScalar("money_account", "99")
+            .ToText();
+
+        Assert.Contains("money_account: 99\n", updated);
+        Assert.Contains(" experience_points: 20\n", updated);
+    }
+
+    [Fact]
+    public void SetScalar_RejectsAmbiguousScalar()
+    {
+        const string source =
+            "SiiNunit\n{\n money_account: 10\n\tmoney_account: 20\n}\n";
+
+        var document = ScsSiiTextDocument.Parse(source);
+
+        var exception = Assert.Throws<ScsSaveEditException>(() =>
+            document.SetScalar("money_account", "99"));
+
+        Assert.Contains("mehrfach", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void SetScalar_RejectsLineInjection()
     {

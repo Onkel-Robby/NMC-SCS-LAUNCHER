@@ -24,6 +24,11 @@ public partial class App : Application
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
         services.AddSingleton<IWorkshopContentLocator, SteamWorkshopContentLocator>();
         services.AddSingleton<IWorkshopMetadataProvider, SteamWorkshopMetadataProvider>();
+        services.AddSingleton<IScsSaveCodec, ScsPlainTextSaveCodec>();
+        services.AddSingleton<IScsGameProcessGuard, ScsGameProcessGuard>();
+        services.AddSingleton<IScsSaveEditService, ScsSaveEditService>();
+        services.AddSingleton<IScsProfileSaveLocator, ScsProfileSaveLocator>();
+        services.AddSingleton<IScsProfileEditService, ScsProfileEditService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
