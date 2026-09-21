@@ -39,6 +39,8 @@ Die Profil-/Save-Erkennung durchsucht innerhalb eines ausgewählten SCS-Home-Ver
 
 Die ersten Schreiboperationen sind bewusst klein: Profil-Anzeigename in `profile.sii` sowie `money_account` und `experience_points` in `game.sii`. Ein Scalar wird nur verändert, wenn er exakt einmal gefunden wird; fehlende oder mehrdeutige Felder führen fail-closed zum Abbruch.
 
+Für Fahrzeugfunktionen wird der aktive Zustand über die Save-Referenzkette `assigned_vehicles -> player_vehicles -> vehicle/trailer` aufgelöst. Unit-IDs müssen eindeutig sein. Truck-Reparatur setzt ausschließlich die bekannten Wear-Felder des aktiven Trucks sowie dessen nummerierte Wheel-Wear-Felder auf 0. Der Kraftstoffwert `fuel_relative` wird nur im aktiven Truck verändert und ist auf den Bereich 0..1 begrenzt. Trailer-Reparatur folgt der aktiven `slave_trailer`-Kette bis maximal 20 Units, erkennt Zyklen und verändert ausschließlich bekannte Trailer-/Chassis-/Wheel-Wear-Felder. Andere Trucks oder Trailer im Save bleiben unverändert.
+
 ## Sicherheitsregeln
 
 - Savegame-Änderungen nur über den zentralen Save-Editing-Service.
