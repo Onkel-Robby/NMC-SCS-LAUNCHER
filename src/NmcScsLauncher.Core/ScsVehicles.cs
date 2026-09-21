@@ -44,4 +44,9 @@ public interface IScsVehicleEditService
         ScsSaveReference save,
         string targetTrailerId,
         CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SwitchActiveTruckAsync(
+        ScsSaveReference save,
+        string targetTruckId,
+        CancellationToken cancellationToken = default);
 }
