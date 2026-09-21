@@ -16,4 +16,6 @@ public static class AppPaths
     public static string CacheDirectory => Path.Combine(AppDataRoot, "cache");
 
     public static string RuntimeHomesDirectory => Path.Combine(AppDataRoot, "runtime-homes");
+
+    public static string SaveEditorBackupsDirectory => Path.Combine(AppDataRoot, "save-editor-backups");
 }
