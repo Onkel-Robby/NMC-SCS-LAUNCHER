@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- Custom Installer: trennt die sichtbare Launcher-Version von der internen MSI-/Burn-Buildversion. Dadurch ersetzt ein neuer 1.0.0-Build zuverlässig einen bereits installierten älteren 1.0.0-Build, statt nur denselben MSI-Stand zu reparieren.
+- CI: zusätzlicher Upgrade-Smoke-Test installiert zuerst einen gleich benannten 1.0.0-Basisstand, manipuliert dessen Launcher-Payload absichtlich und prüft anschließend, dass der neue Custom Installer die Datei vollständig durch den aktuellen Build ersetzt.
+
+
 Alle wesentlichen Änderungen am NMC SCS LAUNCHER werden hier dokumentiert.
 
 ## 1.0.0
