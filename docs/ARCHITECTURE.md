@@ -33,6 +33,10 @@ Vor jeder Änderung wird ein Backup unter `%LOCALAPPDATA%\NMC Network\NMC SCS La
 
 Binäre/verschlüsselte Saves werden im ersten Stand bewusst fail-closed abgelehnt. Ein Decoder-Adapter folgt separat und darf die bestehenden Backup-/Validierungsregeln nicht umgehen.
 
+Die Profil-/Save-Erkennung durchsucht innerhalb eines ausgewählten SCS-Home-Verzeichnisses ausschließlich `profiles` und `steam_profiles`, ignoriert Reparse-Point-Profil-/Save-Verzeichnisse und liefert nur Saves mit vorhandener `game.sii`. Profil-Verzeichnisnamen werden nur dann als UTF-8-Hex dekodiert, wenn die Dekodierung eindeutig gültig ist.
+
+Die ersten Schreiboperationen sind bewusst klein: Profil-Anzeigename in `profile.sii` sowie `money_account` und `experience_points` in `game.sii`. Ein Scalar wird nur verändert, wenn er exakt einmal gefunden wird; fehlende oder mehrdeutige Felder führen fail-closed zum Abbruch.
+
 ## Sicherheitsregeln
 
 - Savegame-Änderungen nur über den zentralen Save-Editing-Service.
