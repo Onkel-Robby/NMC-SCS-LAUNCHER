@@ -31,7 +31,9 @@ Save-Editing ist ab der Nach-1.0.0-Entwicklung als explizite, abgesicherte Funkt
 
 Vor jeder Änderung wird ein Backup unter `%LOCALAPPDATA%\NMC Network\NMC SCS Launcher\save-editor-backups` erzeugt. Die Quelldatei und das Ergebnis werden per SHA-256 erfasst. Geschrieben wird zunächst in eine temporäre Datei im selben Verzeichnis; erst nach erneuter Formatvalidierung wird die Zieldatei per Replace ausgetauscht. Läuft ETS2 oder ATS, wird der Schreibvorgang blockiert.
 
-Binäre/verschlüsselte Saves werden im ersten Stand bewusst fail-closed abgelehnt. Ein Decoder-Adapter folgt separat und darf die bestehenden Backup-/Validierungsregeln nicht umgehen.
+Binäre/verschlüsselte Saves werden über einen getrennten Decoder-Adapter gelesen. Verwendet wird die gepinnte Windows-Version von DecryptTruck 1.3.7 (MIT). Die Release-Binary wird ausschließlich im CI-/Release-Build heruntergeladen, gegen die fest hinterlegte SHA-256-Prüfsumme verifiziert und zusammen mit Lizenz/Notice unter `third-party/decrypt-truck` ausgeliefert. Vor jeder Ausführung prüft der Launcher dieselbe SHA-256-Prüfsumme erneut.
+
+Der Decoder erhält die Originaldatei nur als Eingabe und schreibt ausschließlich in eine temporäre Ausgabedatei. Erst wenn diese Datei als textuelles `SiiNunit` validiert wurde, wird sie an die vorhandene NMC-Save-Pipeline weitergegeben. Backups, Spiel-läuft-Sperre, Pfadvalidierung und atomarer Austausch bleiben damit die alleinige Schreibgrenze. Decoderfehler, fehlende Binary, Hash-Abweichungen, Timeout oder ungültige Ausgabe führen fail-closed zum Abbruch.
 
 Die Profil-/Save-Erkennung durchsucht innerhalb eines ausgewählten SCS-Home-Verzeichnisses ausschließlich `profiles` und `steam_profiles`, ignoriert Reparse-Point-Profil-/Save-Verzeichnisse und liefert nur Saves mit vorhandener `game.sii`. Profil-Verzeichnisnamen werden nur dann als UTF-8-Hex dekodiert, wenn die Dekodierung eindeutig gültig ist.
 
