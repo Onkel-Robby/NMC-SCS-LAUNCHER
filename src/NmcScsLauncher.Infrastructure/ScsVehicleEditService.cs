@@ -567,6 +567,125 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<ScsSaveEditResult> SetActiveTruckLicensePlateAsync(
+        ScsSaveReference save,
+        string plateText,
+        string countryCode,
+        string backgroundRgb,
+        string textRgb,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var formattedPlate = BuildLicensePlateValue(
+            plateText,
+            countryCode,
+            backgroundRgb,
+            textRgb);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+
+        var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+
+        var updated = document.SetRequiredUnitScalar(
+            truckUnit,
+            "license_plate",
+            QuoteSiiString(formattedPlate));
+
+        var validatedUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
+        var validated = updated.GetRequiredUnitScalar(validatedUnit, "license_plate");
+        if (!string.Equals(
+                validated.Trim(),
+                QuoteSiiString(formattedPlate),
+                StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Das Truck-Kennzeichen konnte vor dem Schreiben nicht validiert werden.");
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Kennzeichen des aktiven Trucks ändern: {plateText.Trim()}",
+            updated,
+            cancellationToken);
+    }
+
+    public async Task<ScsSaveEditResult> SetActiveTrailerLicensePlateAsync(
+        ScsSaveReference save,
+        string plateText,
+        string countryCode,
+        string backgroundRgb,
+        string textRgb,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var formattedPlate = BuildLicensePlateValue(
+            plateText,
+            countryCode,
+            backgroundRgb,
+            textRgb);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+
+        if (refs.TrailerId is null)
+        {
+            throw new ScsSaveEditException(
+                "Am aktiven Truck ist kein Trailer im Save referenziert.");
+        }
+
+        var chain = ResolveTrailerChain(document, refs.TrailerId);
+        var updated = document;
+        var replacements = 0;
+
+        foreach (var trailerId in chain)
+        {
+            var unit = updated.GetRequiredUniqueUnit(trailerId);
+            EnsureUnitType(unit, "trailer", "aktiver Trailer");
+
+            if (updated.TryGetOptionalUnitScalar(unit, "license_plate") is null)
+                continue;
+
+            updated = updated.SetRequiredUnitScalar(
+                unit,
+                "license_plate",
+                QuoteSiiString(formattedPlate));
+            replacements++;
+        }
+
+        if (replacements == 0)
+        {
+            throw new ScsSaveEditException(
+                "In der aktiven Trailer-Kette wurde kein license_plate-Feld gefunden.");
+        }
+
+        foreach (var trailerId in chain)
+        {
+            var unit = updated.GetRequiredUniqueUnit(trailerId);
+            var value = updated.TryGetOptionalUnitScalar(unit, "license_plate");
+            if (value is not null &&
+                !string.Equals(
+                    value.Trim(),
+                    QuoteSiiString(formattedPlate),
+                    StringComparison.Ordinal))
+            {
+                throw new ScsSaveEditException(
+                    $"Das Kennzeichen von Trailer-Unit '{trailerId}' konnte nicht validiert werden.");
+            }
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Kennzeichen des aktiven Trailers ändern: {plateText.Trim()}",
+            updated,
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> ApplyAsync(
         ScsSaveReference save,
         string operation,
@@ -806,6 +925,90 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
         throw new ScsSaveEditException(
             "Die Trailer-Kette überschreitet die Sicherheitsgrenze von 20 Units.");
+    }
+
+    private static string BuildLicensePlateValue(
+        string plateText,
+        string countryCode,
+        string backgroundRgb,
+        string textRgb)
+    {
+        var plate = ValidatePlateText(plateText);
+        var country = ValidateCountryCode(countryCode);
+        var background = ValidateRgb(backgroundRgb, nameof(backgroundRgb));
+        var text = ValidateRgb(textRgb, nameof(textRgb));
+
+        return $"<color value=ff{background}><margin left=-15>" +
+               "<img src=/material/ui/white.mat xscale=stretch yscale=stretch><ret>" +
+               "<margin left=2><align hstyle=left vstyle=center><font xscale=1 yscale=1>" +
+               $"<color value=ff{text}>{plate}</align></margin>|{country}";
+    }
+
+    private static string ValidatePlateText(string value)
+    {
+        var plate = value?.Trim() ?? string.Empty;
+        if (plate.Length is < 1 or > 20)
+        {
+            throw new ArgumentException(
+                "Das Kennzeichen muss zwischen 1 und 20 Zeichen lang sein.",
+                nameof(value));
+        }
+
+        if (plate.Any(character =>
+                !(character is >= 'A' and <= 'Z') &&
+                !(character is >= 'a' and <= 'z') &&
+                !(character is >= '0' and <= '9') &&
+                character != ' ' &&
+                character != '-'))
+        {
+            throw new ArgumentException(
+                "Das Kennzeichen darf nur Buchstaben, Ziffern, Leerzeichen und Bindestriche enthalten.",
+                nameof(value));
+        }
+
+        return plate;
+    }
+
+    private static string ValidateCountryCode(string value)
+    {
+        var country = value?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (country.Length is < 2 or > 32 ||
+            country.Any(character =>
+                !(character is >= 'a' and <= 'z') &&
+                !(character is >= '0' and <= '9') &&
+                character != '_'))
+        {
+            throw new ArgumentException(
+                "Der Kennzeichen-Ländercode ist ungültig.",
+                nameof(value));
+        }
+
+        return country;
+    }
+
+    private static string ValidateRgb(string value, string parameterName)
+    {
+        var rgb = value?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (rgb.Length != 6 || rgb.Any(character => !Uri.IsHexDigit(character)))
+        {
+            throw new ArgumentException(
+                "RGB-Farben müssen aus genau sechs Hex-Zeichen bestehen.",
+                parameterName);
+        }
+
+        return rgb;
+    }
+
+    private static string QuoteSiiString(string value)
+    {
+        if (value.Contains('"') || value.Contains('\r') || value.Contains('\n'))
+        {
+            throw new ArgumentException(
+                "Der SII-String enthält nicht unterstützte Zeichen.",
+                nameof(value));
+        }
+
+        return $"\"{value}\"";
     }
 
     private static string NormalizeReference(string value, string field)

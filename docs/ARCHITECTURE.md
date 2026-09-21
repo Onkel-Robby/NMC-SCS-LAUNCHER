@@ -49,6 +49,8 @@ Der Truck-Wechsel arbeitet ebenfalls nur mit einem Truck aus dem validierten `tr
 
 Der Kilometer-Editor ordnet den aktiven Truck zusätzlich über dessen Slot im `trucks[n]`-Array dem korrespondierenden `truck_profit_logs[n]`-Eintrag zu. `odometer` und `acc_distance_on_job` sind dabei Pflichtfelder; `integrity_odometer`, `trip_distance_km` und `acc_distance_free` werden nur geändert, wenn sie im Save vorhanden sind. Negative Kilometerstände werden abgelehnt. Für aktive Trailer wird `cargo_mass` ausschließlich innerhalb der bereits validierten aktiven Trailer-/Slave-Kette geändert; fehlen dort sämtliche `cargo_mass`-Felder, wird fail-closed abgebrochen.
 
+Kennzeichen werden nur über vorhandene `license_plate`-Felder geändert. Der Launcher erzeugt daraus einen kontrollierten SCS-String mit Kennzeichentext, Ländercode sowie Hintergrund-/Textfarbe. Kennzeichentext ist auf 1..20 Zeichen und ASCII-Buchstaben, Ziffern, Leerzeichen sowie Bindestriche begrenzt; Farbangaben müssen exakt sechs Hex-Zeichen enthalten, der Ländercode nur Kleinbuchstaben, Ziffern und Unterstriche. Dadurch können keine SII-Zeilenumbrüche, Quotes oder Markup-Fragmente über Benutzereingaben eingeschleust werden. Beim Trailer werden nur `license_plate`-Felder innerhalb der aktiven Trailer-/Slave-Kette geändert; andere Trailer bleiben unverändert.
+
 ## Sicherheitsregeln
 
 - Savegame-Änderungen nur über den zentralen Save-Editing-Service.
