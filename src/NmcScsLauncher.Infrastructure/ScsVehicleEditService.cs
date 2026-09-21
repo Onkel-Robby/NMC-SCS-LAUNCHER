@@ -702,6 +702,83 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             powertrain.Transmission.DataPath);
     }
 
+    public async Task<ScsActiveTruckPowertrainCatalog> GetActiveTruckPowertrainCatalogAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var inventory = BuildInventory(document, refs);
+        var active = ResolveActiveTruckPowertrain(document, refs.TruckId);
+        var activeModelRoot = ResolveTruckModelRoot(
+            active.Engine.DataPath,
+            active.Transmission.DataPath);
+
+        var engines = new Dictionary<string, ScsPowertrainCatalogItem>(
+            StringComparer.OrdinalIgnoreCase);
+        var transmissions = new Dictionary<string, ScsPowertrainCatalogItem>(
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var truck in inventory.Trucks)
+        {
+            PowertrainPair powertrain;
+            try
+            {
+                var resolved = ResolveActiveTruckPowertrain(document, truck.Id);
+                powertrain = new PowertrainPair(
+                    resolved.Engine.DataPath,
+                    resolved.Transmission.DataPath);
+            }
+            catch (ScsSaveEditException) when (!truck.IsActive)
+            {
+                continue;
+            }
+
+            var modelRoot = ResolveTruckModelRoot(
+                powertrain.EngineDataPath,
+                powertrain.TransmissionDataPath);
+
+            if (!string.Equals(
+                    modelRoot,
+                    activeModelRoot,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            AddCatalogItem(
+                engines,
+                powertrain.EngineDataPath,
+                truck.Id,
+                truck.IsActive);
+            AddCatalogItem(
+                transmissions,
+                powertrain.TransmissionDataPath,
+                truck.Id,
+                truck.IsActive);
+        }
+
+        if (engines.Count == 0 || transmissions.Count == 0)
+        {
+            throw new ScsSaveEditException(
+                "Für den aktiven Truck konnte kein sicherer Powertrain-Auswahlkatalog aufgebaut werden.");
+        }
+
+        return new ScsActiveTruckPowertrainCatalog(
+            activeModelRoot,
+            engines.Values
+                .OrderByDescending(static item => item.IsCurrent)
+                .ThenBy(static item => item.DataPath, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            transmissions.Values
+                .OrderByDescending(static item => item.IsCurrent)
+                .ThenBy(static item => item.DataPath, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
+    }
+
     public async Task<ScsSaveEditResult> SetActiveTruckEngineAsync(
         ScsSaveReference save,
         string engineDataPath,
@@ -852,6 +929,60 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         }
 
         return new ActiveTruckPowertrain(engine[0], transmission[0]);
+    }
+
+    private static void AddCatalogItem(
+        IDictionary<string, ScsPowertrainCatalogItem> target,
+        string dataPath,
+        string truckId,
+        bool isCurrent)
+    {
+        if (!target.TryGetValue(dataPath, out var existing) ||
+            (!existing.IsCurrent && isCurrent))
+        {
+            target[dataPath] = new ScsPowertrainCatalogItem(
+                dataPath,
+                truckId,
+                isCurrent);
+        }
+    }
+
+    private static string ResolveTruckModelRoot(
+        string engineDataPath,
+        string transmissionDataPath)
+    {
+        var engineRoot = GetTruckModelRoot(engineDataPath);
+        var transmissionRoot = GetTruckModelRoot(transmissionDataPath);
+
+        if (!string.Equals(
+                engineRoot,
+                transmissionRoot,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ScsSaveEditException(
+                "Engine und Transmission des Trucks gehören nicht zum selben Truck-Modellpfad.");
+        }
+
+        return engineRoot;
+    }
+
+    private static string GetTruckModelRoot(string dataPath)
+    {
+        var parts = dataPath.Split(
+            '/',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length < 5 ||
+            !string.Equals(parts[0], "def", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(parts[1], "vehicle", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(parts[2], "truck", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(parts[3]))
+        {
+            throw new ScsSaveEditException(
+                $"Powertrain-Pfad '{dataPath}' enthält keinen unterstützten Truck-Modellpfad.");
+        }
+
+        return $"/def/vehicle/truck/{parts[3]}/";
     }
 
     private static string ValidateTruckDefinitionPath(
@@ -1313,6 +1444,10 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             throw new ScsSaveEditException("Ungültige game.sii-Auswahl.");
         }
     }
+
+    private sealed record PowertrainPair(
+        string EngineDataPath,
+        string TransmissionDataPath);
 
     private sealed record PowertrainAccessory(
         ScsSiiUnit Unit,
