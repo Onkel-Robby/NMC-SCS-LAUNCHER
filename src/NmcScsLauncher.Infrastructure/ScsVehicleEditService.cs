@@ -60,6 +60,8 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
         decimal? fuel = null;
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+
         var fuelText = document.TryGetOptionalUnitScalar(truckUnit, "fuel_relative");
         if (fuelText is not null &&
             decimal.TryParse(
@@ -82,6 +84,38 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             fuel);
     }
 
+    public async Task<ScsVehicleInventory> GetVehicleInventoryAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var player = ResolvePlayerUnit(document);
+
+        var trucks = ReadInventory(
+            document,
+            player,
+            "trucks",
+            "vehicle",
+            refs.TruckId);
+
+        var trailers = ReadInventory(
+            document,
+            player,
+            "trailers",
+            "trailer",
+            refs.TrailerId);
+
+        return new ScsVehicleInventory(
+            refs.TruckId,
+            refs.TrailerId,
+            trucks,
+            trailers);
+    }
+
     public async Task<ScsSaveEditResult> RepairActiveTruckAsync(
         ScsSaveReference save,
         CancellationToken cancellationToken = default)
@@ -92,6 +126,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         var document = ScsSiiUnitDocument.Parse(source.Content);
         var refs = ResolveActiveReferences(document);
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
 
         var updated = document.SetUnitScalarFamily(
             truckUnit,
@@ -123,6 +158,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         var document = ScsSiiUnitDocument.Parse(source.Content);
         var refs = ResolveActiveReferences(document);
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
 
         var value = fuelRelative.ToString("0.############################", CultureInfo.InvariantCulture);
         var updated = document.SetRequiredUnitScalar(truckUnit, "fuel_relative", value);
@@ -154,6 +190,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         foreach (var trailerId in chain)
         {
             var unit = updated.GetRequiredUniqueUnit(trailerId);
+            EnsureUnitType(unit, "trailer", "aktiver Trailer");
             updated = updated.SetUnitScalarFamily(
                 unit,
                 TrailerWearKeys,
@@ -170,6 +207,98 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<ScsSaveEditResult> SwitchActiveTrailerAsync(
+        ScsSaveReference save,
+        string targetTrailerId,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var targetId = NormalizeReference(targetTrailerId, nameof(targetTrailerId));
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+
+        if (refs.TrailerId is null)
+        {
+            throw new ScsSaveEditException(
+                "Ein Trailer-Wechsel wird nur unterstützt, wenn bereits ein aktiver Trailer referenziert ist.");
+        }
+
+        if (string.Equals(refs.TrailerId, targetId, StringComparison.Ordinal))
+            throw new ScsSaveEditException("Der ausgewählte Trailer ist bereits aktiv.");
+
+        var inventory = BuildInventory(document, refs);
+        if (!inventory.Trailers.Any(item => string.Equals(item.Id, targetId, StringComparison.Ordinal)))
+        {
+            throw new ScsSaveEditException(
+                "Der ausgewählte Trailer ist im Besitz-Array des Profils nicht eindeutig vorhanden.");
+        }
+
+        _ = ResolveTrailerChain(document, targetId);
+
+        var matchingPlayerVehicleUnits = document
+            .GetUnitsByType("player_vehicles")
+            .Where(unit =>
+            {
+                var vehicle = document.TryGetOptionalUnitScalar(unit, "vehicle");
+                return vehicle is not null &&
+                       string.Equals(
+                           NormalizeReference(vehicle, "vehicle"),
+                           refs.TruckId,
+                           StringComparison.Ordinal);
+            })
+            .ToArray();
+
+        if (matchingPlayerVehicleUnits.Length == 0)
+        {
+            throw new ScsSaveEditException(
+                "Es wurde keine player_vehicles-Unit für den aktiven Truck gefunden.");
+        }
+
+        var updated = document;
+        var replacements = 0;
+
+        foreach (var unit in matchingPlayerVehicleUnits)
+        {
+            var trailerValue = updated.TryGetOptionalUnitScalar(unit, "trailer");
+            if (trailerValue is null)
+            {
+                throw new ScsSaveEditException(
+                    $"player_vehicles-Unit '{unit.Id}' enthält kein Trailer-Feld.");
+            }
+
+            if (!string.Equals(trailerValue.Trim(), "null", StringComparison.OrdinalIgnoreCase))
+            {
+                var currentId = NormalizeReference(trailerValue, "trailer");
+                if (!string.Equals(currentId, refs.TrailerId, StringComparison.Ordinal))
+                {
+                    throw new ScsSaveEditException(
+                        "Mehrere unterschiedliche Trailer-Zuordnungen für den aktiven Truck wurden erkannt. " +
+                        "Der Wechsel wird aus Sicherheitsgründen abgebrochen.");
+                }
+            }
+
+            var currentUnit = updated.GetRequiredUniqueUnit(unit.Id);
+            updated = updated.SetRequiredUnitScalar(currentUnit, "trailer", targetId);
+            replacements++;
+        }
+
+        var resultRefs = ResolveActiveReferences(updated);
+        if (!string.Equals(resultRefs.TruckId, refs.TruckId, StringComparison.Ordinal) ||
+            !string.Equals(resultRefs.TrailerId, targetId, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die Trailer-Zuordnung konnte nach der Änderung nicht konsistent validiert werden.");
+        }
+
+        return await ApplyAsync(
+            save,
+            $"Aktiven Trailer wechseln: {refs.TrailerId} -> {targetId} ({replacements} Referenzen)",
+            updated,
+            cancellationToken);
+    }
+
     private async Task<ScsSaveEditResult> ApplyAsync(
         ScsSaveReference save,
         string operation,
@@ -182,22 +311,97 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
                 updated.ToText()),
             cancellationToken);
 
+    private static ScsVehicleInventory BuildInventory(
+        ScsSiiUnitDocument document,
+        ActiveReferences refs)
+    {
+        var player = ResolvePlayerUnit(document);
+
+        return new ScsVehicleInventory(
+            refs.TruckId,
+            refs.TrailerId,
+            ReadInventory(document, player, "trucks", "vehicle", refs.TruckId),
+            ReadInventory(document, player, "trailers", "trailer", refs.TrailerId));
+    }
+
+    private static IReadOnlyList<ScsVehicleInventoryItem> ReadInventory(
+        ScsSiiUnitDocument document,
+        ScsSiiUnit player,
+        string arrayPrefix,
+        string expectedUnitType,
+        string? activeId)
+    {
+        var indexed = document.GetIndexedUnitScalars(player, arrayPrefix);
+        var result = new List<ScsVehicleInventoryItem>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var item in indexed)
+        {
+            var id = NormalizeReference(item.Value, arrayPrefix);
+            if (!ids.Add(id))
+            {
+                throw new ScsSaveEditException(
+                    $"SII-Array '{arrayPrefix}' enthält die Referenz '{id}' mehrfach.");
+            }
+
+            var unit = document.GetRequiredUniqueUnit(id);
+            EnsureUnitType(unit, expectedUnitType, arrayPrefix);
+
+            result.Add(new ScsVehicleInventoryItem(
+                id,
+                item.Index,
+                activeId is not null &&
+                string.Equals(id, activeId, StringComparison.Ordinal)));
+        }
+
+        return result;
+    }
+
+    private static ScsSiiUnit ResolvePlayerUnit(ScsSiiUnitDocument document)
+    {
+        var candidates = document
+            .GetUnitsByType("player")
+            .Where(unit => document.TryGetOptionalUnitScalar(unit, "assigned_vehicles") is not null)
+            .ToArray();
+
+        return candidates.Length switch
+        {
+            1 => candidates[0],
+            0 => throw new ScsSaveEditException(
+                "Keine eindeutige player-Unit mit assigned_vehicles wurde gefunden."),
+            _ => throw new ScsSaveEditException(
+                "Mehrere player-Units mit assigned_vehicles wurden gefunden.")
+        };
+    }
+
     private static ActiveReferences ResolveActiveReferences(ScsSiiUnitDocument document)
     {
+        var player = ResolvePlayerUnit(document);
         var assignedVehiclesId = NormalizeReference(
-            document.GetRequiredUniqueScalar("assigned_vehicles"),
+            document.GetRequiredUnitScalar(player, "assigned_vehicles"),
             "assigned_vehicles");
 
         var playerVehicles = document.GetRequiredUniqueUnit(assignedVehiclesId);
+        EnsureUnitType(playerVehicles, "player_vehicles", "assigned_vehicles");
+
         var truckId = NormalizeReference(
             document.GetRequiredUnitScalar(playerVehicles, "vehicle"),
             "vehicle");
+
+        var truckUnit = document.GetRequiredUniqueUnit(truckId);
+        EnsureUnitType(truckUnit, "vehicle", "vehicle");
 
         var trailerValue = document.TryGetOptionalUnitScalar(playerVehicles, "trailer");
         var trailerId = string.IsNullOrWhiteSpace(trailerValue) ||
                         string.Equals(trailerValue.Trim(), "null", StringComparison.OrdinalIgnoreCase)
             ? null
             : NormalizeReference(trailerValue, "trailer");
+
+        if (trailerId is not null)
+        {
+            var trailerUnit = document.GetRequiredUniqueUnit(trailerId);
+            EnsureUnitType(trailerUnit, "trailer", "trailer");
+        }
 
         return new ActiveReferences(truckId, trailerId);
     }
@@ -217,6 +421,8 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
             result.Add(current);
             var unit = document.GetRequiredUniqueUnit(current);
+            EnsureUnitType(unit, "trailer", "Trailer-Kette");
+
             var slave = document.TryGetOptionalUnitScalar(unit, "slave_trailer");
 
             if (string.IsNullOrWhiteSpace(slave) ||
@@ -246,6 +452,18 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         }
 
         return reference;
+    }
+
+    private static void EnsureUnitType(
+        ScsSiiUnit unit,
+        string expectedType,
+        string context)
+    {
+        if (!string.Equals(unit.Type, expectedType, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                $"SII-Referenz '{context}' zeigt auf Unit-Typ '{unit.Type}' statt '{expectedType}'.");
+        }
     }
 
     private static void ValidateSaveReference(ScsSaveReference save)
