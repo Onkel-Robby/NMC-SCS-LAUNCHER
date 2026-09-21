@@ -3,7 +3,7 @@
   <Package
       Name="NMC SCS LAUNCHER"
       Manufacturer="NMC IT-SERVICE"
-      Version="$(var.ProductVersion)"
+      Version="$(var.PackageVersion)"
       UpgradeCode="CB2D6DC0-61D8-4D5D-BE5D-2237C570F8F1"
       Scope="perUser"
       InstallerVersion="500"
@@ -101,7 +101,13 @@
             Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
             Name="Version"
             Type="string"
-            Value="$(var.ProductVersion)" />
+            Value="$(var.AppVersion)" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\NMC IT-SERVICE\NMC SCS LAUNCHER"
+            Name="InstallerPackageVersion"
+            Type="string"
+            Value="$(var.PackageVersion)" />
       </Component>
     </DirectoryRef>
   </Fragment>
