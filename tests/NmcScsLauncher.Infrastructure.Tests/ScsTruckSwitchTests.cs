@@ -61,10 +61,26 @@ public sealed class ScsTruckSwitchTests : IDisposable
     [Fact]
     public async Task SwitchTruckFailsClosedWhenGarageDriverSlotIsMissing()
     {
-        var source = CreateSave().Replace(
-            " drivers: 1\n drivers[0]: _nameless.driver.1",
-            " drivers: 0",
+        var source = CreateSave();
+        var garageStart = source.IndexOf(
+            "garage : garage.hamburg",
             StringComparison.Ordinal);
+        Assert.True(garageStart >= 0);
+
+        const string driverLine = " drivers[0]: _nameless.driver.1";
+        var driverStart = source.IndexOf(
+            driverLine,
+            garageStart,
+            StringComparison.Ordinal);
+        Assert.True(driverStart >= 0);
+
+        var lineEnd = source.IndexOf('\n', driverStart);
+        if (lineEnd < 0)
+            lineEnd = source.Length;
+        else
+            lineEnd++;
+
+        source = source.Remove(driverStart, lineEnd - driverStart);
 
         var (save, codec, saveEdit) = await CreateAsync(source);
         var editor = new ScsVehicleEditService(codec, saveEdit);
