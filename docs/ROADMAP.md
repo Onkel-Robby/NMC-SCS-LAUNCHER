@@ -54,7 +54,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
 - [x] Save-Editor-Grundlage: nur game.sii/profile.sii, textuelles SiiNunit, automatisches Backup, SHA-256, atomarer Austausch, Restore und Sperre bei laufendem ETS2/ATS
-- [ ] Decoder-Adapter für binäre/verschlüsselte SCS-Saves mit fail-closed Fallback
+- [x] Decoder-Adapter für binäre/verschlüsselte SCS-Saves: DecryptTruck 1.3.7 (MIT), gepinnte SHA-256, Runtime-Integritätsprüfung, temporäre Ausgabe und fail-closed Fallback
+- [~] realer Feldtest des Decoders mit einem aktuellen verschlüsselten ETS2-Save und ATS-Save
 - [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
 - [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
 - [ ] Profil-Editor: Skills und weitere Karrierewerte auf verifiziertem Save-Format
