@@ -21,6 +21,16 @@ public sealed record ScsActiveTruckPowertrain(
     string EngineDataPath,
     string TransmissionDataPath);
 
+public sealed record ScsPowertrainCatalogItem(
+    string DataPath,
+    string SourceTruckId,
+    bool IsCurrent);
+
+public sealed record ScsActiveTruckPowertrainCatalog(
+    string TruckModelRoot,
+    IReadOnlyList<ScsPowertrainCatalogItem> Engines,
+    IReadOnlyList<ScsPowertrainCatalogItem> Transmissions);
+
 public interface IScsVehicleEditService
 {
     Task<ScsActiveVehicleState> InspectActiveVehiclesAsync(
@@ -81,6 +91,10 @@ public interface IScsVehicleEditService
         CancellationToken cancellationToken = default);
 
     Task<ScsActiveTruckPowertrain> GetActiveTruckPowertrainAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsActiveTruckPowertrainCatalog> GetActiveTruckPowertrainCatalogAsync(
         ScsSaveReference save,
         CancellationToken cancellationToken = default);
 
