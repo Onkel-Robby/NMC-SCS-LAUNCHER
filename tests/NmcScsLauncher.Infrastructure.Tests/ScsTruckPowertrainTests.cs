@@ -103,13 +103,19 @@ public sealed class ScsTruckPowertrainTests : IDisposable
                 " accessories[2]: _nameless.accessory.cabin" +
                 Environment.NewLine +
                 " accessories[3]: _nameless.accessory.engine.2",
-                StringComparison.Ordinal) +
-            Environment.NewLine +
+                StringComparison.Ordinal);
+
+        var rootEnd = source.LastIndexOf('}');
+        Assert.True(rootEnd >= 0);
+
+        source = source.Insert(
+            rootEnd,
             """
             vehicle_accessory : _nameless.accessory.engine.2 {
              data_path: "/def/vehicle/truck/volvo.fh16/engine/d16.sii"
             }
-            """;
+            
+            """);
 
         var (save, codec, saveEdit) = await CreateAsync(source);
         var editor = new ScsVehicleEditService(codec, saveEdit);
