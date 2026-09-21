@@ -435,7 +435,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
         EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
 
-        var profitLogUnit = document.GetRequiredUniqueUnit(profitLogId);
+        _ = document.GetRequiredUniqueUnit(profitLogId);
 
         var value = kilometers.ToString(
             "0.############################",
