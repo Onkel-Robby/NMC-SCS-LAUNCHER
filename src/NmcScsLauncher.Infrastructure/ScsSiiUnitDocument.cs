@@ -120,6 +120,7 @@ internal sealed class ScsSiiUnitDocument
     {
         ValidateScalarValue(value);
         var clone = (string[])_lines.Clone();
+        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
         replacements = 0;
 
         for (var i = unit.StartLine + 1; i < unit.EndLine; i++)
@@ -129,12 +130,16 @@ internal sealed class ScsSiiUnitDocument
 
             var match =
                 exactKeys.Contains(key) ||
-                indexedPrefixes.Any(prefix =>
-                    key.StartsWith(prefix + "[", StringComparison.Ordinal) &&
-                    key.EndsWith("]", StringComparison.Ordinal));
+                indexedPrefixes.Any(prefix => IsIndexedKey(key, prefix));
 
             if (!match)
                 continue;
+
+            if (!seenKeys.Add(key))
+            {
+                throw new ScsSaveEditException(
+                    $"SII-Feld '{key}' ist in Unit '{unit.Id}' mehrfach vorhanden.");
+            }
 
             var indentLength = 0;
             while (indentLength < clone[i].Length &&
@@ -225,6 +230,19 @@ internal sealed class ScsSiiUnitDocument
         }
 
         return result;
+    }
+
+    private static bool IsIndexedKey(string key, string prefix)
+    {
+        var expectedPrefix = prefix + "[";
+        if (!key.StartsWith(expectedPrefix, StringComparison.Ordinal) ||
+            !key.EndsWith("]", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var index = key[expectedPrefix.Length..^1];
+        return index.Length > 0 && index.All(char.IsDigit);
     }
 
     private static bool TryParseScalar(string line, out string key, out string value)
