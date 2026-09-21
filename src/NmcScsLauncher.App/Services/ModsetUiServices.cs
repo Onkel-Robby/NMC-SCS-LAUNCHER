@@ -27,6 +27,7 @@ public interface IModsetEditorService
 public interface IConfirmationService
 {
     bool ConfirmRemoveFromLauncher(Modset modset);
+    bool ConfirmSaveEdit(string title, string message);
 }
 
 public interface IExplorerService
@@ -57,6 +58,21 @@ public sealed class ConfirmationService : IConfirmationService
         var result = MessageBox.Show(
             $"Modset '{modset.Name}' aus dem NMC SCS LAUNCHER entfernen?\n\nDie Dateien im Mod-Ordner werden NICHT gelöscht.",
             "Modset entfernen",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        return result == MessageBoxResult.Yes;
+    }
+
+    public bool ConfirmSaveEdit(string title, string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
+        var result = MessageBox.Show(
+            message + "\n\nReguläre Save-Änderungen erstellen automatisch ein Backup. Das Spiel muss beendet sein.",
+            title,
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
             MessageBoxResult.No);

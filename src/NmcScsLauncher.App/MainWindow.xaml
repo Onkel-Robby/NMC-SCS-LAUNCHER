@@ -42,6 +42,7 @@
                     <ListBoxItem><TextBlock Text="🚚  American Truck Simulator" /></ListBoxItem>
                     <ListBoxItem><TextBlock Text="▦   Modsets" /></ListBoxItem>
                     <ListBoxItem><TextBlock Text="☁   Workshop" /></ListBoxItem>
+                    <ListBoxItem><TextBlock Text="💾  Save-Editor" /></ListBoxItem>
                     <ListBoxItem><TextBlock Text="⚙   Einstellungen" /></ListBoxItem>
                     <ListBoxItem><TextBlock Text="ⓘ   Info" /></ListBoxItem>
                 </ListBox>
@@ -317,6 +318,202 @@
 
                             <Border Margin="0,18,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="14">
                                 <TextBlock Text="Workshop-Titel werden beim Aktualisieren read-only über die öffentliche Steam-Detailabfrage ergänzt. Wenn Steam nicht erreichbar ist oder ein Eintrag keinen Titel liefert, bleibt die PublishedFileId als Fallback sichtbar. Subscribe/Unsubscribe und andere SteamUGC-Schreibaktionen bleiben deaktiviert." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="38,30,38,28">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Save-Editor" FontSize="30" FontWeight="Bold" />
+                                    <TextBlock Text="Profile, Saves sowie Truck- und Trailerwerte sicher bearbeiten." Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Profile laden" Command="{Binding RefreshSaveEditorCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16,9" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <Border Margin="0,22,0,0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="18" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Spiel" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorGames}" SelectedItem="{Binding SaveEditorSelectedGame}" Height="34" Padding="8,5" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Profil" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorProfiles}" SelectedItem="{Binding SaveEditorSelectedProfile}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Save" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorSaves}" SelectedItem="{Binding SaveEditorSelectedSave}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="{Binding SaveEditorGameHome}" Margin="2,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" />
+
+                            <Grid Margin="0,18,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel>
+                                    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                                        <StackPanel>
+                                            <TextBlock Text="Profil &amp; Karriere" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="Änderungen werden erst nach Bestätigung angewendet." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,14" />
+                                            <TextBlock Text="Profilname" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorProfileNameText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Umbenennen" Command="{Binding RenameSaveEditorProfileCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                            <TextBlock Text="Geld" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorMoneyText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorMoneyCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                            <TextBlock Text="Erfahrungspunkte (XP)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorExperienceText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorExperienceCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Margin="0,16,0,0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                                        <StackPanel>
+                                            <TextBlock Text="Aktiver Truck" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding SaveEditorActiveTruckText}" Foreground="{StaticResource SuccessBrush}" Margin="0,4,0,12" TextWrapping="Wrap" />
+
+                                            <TextBlock Text="Eigener Truck auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}" DisplayMemberPath="Id" Height="34" Padding="8,5" />
+                                                <Button Grid.Column="1" Content="Wechseln" Command="{Binding SwitchSaveEditorTruckCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <Button Content="Truck reparieren" Command="{Binding RepairSaveEditorTruckCommand}" />
+                                            </StackPanel>
+
+                                            <TextBlock Text="Kraftstoff (0–1)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorFuelText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorFuelCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <TextBlock Text="Kilometerstand" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorMileageText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorMileageCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <TextBlock Text="Engine data_path" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorEnginePath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Motor setzen" Command="{Binding SetSaveEditorEngineCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <TextBlock Text="Transmission data_path" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorTransmissionPath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Getriebe setzen" Command="{Binding SetSaveEditorTransmissionCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                                        <StackPanel>
+                                            <TextBlock Text="Aktiver Trailer" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding SaveEditorActiveTrailerText}" Foreground="{StaticResource SuccessBrush}" Margin="0,4,0,12" TextWrapping="Wrap" />
+
+                                            <TextBlock Text="Eigener Trailer auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <ComboBox ItemsSource="{Binding SaveEditorTrailers}" SelectedItem="{Binding SaveEditorSelectedTrailer}" DisplayMemberPath="Id" Height="34" Padding="8,5" />
+                                                <Button Grid.Column="1" Content="Wechseln" Command="{Binding SwitchSaveEditorTrailerCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <Button Content="Trailer reparieren" Command="{Binding RepairSaveEditorTrailerCommand}" HorizontalAlignment="Left" Margin="0,0,0,12" />
+
+                                            <TextBlock Text="Frachtgewicht (cargo_mass)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorCargoMassText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorCargoMassCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Margin="0,16,0,0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                                        <StackPanel>
+                                            <TextBlock Text="Kennzeichen" FontSize="18" FontWeight="SemiBold" />
+                                            <Grid Margin="0,12,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="Ländercode" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBox Text="{Binding SaveEditorPlateCountry, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" Padding="8,6" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="Hintergrund / Text RGB" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <Grid Margin="0,4,0,0">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <TextBox Text="{Binding SaveEditorPlateBackgroundRgb, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                        <TextBox Grid.Column="2" Text="{Binding SaveEditorPlateTextRgb, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <TextBlock Text="Truck-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,10">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorTruckPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Truck setzen" Command="{Binding SetSaveEditorTruckPlateCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+
+                                            <TextBlock Text="Trailer-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <Grid Margin="0,4,0,0">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                <TextBox Text="{Binding SaveEditorTrailerPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
+                                                <Button Grid.Column="1" Content="Trailer setzen" Command="{Binding SetSaveEditorTrailerPlateCommand}" Margin="8,0,0,0" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Margin="0,16,0,0" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="16">
+                                        <StackPanel>
+                                            <TextBlock Text="Sicherheits-Backup" FontSize="16" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding SaveEditorLastBackupPath}" Margin="0,6,0,10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="11" />
+                                            <Button Content="Letztes Backup wiederherstellen" Command="{Binding RestoreSaveEditorLastBackupCommand}" HorizontalAlignment="Left" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Margin="0,18,0,0" Background="#111A24" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="14">
+                                <TextBlock Text="{Binding SaveEditorStatusText}" TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>
                     </ScrollViewer>

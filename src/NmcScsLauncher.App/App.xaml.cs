@@ -81,6 +81,11 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IWorkshopContentLocator>(),
             _serviceProvider.GetRequiredService<IWorkshopMetadataProvider>(),
             _serviceProvider.GetRequiredService<IExternalUriService>());
+        viewModel.ConfigureSaveEditorServices(
+            _serviceProvider.GetRequiredService<IScsProfileSaveLocator>(),
+            _serviceProvider.GetRequiredService<IScsProfileEditService>(),
+            _serviceProvider.GetRequiredService<IScsVehicleEditService>(),
+            _serviceProvider.GetRequiredService<IScsSaveEditService>());
 
         try
         {
