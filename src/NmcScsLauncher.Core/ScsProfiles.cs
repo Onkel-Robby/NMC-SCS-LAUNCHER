@@ -33,6 +33,14 @@ public sealed record ScsSaveReference(
     string GameSiiPath,
     DateTimeOffset LastWriteTimeUtc);
 
+public sealed record ScsCareerSkills(
+    int AdrMask,
+    int LongDistance,
+    int HighValueCargo,
+    int FragileCargo,
+    int UrgentDelivery,
+    int EcoDriving);
+
 public interface IScsProfileSaveLocator
 {
     Task<IReadOnlyList<ScsProfileReference>> FindProfilesAsync(
@@ -60,5 +68,14 @@ public interface IScsProfileEditService
     Task<ScsSaveEditResult> SetExperienceAsync(
         ScsSaveReference save,
         long experiencePoints,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsCareerSkills> GetCareerSkillsAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
+    Task<ScsSaveEditResult> SetCareerSkillsAsync(
+        ScsSaveReference save,
+        ScsCareerSkills skills,
         CancellationToken cancellationToken = default);
 }
