@@ -2,12 +2,13 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
     <Platform>x64</Platform>
-    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0</ProductVersion>
+    <AppVersion Condition="'$(AppVersion)' == ''">1.0.0</AppVersion>
+    <PackageVersion Condition="'$(PackageVersion)' == ''">$(AppVersion)</PackageVersion>
     <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\publish</PublishDir>
     <BrandingRoot Condition="'$(BrandingRoot)' == ''">$(MSBuildThisFileDirectory)..\..\branding</BrandingRoot>
     <OutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\wix\msi\</OutputPath>
-    <OutputName>NMC-SCS-LAUNCHER-$(ProductVersion)</OutputName>
-    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir);BrandingRoot=$(BrandingRoot)</DefineConstants>
+    <OutputName>NMC-SCS-LAUNCHER-$(AppVersion)</OutputName>
+    <DefineConstants>AppVersion=$(AppVersion);PackageVersion=$(PackageVersion);PublishDir=$(PublishDir);BrandingRoot=$(BrandingRoot)</DefineConstants>
     <SuppressIces>ICE38;ICE64;ICE91</SuppressIces>
   </PropertyGroup>
 </Project>
