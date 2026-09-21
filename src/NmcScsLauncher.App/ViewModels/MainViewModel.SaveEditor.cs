@@ -24,6 +24,12 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorProfileNameText = string.Empty;
     [ObservableProperty] private string _saveEditorMoneyText = string.Empty;
     [ObservableProperty] private string _saveEditorExperienceText = string.Empty;
+    [ObservableProperty] private string _saveEditorAdrMaskText = string.Empty;
+    [ObservableProperty] private string _saveEditorLongDistanceText = string.Empty;
+    [ObservableProperty] private string _saveEditorHighValueCargoText = string.Empty;
+    [ObservableProperty] private string _saveEditorFragileCargoText = string.Empty;
+    [ObservableProperty] private string _saveEditorUrgentDeliveryText = string.Empty;
+    [ObservableProperty] private string _saveEditorEcoDrivingText = string.Empty;
     [ObservableProperty] private string _saveEditorFuelText = string.Empty;
     [ObservableProperty] private string _saveEditorMileageText = string.Empty;
     [ObservableProperty] private string _saveEditorCargoMassText = string.Empty;
@@ -198,6 +204,37 @@ public partial class MainViewModel
             "XP ändern",
             $"Erfahrungspunkte im ausgewählten Save auf {amount} setzen?",
             () => _saveEditorProfileEditService!.SetExperienceAsync(SaveEditorSelectedSave!, amount));
+    }
+
+    [RelayCommand]
+    private async Task SetSaveEditorCareerSkillsAsync()
+    {
+        if (!TryParseSkillInput(SaveEditorAdrMaskText, 63, out var adr) ||
+            !TryParseSkillInput(SaveEditorLongDistanceText, 6, out var longDistance) ||
+            !TryParseSkillInput(SaveEditorHighValueCargoText, 6, out var highValue) ||
+            !TryParseSkillInput(SaveEditorFragileCargoText, 6, out var fragile) ||
+            !TryParseSkillInput(SaveEditorUrgentDeliveryText, 6, out var urgent) ||
+            !TryParseSkillInput(SaveEditorEcoDrivingText, 6, out var eco))
+        {
+            SaveEditorStatusText =
+                "Skills ungültig: ADR 0–63, alle anderen Skill-Level 0–6.";
+            return;
+        }
+
+        var skills = new ScsCareerSkills(
+            adr,
+            longDistance,
+            highValue,
+            fragile,
+            urgent,
+            eco);
+
+        await ExecuteSelectedSaveEditAsync(
+            "Skills ändern",
+            "Karriere-Skills im ausgewählten Save ändern?",
+            () => _saveEditorProfileEditService!.SetCareerSkillsAsync(
+                SaveEditorSelectedSave!,
+                skills));
     }
 
     [RelayCommand]
@@ -409,6 +446,24 @@ public partial class MainViewModel
         if (save is null || _saveEditorVehicleEditService is null)
             return;
 
+        if (_saveEditorProfileEditService is not null)
+        {
+            try
+            {
+                var skills = await _saveEditorProfileEditService.GetCareerSkillsAsync(save);
+                SaveEditorAdrMaskText = skills.AdrMask.ToString(CultureInfo.CurrentCulture);
+                SaveEditorLongDistanceText = skills.LongDistance.ToString(CultureInfo.CurrentCulture);
+                SaveEditorHighValueCargoText = skills.HighValueCargo.ToString(CultureInfo.CurrentCulture);
+                SaveEditorFragileCargoText = skills.FragileCargo.ToString(CultureInfo.CurrentCulture);
+                SaveEditorUrgentDeliveryText = skills.UrgentDelivery.ToString(CultureInfo.CurrentCulture);
+                SaveEditorEcoDrivingText = skills.EcoDriving.ToString(CultureInfo.CurrentCulture);
+            }
+            catch (ScsSaveEditException)
+            {
+                ClearSaveEditorCareerSkills();
+            }
+        }
+
         try
         {
             var state = await _saveEditorVehicleEditService.InspectActiveVehiclesAsync(save);
@@ -566,6 +621,7 @@ public partial class MainViewModel
         SaveEditorActiveTrailerText = "–";
         SaveEditorFuelText = string.Empty;
         SaveEditorMileageText = string.Empty;
+        ClearSaveEditorCareerSkills();
         SaveEditorCargoMassText = string.Empty;
         SaveEditorEnginePath = string.Empty;
         SaveEditorTransmissionPath = string.Empty;
@@ -578,6 +634,39 @@ public partial class MainViewModel
     private bool CanSwitchSaveEditorTrailer() =>
         SaveEditorSelectedTrailer is { IsActive: false } &&
         SaveEditorSelectedSave is not null;
+
+    private void ClearSaveEditorCareerSkills()
+    {
+        SaveEditorAdrMaskText = string.Empty;
+        SaveEditorLongDistanceText = string.Empty;
+        SaveEditorHighValueCargoText = string.Empty;
+        SaveEditorFragileCargoText = string.Empty;
+        SaveEditorUrgentDeliveryText = string.Empty;
+        SaveEditorEcoDrivingText = string.Empty;
+    }
+
+    private static bool TryParseSkillInput(
+        string text,
+        int max,
+        out int value)
+    {
+        if (int.TryParse(
+                text,
+                NumberStyles.Integer,
+                CultureInfo.CurrentCulture,
+                out value) ||
+            int.TryParse(
+                text,
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out value))
+        {
+            return value >= 0 && value <= max;
+        }
+
+        value = 0;
+        return false;
+    }
 
     private static bool TryParseLongInput(string text, out long value)
     {
