@@ -59,8 +59,10 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
 - [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
 - [ ] Profil-Editor: Skills und weitere Karrierewerte auf verifiziertem Save-Format
-- [ ] Truck-Editor: aktuellen Truck wechseln, reparieren, Kraftstoff; danach Motor/Getriebe/Kennzeichen/Kilometer
-- [ ] Trailer-Editor: aktuellen Trailer wechseln, reparieren; danach Gewicht/Kennzeichen
+- [x] Truck-Editor-Grundlage: aktiven Truck eindeutig auflösen, reparieren und Kraftstoffwert 0..1 setzen
+- [ ] Truck-Editor: Truck wechseln; danach Motor/Getriebe/Kennzeichen/Kilometer
+- [x] Trailer-Editor-Grundlage: aktiven Trailer samt Slave-Kette eindeutig auflösen und reparieren
+- [ ] Trailer-Editor: Trailer wechseln; danach Gewicht/Kennzeichen
 - [ ] Save-Editor-UI mit Save-Auswahl, Vorschau, Änderungsbestätigung und Backup-Wiederherstellung
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
