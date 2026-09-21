@@ -237,18 +237,9 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
         _ = ResolveTrailerChain(document, targetId);
 
-        var matchingPlayerVehicleUnits = document
-            .GetUnitsByType("player_vehicles")
-            .Where(unit =>
-            {
-                var vehicle = document.TryGetOptionalUnitScalar(unit, "vehicle");
-                return vehicle is not null &&
-                       string.Equals(
-                           NormalizeReference(vehicle, "vehicle"),
-                           refs.TruckId,
-                           StringComparison.Ordinal);
-            })
-            .ToArray();
+        var matchingPlayerVehicleUnits = GetPlayerVehicleUnitsForTruck(
+            document,
+            refs.TruckId);
 
         if (matchingPlayerVehicleUnits.Length == 0)
         {
@@ -421,11 +412,16 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             .Where(unit =>
             {
                 var vehicle = document.TryGetOptionalUnitScalar(unit, "vehicle");
-                return vehicle is not null &&
-                       string.Equals(
-                           NormalizeReference(vehicle, "vehicle"),
-                           truckId,
-                           StringComparison.Ordinal);
+                if (vehicle is null ||
+                    string.Equals(vehicle.Trim(), "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                return string.Equals(
+                    NormalizeReference(vehicle, "vehicle"),
+                    truckId,
+                    StringComparison.Ordinal);
             })
             .ToArray();
     }
@@ -448,6 +444,14 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
             foreach (var vehicle in vehicles)
             {
+                if (string.Equals(
+                        vehicle.Value.Trim(),
+                        "null",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
                 var vehicleId = NormalizeReference(vehicle.Value, "garage vehicles");
                 if (!string.Equals(vehicleId, truckId, StringComparison.Ordinal))
                     continue;
