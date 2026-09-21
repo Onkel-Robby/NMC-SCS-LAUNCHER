@@ -1224,50 +1224,74 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         return result;
     }
 
-    private static ScsSiiUnit ResolvePlayerUnit(ScsSiiUnitDocument document)
-    {
-        var candidates = document
-            .GetUnitsByType("player")
-            .Where(unit => document.TryGetOptionalUnitScalar(unit, "assigned_vehicles") is not null)
-            .ToArray();
-
-        return candidates.Length switch
-        {
-            1 => candidates[0],
-            0 => throw new ScsSaveEditException(
-                "Keine eindeutige player-Unit mit assigned_vehicles wurde gefunden."),
-            _ => throw new ScsSaveEditException(
-                "Mehrere player-Units mit assigned_vehicles wurden gefunden.")
-        };
-    }
+    private static ScsSiiUnit ResolvePlayerUnit(ScsSiiUnitDocument document) =>
+        ScsSaveStructureResolver.ResolvePlayerUnit(document);
 
     private static ActiveReferences ResolveActiveReferences(ScsSiiUnitDocument document)
     {
         var player = ResolvePlayerUnit(document);
-        var assignedVehiclesId = NormalizeReference(
-            document.GetRequiredUnitScalar(player, "assigned_vehicles"),
+        var assignedVehiclesValue = document.TryGetOptionalUnitScalar(
+            player,
             "assigned_vehicles");
 
-        var playerVehicles = document.GetRequiredUniqueUnit(assignedVehiclesId);
-        EnsureUnitType(playerVehicles, "player_vehicles", "assigned_vehicles");
+        if (!ScsSaveStructureResolver.IsNullReference(assignedVehiclesValue))
+        {
+            var assignedVehiclesId = NormalizeReference(
+                assignedVehiclesValue!,
+                "assigned_vehicles");
 
-        var truckId = NormalizeReference(
-            document.GetRequiredUnitScalar(playerVehicles, "vehicle"),
-            "vehicle");
+            var playerVehicles = document.GetRequiredUniqueUnit(assignedVehiclesId);
+            EnsureUnitType(playerVehicles, "player_vehicles", "assigned_vehicles");
 
+            var truckId = NormalizeReference(
+                document.GetRequiredUnitScalar(playerVehicles, "vehicle"),
+                "vehicle");
+
+            var trailerValue = document.TryGetOptionalUnitScalar(playerVehicles, "trailer");
+            return ValidateActiveReferences(
+                document,
+                truckId,
+                trailerValue,
+                "player_vehicles");
+        }
+
+        var legacyTruckValue = document.TryGetOptionalUnitScalar(player, "assigned_truck");
+        if (!ScsSaveStructureResolver.IsNullReference(legacyTruckValue))
+        {
+            var truckId = NormalizeReference(
+                legacyTruckValue!,
+                "assigned_truck");
+            var trailerValue = document.TryGetOptionalUnitScalar(player, "assigned_trailer");
+
+            return ValidateActiveReferences(
+                document,
+                truckId,
+                trailerValue,
+                "legacy player assignment");
+        }
+
+        throw new ScsSaveEditException(
+            "Die aktive Fahrzeugzuordnung konnte nicht aufgelöst werden. " +
+            "Weder assigned_vehicles noch assigned_truck enthält eine gültige Truck-Referenz.");
+    }
+
+    private static ActiveReferences ValidateActiveReferences(
+        ScsSiiUnitDocument document,
+        string truckId,
+        string? trailerValue,
+        string context)
+    {
         var truckUnit = document.GetRequiredUniqueUnit(truckId);
-        EnsureUnitType(truckUnit, "vehicle", "vehicle");
+        EnsureUnitType(truckUnit, "vehicle", context + ".vehicle");
 
-        var trailerValue = document.TryGetOptionalUnitScalar(playerVehicles, "trailer");
-        var trailerId = string.IsNullOrWhiteSpace(trailerValue) ||
-                        string.Equals(trailerValue.Trim(), "null", StringComparison.OrdinalIgnoreCase)
+        var trailerId = ScsSaveStructureResolver.IsNullReference(trailerValue)
             ? null
-            : NormalizeReference(trailerValue, "trailer");
+            : NormalizeReference(trailerValue!, context + ".trailer");
 
         if (trailerId is not null)
         {
             var trailerUnit = document.GetRequiredUniqueUnit(trailerId);
-            EnsureUnitType(trailerUnit, "trailer", "trailer");
+            EnsureUnitType(trailerUnit, "trailer", context + ".trailer");
         }
 
         return new ActiveReferences(truckId, trailerId);
