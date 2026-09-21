@@ -5,7 +5,8 @@ namespace NmcScsLauncher.Core;
 public enum ScsSaveDocumentFormat
 {
     PlainText = 1,
-    UnsupportedBinary = 2
+    DecodedText = 2,
+    UnsupportedBinary = 3
 }
 
 public sealed record ScsSaveDocument(
@@ -29,6 +30,13 @@ public sealed record ScsSaveEditResult(
 public interface IScsSaveCodec
 {
     Task<ScsSaveDocument> ReadAsync(
+        string filePath,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IScsSaveDecoder
+{
+    Task<string> DecodeToTextAsync(
         string filePath,
         CancellationToken cancellationToken = default);
 }
