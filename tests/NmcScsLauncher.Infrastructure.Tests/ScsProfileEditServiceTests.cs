@@ -1,3 +1,4 @@
+using System.Text;
 using NmcScsLauncher.Core;
 using NmcScsLauncher.Infrastructure;
 using Xunit;
@@ -12,19 +13,114 @@ public sealed class ScsProfileEditServiceTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task RenamesProfileReadsAndEditsReferencedBankAndEconomyValues()
+    public async Task RenameProfileUpdatesProfileSiiAndHexDirectory()
+    {
+        var oldName = "ROBBY";
+        var newName = "NMC Robby";
+        var oldDirectoryName = Convert.ToHexString(Encoding.UTF8.GetBytes(oldName));
+        var newDirectoryName = Convert.ToHexString(Encoding.UTF8.GetBytes(newName));
+        var profileDirectory = Path.Combine(_root, "profiles", oldDirectoryName);
+        Directory.CreateDirectory(profileDirectory);
+
+        var profileSii = Path.Combine(profileDirectory, "profile.sii");
+        await File.WriteAllTextAsync(
+            profileSii,
+            "SiiNunit\n{\nprofile_name: \"ROBBY\"\n}\n");
+
+        var codec = new ScsPlainTextSaveCodec();
+        var saveEdit = new ScsSaveEditService(
+            codec,
+            new NeverRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var editor = new ScsProfileEditService(codec, saveEdit);
+
+        var profile = new ScsProfileReference(
+            GameType.Ets2,
+            ScsProfileStorageKind.Local,
+            _root,
+            profileDirectory,
+            oldDirectoryName,
+            oldName,
+            profileSii);
+
+        var result = await editor.RenameProfileAsync(profile, newName);
+
+        var renamedDirectory = Path.Combine(_root, "profiles", newDirectoryName);
+        var renamedProfileSii = Path.Combine(renamedDirectory, "profile.sii");
+
+        Assert.False(Directory.Exists(profileDirectory));
+        Assert.True(Directory.Exists(renamedDirectory));
+        Assert.True(File.Exists(renamedProfileSii));
+        Assert.Equal(Path.GetFullPath(renamedProfileSii), result.FilePath);
+        Assert.True(File.Exists(result.BackupPath));
+        Assert.Contains(
+            "profile_name: \"NMC Robby\"",
+            await File.ReadAllTextAsync(renamedProfileSii));
+        Assert.Contains(
+            "profile_name: \"ROBBY\"",
+            await File.ReadAllTextAsync(result.BackupPath));
+
+        var locator = new ScsProfileSaveLocator();
+        var profiles = await locator.FindProfilesAsync(GameType.Ets2, _root);
+        var renamed = Assert.Single(profiles);
+
+        Assert.Equal(newName, renamed.DisplayName);
+        Assert.Equal(Path.GetFullPath(renamedDirectory), renamed.ProfileDirectory);
+    }
+
+    [Fact]
+    public async Task RenameProfileRejectsExistingTargetWithoutChangingSource()
+    {
+        var oldName = "ROBBY";
+        var newName = "Existing";
+        var oldDirectoryName = Convert.ToHexString(Encoding.UTF8.GetBytes(oldName));
+        var newDirectoryName = Convert.ToHexString(Encoding.UTF8.GetBytes(newName));
+        var profileDirectory = Path.Combine(_root, "profiles", oldDirectoryName);
+        var targetDirectory = Path.Combine(_root, "profiles", newDirectoryName);
+        Directory.CreateDirectory(profileDirectory);
+        Directory.CreateDirectory(targetDirectory);
+
+        var profileSii = Path.Combine(profileDirectory, "profile.sii");
+        const string original = "SiiNunit\n{\nprofile_name: \"ROBBY\"\n}\n";
+        await File.WriteAllTextAsync(profileSii, original);
+        await File.WriteAllTextAsync(
+            Path.Combine(targetDirectory, "profile.sii"),
+            "SiiNunit\n{\nprofile_name: \"Existing\"\n}\n");
+
+        var codec = new ScsPlainTextSaveCodec();
+        var saveEdit = new ScsSaveEditService(
+            codec,
+            new NeverRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var editor = new ScsProfileEditService(codec, saveEdit);
+
+        var profile = new ScsProfileReference(
+            GameType.Ets2,
+            ScsProfileStorageKind.Local,
+            _root,
+            profileDirectory,
+            oldDirectoryName,
+            oldName,
+            profileSii);
+
+        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            editor.RenameProfileAsync(profile, newName));
+
+        Assert.Contains("existiert bereits", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(original, await File.ReadAllTextAsync(profileSii));
+        Assert.True(Directory.Exists(profileDirectory));
+        Assert.True(Directory.Exists(targetDirectory));
+    }
+
+    [Fact]
+    public async Task ReadsAndEditsReferencedBankAndEconomyValues()
     {
         var profileDirectory = Path.Combine(_root, "profiles", "524F424259");
         var saveDirectory = Path.Combine(profileDirectory, "save", "1");
         var backupRoot = Path.Combine(_root, "backups");
         Directory.CreateDirectory(saveDirectory);
 
-        var profileSii = Path.Combine(profileDirectory, "profile.sii");
         var gameSii = Path.Combine(saveDirectory, "game.sii");
-
-        await File.WriteAllTextAsync(
-            profileSii,
-            "SiiNunit\n{\nprofile_name: \"Old Name\"\n}\n");
         await File.WriteAllTextAsync(
             gameSii,
             """
@@ -47,15 +143,6 @@ public sealed class ScsProfileEditServiceTests : IDisposable
         var saveEdit = new ScsSaveEditService(codec, new NeverRunningGuard(), backupRoot);
         var editor = new ScsProfileEditService(codec, saveEdit);
 
-        var profile = new ScsProfileReference(
-            GameType.Ets2,
-            ScsProfileStorageKind.Local,
-            _root,
-            profileDirectory,
-            "524F424259",
-            "ROBBY",
-            profileSii);
-
         var save = new ScsSaveReference(
             GameType.Ets2,
             profileDirectory,
@@ -69,21 +156,17 @@ public sealed class ScsProfileEditServiceTests : IDisposable
         Assert.Equal(10, await editor.GetMoneyAsync(save));
         Assert.Equal(20, await editor.GetExperienceAsync(save));
 
-        var renameResult = await editor.RenameProfileAsync(profile, "NMC Robby");
         var moneyResult = await editor.SetMoneyAsync(save, 123456);
         var experienceResult = await editor.SetExperienceAsync(save, 98765);
 
-        Assert.True(File.Exists(renameResult.BackupPath));
         Assert.True(File.Exists(moneyResult.BackupPath));
         Assert.True(File.Exists(experienceResult.BackupPath));
         Assert.Equal(123456, await editor.GetMoneyAsync(save));
         Assert.Equal(98765, await editor.GetExperienceAsync(save));
 
-        var profileText = await File.ReadAllTextAsync(profileSii);
         var gameText = (await File.ReadAllTextAsync(gameSii))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        Assert.Contains("profile_name: \"NMC Robby\"", profileText);
         Assert.Contains(
             "economy : _nameless.economy {\n bank: _nameless.bank\n experience_points: 98765",
             gameText);
