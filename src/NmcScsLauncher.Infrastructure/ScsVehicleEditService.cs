@@ -1281,33 +1281,19 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         ScsSiiUnitDocument document,
         ScsSiiUnit truckUnit)
     {
-        var baseValue = document.GetRequiredUnitScalar(truckUnit, "odometer");
+        var value = document.GetRequiredUnitScalar(truckUnit, "odometer");
         if (!decimal.TryParse(
-                baseValue.Trim(),
+                value.Trim(),
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture,
                 out var kilometers) ||
             kilometers < 0m)
         {
             throw new ScsSaveEditException(
-                "odometer enthält keinen unterstützten nichtnegativen Zahlenwert.");
+                "odometer enthält keinen unterstützten nichtnegativen Kilometerwert.");
         }
 
-        var floatPartValue = document.TryGetOptionalUnitScalar(
-            truckUnit,
-            "odometer_float_part");
-
-        if (floatPartValue is null)
-            return kilometers;
-
-        var fraction = ParseScsHexFloat(floatPartValue, "odometer_float_part");
-        if (fraction < 0f || fraction >= 1f)
-        {
-            throw new ScsSaveEditException(
-                "odometer_float_part enthält keinen unterstützten Bruchteil zwischen 0 und 1.");
-        }
-
-        return kilometers + (decimal)fraction;
+        return kilometers;
     }
 
     private static ScsSiiUnitDocument SetOdometer(
@@ -1315,69 +1301,15 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         ScsSiiUnit truckUnit,
         decimal kilometers)
     {
-        var floatPartValue = document.TryGetOptionalUnitScalar(
-            truckUnit,
-            "odometer_float_part");
-
-        if (floatPartValue is null)
+        if (decimal.Truncate(kilometers) != kilometers)
         {
-            var value = kilometers.ToString(
-                "0.############################",
-                CultureInfo.InvariantCulture);
-            return document.SetRequiredUnitScalar(truckUnit, "odometer", value);
+            throw new ArgumentException(
+                "Der Truck-Kilometerstand wird von ETS2/ATS als ganze Kilometer im Feld odometer gespeichert.",
+                nameof(kilometers));
         }
 
-        var whole = decimal.Truncate(kilometers);
-        var fraction = kilometers - whole;
-        var fractionAsFloat = (float)fraction;
-
-        if (fractionAsFloat >= 1f)
-        {
-            whole += 1m;
-            fractionAsFloat = 0f;
-        }
-
-        var updated = document.SetRequiredUnitScalar(
-            truckUnit,
-            "odometer",
-            whole.ToString("0", CultureInfo.InvariantCulture));
-
-        var currentTruck = updated.GetRequiredUniqueUnit(truckUnit.Id);
-        return updated.SetRequiredUnitScalar(
-            currentTruck,
-            "odometer_float_part",
-            FormatScsHexFloat(fractionAsFloat));
-    }
-
-    private static float ParseScsHexFloat(string value, string field)
-    {
-        var raw = value.Trim();
-        if (raw.Length != 9 ||
-            raw[0] != '&' ||
-            !uint.TryParse(
-                raw.AsSpan(1),
-                NumberStyles.HexNumber,
-                CultureInfo.InvariantCulture,
-                out var bits))
-        {
-            throw new ScsSaveEditException(
-                $"{field} enthält keinen unterstützten SCS-Hex-Float.");
-        }
-
-        var parsed = BitConverter.Int32BitsToSingle(unchecked((int)bits));
-        if (float.IsNaN(parsed) || float.IsInfinity(parsed))
-        {
-            throw new ScsSaveEditException(
-                $"{field} enthält keinen endlichen SCS-Hex-Float.");
-        }
-
-        return parsed;
-    }
-
-    private static string FormatScsHexFloat(float value)
-    {
-        var bits = unchecked((uint)BitConverter.SingleToInt32Bits(value));
-        return $"&{bits:x8}";
+        var value = kilometers.ToString("0", CultureInfo.InvariantCulture);
+        return document.SetRequiredUnitScalar(truckUnit, "odometer", value);
     }
 
     private static string BuildLicensePlateValue(
@@ -1388,13 +1320,50 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
     {
         var plate = ValidatePlateText(plateText);
         var country = ValidateCountryCode(countryCode);
-        var background = ValidateRgb(backgroundRgb, nameof(backgroundRgb));
-        var text = ValidateRgb(textRgb, nameof(textRgb));
 
-        return $"<color value=ff{background}><margin left=-15>" +
-               "<img src=/material/ui/white.mat xscale=stretch yscale=stretch><ret>" +
-               "<margin left=2><align hstyle=left vstyle=center><font xscale=1 yscale=1>" +
-               $"<color value=ff{text}>{plate}</align></margin>|{country}";
+        if (string.Equals(country, "custom", StringComparison.Ordinal))
+        {
+            var background = ValidateRgb(backgroundRgb, nameof(backgroundRgb));
+            var text = ValidateRgb(textRgb, nameof(textRgb));
+
+            return $"<color value=ff{background}><margin left=-15>" +
+                   "<img src=/material/ui/white.mat xscale=stretch yscale=stretch><ret>" +
+                   "<margin left=2><align hstyle=left vstyle=center><font xscale=1 yscale=1>" +
+                   $"<color value=ff{text}>{plate}</align></margin>|belgium";
+        }
+
+        if (string.Equals(country, "germany", StringComparison.Ordinal))
+            return BuildGermanLicensePlateValue(plate);
+
+        return $"{plate}|{country}";
+    }
+
+    private static string BuildGermanLicensePlateValue(string plate)
+    {
+        var parts = plate.Split(
+            ' ',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length < 2 ||
+            parts[0].Length is < 1 or > 3 ||
+            parts[0].Any(character => !(character is >= 'A' and <= 'Z') &&
+                                      !(character is >= 'a' and <= 'z')))
+        {
+            throw new ArgumentException(
+                "Deutsche Kennzeichen müssen mit einem 1- bis 3-stelligen Ortskürzel beginnen, z. B. 'SI AA 998'.",
+                nameof(plate));
+        }
+
+        var district = parts[0].ToUpperInvariant();
+        var remainder = string.Join(' ', parts.Skip(1)).ToUpperInvariant();
+
+        return "<font xscale=1.00 yscale=1.25>" +
+               district +
+               "<offset hshift=4 vshift=-2.5>" +
+               "<img src=/material/ui/lp/germany/b.mat color=FFFFFFFF>" +
+               "<offset hshift=4 vshift=2>" +
+               remainder +
+               "</font>|germany";
     }
 
     private static string ValidatePlateText(string value)
