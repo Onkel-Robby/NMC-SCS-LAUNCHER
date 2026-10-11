@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using NmcScsLauncher.Core;
 
 namespace NmcScsLauncher.Infrastructure;
@@ -25,18 +26,88 @@ public sealed class ScsProfileEditService : IScsProfileEditService
         ValidateProfileReference(profile);
 
         var normalizedName = ValidateProfileName(newName);
-        var source = await _codec.ReadAsync(profile.ProfileSiiPath, cancellationToken);
+        var sourceDirectory = Path.GetFullPath(profile.ProfileDirectory);
+        var targetDirectory = BuildRenamedProfileDirectory(profile, normalizedName);
+        var sourceProfileSii = Path.GetFullPath(profile.ProfileSiiPath);
+        var targetProfileSii = Path.Combine(targetDirectory, "profile.sii");
+        var directoryChanges = !PathsEqual(sourceDirectory, targetDirectory);
+
+        if (directoryChanges && Directory.Exists(targetDirectory))
+        {
+            throw new ScsSaveEditException(
+                $"Ein Profil mit dem Namen '{normalizedName}' existiert bereits.");
+        }
+
+        var source = await _codec.ReadAsync(sourceProfileSii, cancellationToken);
         var document = ScsSiiTextDocument.Parse(source.Content);
         var updated = document
             .SetScalar("profile_name", QuoteString(normalizedName))
             .ToText();
 
-        return await _saveEditService.ApplyAsync(
+        var result = await _saveEditService.ApplyAsync(
             new ScsSaveEditRequest(
-                profile.ProfileSiiPath,
+                sourceProfileSii,
                 $"Profilname ändern: {normalizedName}",
                 updated),
             cancellationToken);
+
+        if (!directoryChanges)
+            return result;
+
+        try
+        {
+            Directory.Move(sourceDirectory, targetDirectory);
+
+            if (!File.Exists(targetProfileSii))
+            {
+                throw new ScsSaveEditException(
+                    "Der umbenannte Profilordner enthält keine profile.sii.");
+            }
+
+            var verified = await _codec.ReadAsync(targetProfileSii, cancellationToken);
+            var verifiedDocument = ScsSiiTextDocument.Parse(verified.Content);
+            if (!verifiedDocument.TryGetScalar("profile_name", out var profileNameValue) ||
+                !string.Equals(
+                    UnquoteSiiString(profileNameValue),
+                    normalizedName,
+                    StringComparison.Ordinal))
+            {
+                throw new ScsSaveEditException(
+                    "Der neue Profilname konnte nach dem Umbenennen nicht validiert werden.");
+            }
+
+            return result with { FilePath = targetProfileSii };
+        }
+        catch (Exception renameException)
+        {
+            try
+            {
+                if (Directory.Exists(targetDirectory) && !Directory.Exists(sourceDirectory))
+                    Directory.Move(targetDirectory, sourceDirectory);
+
+                if (File.Exists(sourceProfileSii))
+                {
+                    await _saveEditService.RestoreBackupAsync(
+                        result.BackupPath,
+                        sourceProfileSii,
+                        cancellationToken);
+                }
+            }
+            catch (Exception rollbackException)
+            {
+                throw new ScsSaveEditException(
+                    $"Profilumbenennung fehlgeschlagen und konnte nicht vollständig zurückgerollt werden. " +
+                    $"Backup: {result.BackupPath}",
+                    new AggregateException(renameException, rollbackException));
+            }
+
+            if (renameException is ScsSaveEditException saveEditException)
+                throw saveEditException;
+
+            throw new ScsSaveEditException(
+                "Der Profilordner konnte nicht sicher auf den neuen Namen umbenannt werden.",
+                renameException);
+        }
     }
 
     public async Task<long> GetMoneyAsync(
@@ -273,6 +344,84 @@ public sealed class ScsProfileEditService : IScsProfileEditService
 
         if (!PathsEqual(expected, profile.ProfileSiiPath))
             throw new ScsSaveEditException("Ungültige profile.sii-Auswahl.");
+
+        if (!Directory.Exists(profileDirectory) || !File.Exists(expected))
+            throw new ScsSaveEditException("Der ausgewählte Profilordner ist nicht mehr vorhanden.");
+
+        var attributes = File.GetAttributes(profileDirectory);
+        if ((attributes & FileAttributes.ReparsePoint) != 0)
+            throw new ScsSaveEditException("Profilordner über Reparse-Points werden nicht bearbeitet.");
+
+        var storageRootName = profile.StorageKind switch
+        {
+            ScsProfileStorageKind.Local => "profiles",
+            ScsProfileStorageKind.SteamCloud => "steam_profiles",
+            _ => throw new ScsSaveEditException("Unbekannter Profilspeichertyp.")
+        };
+
+        var expectedRoot = Path.GetFullPath(
+            Path.Combine(profile.GameHomeDirectory, storageRootName));
+        var actualParent = Directory.GetParent(profileDirectory)?.FullName;
+
+        if (actualParent is null || !PathsEqual(actualParent, expectedRoot))
+        {
+            throw new ScsSaveEditException(
+                "Der Profilordner liegt nicht direkt im erwarteten SCS-Profilverzeichnis.");
+        }
+    }
+
+    private static string BuildRenamedProfileDirectory(
+        ScsProfileReference profile,
+        string normalizedName)
+    {
+        var parent = Directory.GetParent(Path.GetFullPath(profile.ProfileDirectory))?.FullName
+            ?? throw new ScsSaveEditException("Der Profilordner besitzt kein gültiges Elternverzeichnis.");
+
+        var encodedName = Convert.ToHexString(Encoding.UTF8.GetBytes(normalizedName));
+        return Path.Combine(parent, encodedName);
+    }
+
+    private static string UnquoteSiiString(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length < 2 || trimmed[0] != '"' || trimmed[^1] != '"')
+        {
+            throw new ScsSaveEditException(
+                "profile_name enthält keinen unterstützten SII-String.");
+        }
+
+        var content = trimmed[1..^1];
+        var builder = new StringBuilder(content.Length);
+        var escaped = false;
+
+        foreach (var character in content)
+        {
+            if (escaped)
+            {
+                if (character is not ('\\' or '"'))
+                {
+                    throw new ScsSaveEditException(
+                        "profile_name enthält eine nicht unterstützte Escape-Sequenz.");
+                }
+
+                builder.Append(character);
+                escaped = false;
+                continue;
+            }
+
+            if (character == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+
+            builder.Append(character);
+        }
+
+        if (escaped)
+            throw new ScsSaveEditException("profile_name endet mit einer unvollständigen Escape-Sequenz.");
+
+        return builder.ToString();
     }
 
     private static void ValidateSaveReference(ScsSaveReference save)

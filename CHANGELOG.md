@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- Save-Editor: Profilumbenennung aktualisiert jetzt nicht nur `profile_name` in `profile.sii`, sondern auch den SCS-konformen UTF-8-Hex-Profilordner. Dadurch übernimmt ETS2/ATS den sichtbaren Profilnamen korrekt.
+- Save-Editor: Profilumbenennung prüft Zielkollisionen vor dem Schreiben, validiert den neuen Ordner nach dem Move und rollt bei Fehlern `profile.sii` und Ordner best-effort auf den Ausgangszustand zurück.
+- Save-Editor: Das generische Sitzungs-Backup-Restore wird nach einer Profilumbenennung bewusst nicht angeboten, weil ein bloßes Zurückschreiben der alten `profile.sii` ohne Rückbenennung des Profilordners einen inkonsistenten Profilnamen erzeugen würde.
 - Save-Editor: Player und Bank werden in echten SCS-Saves über die Referenzen `economy.player` bzw. `economy.bank` aufgelöst. Die aktive Fahrzeugzuordnung nutzt primär `assigned_vehicles -> player_vehicles` und unterstützt ältere Saves zusätzlich über `assigned_truck` / `assigned_trailer`.
 - Save-Editor: Geld, XP und Karriere-Skills werden beim Auswählen eines Saves aus den korrekt referenzierten Units gelesen. Gleichnamige Felder von KI-Fahrern können die Spielerwerte dadurch nicht mehr als „mehrdeutig“ blockieren.
 - Custom Installer: trennt die sichtbare Launcher-Version von der internen MSI-/Burn-Buildversion. Dadurch ersetzt ein neuer 1.0.0-Build zuverlässig einen bereits installierten älteren 1.0.0-Build, statt nur denselben MSI-Stand zu reparieren.
