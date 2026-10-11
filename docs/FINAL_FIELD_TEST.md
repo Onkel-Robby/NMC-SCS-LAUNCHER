@@ -99,6 +99,8 @@ Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
 ## G. Negativtests
 
+**Feldteststatus:** ETS2-Spiel-läuft-Sperre erfolgreich. Bei laufendem ETS2 wurde ein Save-Editor-Schreibvorgang blockiert; der Save wurde nicht verändert.
+
 Folgende Fälle müssen ohne Save-Schreibvorgang abgewiesen werden:
 
 - ETS2 oder ATS läuft während einer Änderung.
