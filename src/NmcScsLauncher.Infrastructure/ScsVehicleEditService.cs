@@ -391,6 +391,21 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             cancellationToken);
     }
 
+    public async Task<decimal> GetActiveTruckMileageAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSaveReference(save);
+
+        var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
+        var document = ScsSiiUnitDocument.Parse(source.Content);
+        var refs = ResolveActiveReferences(document);
+        var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+
+        return ReadOdometer(document, truckUnit);
+    }
+
     public async Task<ScsSaveEditResult> SetActiveTruckMileageAsync(
         ScsSaveReference save,
         decimal kilometers,
@@ -406,93 +421,26 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
         var document = ScsSiiUnitDocument.Parse(source.Content);
         var refs = ResolveActiveReferences(document);
-        var inventory = BuildInventory(document, refs);
-
-        var activeTrucks = inventory.Trucks.Where(item => item.IsActive).ToArray();
-        if (activeTrucks.Length != 1)
-        {
-            throw new ScsSaveEditException(
-                "Der aktive Truck konnte im Besitz-Array nicht eindeutig einem Slot zugeordnet werden.");
-        }
-
-        var activeTruck = activeTrucks[0];
-        var player = ResolvePlayerUnit(document);
-        var profitLogEntries = document
-            .GetIndexedUnitScalars(player, "truck_profit_logs")
-            .Where(item => item.Index == activeTruck.Slot)
-            .ToArray();
-
-        if (profitLogEntries.Length != 1)
-        {
-            throw new ScsSaveEditException(
-                $"Für Truck-Slot {activeTruck.Slot} wurde kein eindeutiger truck_profit_logs-Eintrag gefunden.");
-        }
-
-        var profitLogId = NormalizeReference(
-            profitLogEntries[0].Value,
-            $"truck_profit_logs[{activeTruck.Slot}]");
-
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
         EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
 
-        _ = document.GetRequiredUniqueUnit(profitLogId);
+        var updated = SetOdometer(document, truckUnit, kilometers);
+        var validatedTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
+        var validated = ReadOdometer(updated, validatedTruckUnit);
 
-        var value = kilometers.ToString(
+        if (Math.Abs(validated - kilometers) > 0.0001m)
+        {
+            throw new ScsSaveEditException(
+                "Der neue Kilometerstand konnte vor dem Schreiben nicht konsistent validiert werden.");
+        }
+
+        var displayValue = kilometers.ToString(
             "0.############################",
             CultureInfo.InvariantCulture);
 
-        var updated = document.SetRequiredUnitScalar(
-            truckUnit,
-            "odometer",
-            value);
-
-        var currentTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
-        if (updated.TryGetOptionalUnitScalar(currentTruckUnit, "integrity_odometer") is not null)
-        {
-            updated = updated.SetRequiredUnitScalar(
-                currentTruckUnit,
-                "integrity_odometer",
-                value);
-            currentTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
-        }
-
-        if (updated.TryGetOptionalUnitScalar(currentTruckUnit, "trip_distance_km") is not null)
-        {
-            updated = updated.SetRequiredUnitScalar(
-                currentTruckUnit,
-                "trip_distance_km",
-                value);
-        }
-
-        var currentProfitLogUnit = updated.GetRequiredUniqueUnit(profitLogId);
-        updated = updated.SetRequiredUnitScalar(
-            currentProfitLogUnit,
-            "acc_distance_on_job",
-            value);
-
-        currentProfitLogUnit = updated.GetRequiredUniqueUnit(profitLogId);
-        if (updated.TryGetOptionalUnitScalar(currentProfitLogUnit, "acc_distance_free") is not null)
-        {
-            updated = updated.SetRequiredUnitScalar(
-                currentProfitLogUnit,
-                "acc_distance_free",
-                "0");
-        }
-
-        var validatedTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
-        var validatedOdometer = updated.GetRequiredUnitScalar(
-            validatedTruckUnit,
-            "odometer");
-
-        if (!string.Equals(validatedOdometer.Trim(), value, StringComparison.Ordinal))
-        {
-            throw new ScsSaveEditException(
-                "Der neue Kilometerstand konnte vor dem Schreiben nicht validiert werden.");
-        }
-
         return await ApplyAsync(
             save,
-            $"Kilometerstand des aktiven Trucks ändern: {value} km",
+            $"Kilometerstand des aktiven Trucks ändern: {displayValue} km",
             updated,
             cancellationToken);
     }
@@ -1327,6 +1275,109 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
         throw new ScsSaveEditException(
             "Die Trailer-Kette überschreitet die Sicherheitsgrenze von 20 Units.");
+    }
+
+    private static decimal ReadOdometer(
+        ScsSiiUnitDocument document,
+        ScsSiiUnit truckUnit)
+    {
+        var baseValue = document.GetRequiredUnitScalar(truckUnit, "odometer");
+        if (!decimal.TryParse(
+                baseValue.Trim(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var kilometers) ||
+            kilometers < 0m)
+        {
+            throw new ScsSaveEditException(
+                "odometer enthält keinen unterstützten nichtnegativen Zahlenwert.");
+        }
+
+        var floatPartValue = document.TryGetOptionalUnitScalar(
+            truckUnit,
+            "odometer_float_part");
+
+        if (floatPartValue is null)
+            return kilometers;
+
+        var fraction = ParseScsHexFloat(floatPartValue, "odometer_float_part");
+        if (fraction < 0f || fraction >= 1f)
+        {
+            throw new ScsSaveEditException(
+                "odometer_float_part enthält keinen unterstützten Bruchteil zwischen 0 und 1.");
+        }
+
+        return kilometers + (decimal)fraction;
+    }
+
+    private static ScsSiiUnitDocument SetOdometer(
+        ScsSiiUnitDocument document,
+        ScsSiiUnit truckUnit,
+        decimal kilometers)
+    {
+        var floatPartValue = document.TryGetOptionalUnitScalar(
+            truckUnit,
+            "odometer_float_part");
+
+        if (floatPartValue is null)
+        {
+            var value = kilometers.ToString(
+                "0.############################",
+                CultureInfo.InvariantCulture);
+            return document.SetRequiredUnitScalar(truckUnit, "odometer", value);
+        }
+
+        var whole = decimal.Truncate(kilometers);
+        var fraction = kilometers - whole;
+        var fractionAsFloat = (float)fraction;
+
+        if (fractionAsFloat >= 1f)
+        {
+            whole += 1m;
+            fractionAsFloat = 0f;
+        }
+
+        var updated = document.SetRequiredUnitScalar(
+            truckUnit,
+            "odometer",
+            whole.ToString("0", CultureInfo.InvariantCulture));
+
+        var currentTruck = updated.GetRequiredUniqueUnit(truckUnit.Id);
+        return updated.SetRequiredUnitScalar(
+            currentTruck,
+            "odometer_float_part",
+            FormatScsHexFloat(fractionAsFloat));
+    }
+
+    private static float ParseScsHexFloat(string value, string field)
+    {
+        var raw = value.Trim();
+        if (raw.Length != 9 ||
+            raw[0] != '&' ||
+            !uint.TryParse(
+                raw.AsSpan(1),
+                NumberStyles.HexNumber,
+                CultureInfo.InvariantCulture,
+                out var bits))
+        {
+            throw new ScsSaveEditException(
+                $"{field} enthält keinen unterstützten SCS-Hex-Float.");
+        }
+
+        var parsed = BitConverter.Int32BitsToSingle(unchecked((int)bits));
+        if (float.IsNaN(parsed) || float.IsInfinity(parsed))
+        {
+            throw new ScsSaveEditException(
+                $"{field} enthält keinen endlichen SCS-Hex-Float.");
+        }
+
+        return parsed;
+    }
+
+    private static string FormatScsHexFloat(float value)
+    {
+        var bits = unchecked((uint)BitConverter.SingleToInt32Bits(value));
+        return $"&{bits:x8}";
     }
 
     private static string BuildLicensePlateValue(

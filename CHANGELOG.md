@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- Save-Editor: Truck-Kilometerstand verwendet jetzt die fachlich korrekten `odometer`-/`odometer_float_part`-Felder. `integrity_odometer`, Trip-Zähler und `truck_profit_logs` werden beim normalen Kilometerstand nicht mehr fälschlich überschrieben.
+- Save-Editor: Der aktuelle Truck-Kilometerstand wird beim Auswählen eines Saves direkt angezeigt.
+- Save-Editor-Performance: Ein unveränderter verschlüsselter `game.sii`-Stand wird nur einmal extern decodiert und danach im Speicher wiederverwendet. Änderungen an der Quelldatei invalidieren den Cache automatisch; Änderungen während des Decodierens brechen fail-closed ab.
 - Save-Editor: Profilumbenennung aktualisiert jetzt nicht nur `profile_name` in `profile.sii`, sondern auch den SCS-konformen UTF-8-Hex-Profilordner. Dadurch übernimmt ETS2/ATS den sichtbaren Profilnamen korrekt.
 - Save-Editor: Profilumbenennung prüft Zielkollisionen vor dem Schreiben, validiert den neuen Ordner nach dem Move und rollt bei Fehlern `profile.sii` und Ordner best-effort auf den Ausgangszustand zurück.
 - Save-Editor: Das generische Sitzungs-Backup-Restore wird nach einer Profilumbenennung bewusst nicht angeboten, weil ein bloßes Zurückschreiben der alten `profile.sii` ohne Rückbenennung des Profilordners einen inkonsistenten Profilnamen erzeugen würde.

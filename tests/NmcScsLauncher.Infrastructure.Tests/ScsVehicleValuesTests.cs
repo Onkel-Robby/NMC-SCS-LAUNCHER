@@ -12,7 +12,18 @@ public sealed class ScsVehicleValuesTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task SetMileageUpdatesTruckAndMatchingProfitLog()
+    public async Task GetMileageReadsSplitOdometer()
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+
+        var mileage = await editor.GetActiveTruckMileageAsync(save);
+
+        Assert.Equal(100.5m, mileage);
+    }
+
+    [Fact]
+    public async Task SetMileageUpdatesOnlyTruckOdometerAndPreservesOtherDistanceCounters()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
@@ -20,36 +31,37 @@ public sealed class ScsVehicleValuesTests : IDisposable
         var result = await editor.SetActiveTruckMileageAsync(save, 123456.75m);
 
         Assert.True(File.Exists(result.BackupPath));
+        Assert.Equal(123456.75m, await editor.GetActiveTruckMileageAsync(save));
 
         var text = await File.ReadAllTextAsync(save.GameSiiPath);
-        Assert.Contains(" odometer: 123456.75", text);
-        Assert.Contains(" integrity_odometer: 123456.75", text);
-        Assert.Contains(" trip_distance_km: 123456.75", text);
-        Assert.Contains(" acc_distance_on_job: 123456.75", text);
-        Assert.Contains(" acc_distance_free: 0", text);
+        Assert.Contains(" odometer: 123456", text);
+        Assert.Contains(" odometer_float_part: &3f400000", text);
+
+        Assert.Contains(" integrity_odometer: 7", text);
+        Assert.Contains(" integrity_odometer_float_part: &3e800000", text);
+        Assert.Contains(" trip_distance_km: 42", text);
+        Assert.Contains(" acc_distance_on_job: 100", text);
+        Assert.Contains(" acc_distance_free: 25", text);
 
         Assert.Contains(" odometer: 222", text);
         Assert.Contains(" acc_distance_on_job: 333", text);
     }
 
     [Fact]
-    public async Task SetMileageFailsClosedWhenMatchingProfitLogIsMissing()
+    public async Task SetMileageSupportsLegacyOdometerWithoutFloatPart()
     {
         var source = CreateSave()
             .Replace(
-                " truck_profit_logs[0]: _nameless.profit.1",
-                " truck_profit_logs[5]: _nameless.profit.1",
+                " odometer_float_part: &3f000000\n",
+                string.Empty,
                 StringComparison.Ordinal);
 
         var (save, codec, saveEdit) = await CreateAsync(source);
         var editor = new ScsVehicleEditService(codec, saveEdit);
-        var before = await File.ReadAllTextAsync(save.GameSiiPath);
 
-        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
-            editor.SetActiveTruckMileageAsync(save, 1000m));
+        await editor.SetActiveTruckMileageAsync(save, 9876.5m);
 
-        Assert.Contains("truck_profit_logs", exception.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(before, await File.ReadAllTextAsync(save.GameSiiPath));
+        Assert.Equal(9876.5m, await editor.GetActiveTruckMileageAsync(save));
     }
 
     [Fact]
@@ -157,14 +169,16 @@ public sealed class ScsVehicleValuesTests : IDisposable
         }
         vehicle : _nameless.truck.1 {
          odometer: 100
-         integrity_odometer: 100
-         trip_distance_km: 100
+         odometer_float_part: &3f000000
+         integrity_odometer: 7
+         integrity_odometer_float_part: &3e800000
+         trip_distance_km: 42
          fuel_relative: 0.25
         }
         vehicle : _nameless.truck.2 {
          odometer: 222
-         integrity_odometer: 222
-         trip_distance_km: 222
+         integrity_odometer: 11
+         trip_distance_km: 12
          fuel_relative: 0.5
         }
         profit_log : _nameless.profit.1 {

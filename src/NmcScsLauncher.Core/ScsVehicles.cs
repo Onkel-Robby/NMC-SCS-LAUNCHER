@@ -64,6 +64,10 @@ public interface IScsVehicleEditService
         string targetTruckId,
         CancellationToken cancellationToken = default);
 
+    Task<decimal> GetActiveTruckMileageAsync(
+        ScsSaveReference save,
+        CancellationToken cancellationToken = default);
+
     Task<ScsSaveEditResult> SetActiveTruckMileageAsync(
         ScsSaveReference save,
         decimal kilometers,
