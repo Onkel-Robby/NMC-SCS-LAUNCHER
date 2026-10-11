@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Save-Editor: Truck-Kilometerstand verwendet jetzt ausschließlich den sichtbaren/manuell editierbaren `odometer`-Wert in ganzen Kilometern. Ein vorhandenes `odometer_float_part` bleibt unverändert und wird nicht mehr fälschlich zum UI-Wert addiert; Wartungs-, Trip- und Truck-Manager-Zähler bleiben ebenfalls unangetastet.
+- Save-Editor: Truck-Kilometerstand wird jetzt konsistent für Tacho und Truck-Manager aktualisiert. Neben `odometer` werden vorhandenes `integrity_odometer`, `trip_distance_km` sowie der slotgleiche `truck_profit_logs[n]`-Eintrag (`acc_distance_on_job`, optional `acc_distance_free`) synchronisiert; `*_float_part`-Felder bleiben unverändert.
 - Save-Editor: Länderkennzeichen verwenden wieder native SCS-Länderformatierung statt eines generischen weißen Custom-Hintergrunds. Deutschland erhält das ETS2-Material `/material/ui/lp/germany/b.mat` zwischen Ortskürzel und restlichem Kennzeichen.
 - Save-Editor: Der aktuelle Truck-Kilometerstand wird beim Auswählen eines Saves direkt angezeigt.
 - Save-Editor-Performance: Ein unveränderter verschlüsselter `game.sii`-Stand wird nur einmal extern decodiert und danach im Speicher wiederverwendet. Änderungen an der Quelldatei invalidieren den Cache automatisch; Änderungen während des Decodierens brechen fail-closed ab.
