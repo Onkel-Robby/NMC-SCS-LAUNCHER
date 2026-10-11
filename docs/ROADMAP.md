@@ -75,7 +75,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen
 - [x] Trailer-Editor: `cargo_mass` der aktiven Trailer-/Slave-Kette sicher ändern
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
-- [~] realer Feldtest der Kennzeichen-Formatierung: Kennzeichentext auf Truck und Trailer in ETS2 erfolgreich, aber native deutsche Länderoptik im bisherigen Custom-Format fehlte; Länderformat-Fix und ATS noch offen
+- [~] realer Feldtest der Kennzeichen-Formatierung: Truck-/Trailer-Kennzeichentext sowie native deutsche Länderoptik in ETS2 bestätigt; ATS noch offen
 - [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
 - [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profil/Karriere, Backup/Restore und Schreibsperre bestätigt; zusätzlich Kraftstoff, Truck-Reparatur, Kennzeichentext und Truck-Wechsel erfolgreich. Sichtbarer odometer-Fix, native Länderkennzeichen und Performance-Cache müssen erneut real getestet werden; weitere Truck-/Trailer-Funktionen und ATS bleiben offen
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
