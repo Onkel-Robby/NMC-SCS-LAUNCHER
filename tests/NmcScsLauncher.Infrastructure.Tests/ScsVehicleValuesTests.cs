@@ -40,14 +40,29 @@ public sealed class ScsVehicleValuesTests : IDisposable
         Assert.Contains(" integrity_odometer: 123456", text);
         Assert.Contains(" integrity_odometer_float_part: &3e800000", text);
         Assert.Contains(" trip_distance_km: 123456", text);
-        Assert.Contains(" acc_distance_on_job: 123456", text);
+        Assert.Contains(" acc_distance_on_job: 120467", text);
         Assert.Contains(" acc_distance_free: 0", text);
+        Assert.Contains(" distance: 1200", text);
+        Assert.Contains(" distance: 1789", text);
 
         Assert.Contains(" odometer: 222", text);
         Assert.Contains(" integrity_odometer: 11", text);
         Assert.Contains(" trip_distance_km: 12", text);
         Assert.Contains(" acc_distance_on_job: 333", text);
         Assert.Contains(" acc_distance_free: 44", text);
+    }
+
+    [Fact]
+    public async Task SetMileageFailsClosedWhenTargetIsBelowRetainedProfitHistory()
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var before = await File.ReadAllTextAsync(save.GameSiiPath);
+
+        await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            editor.SetActiveTruckMileageAsync(save, 2500m));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(save.GameSiiPath));
     }
 
     [Fact]
@@ -200,8 +215,19 @@ public sealed class ScsVehicleValuesTests : IDisposable
          fuel_relative: 0.5
         }
         profit_log : _nameless.profit.1 {
+         stats_data: 2
+         stats_data[0]: _nameless.profit_entry.1
+         stats_data[1]: _nameless.profit_entry.2
          acc_distance_on_job: 100
          acc_distance_free: 25
+        }
+        profit_log_entry : _nameless.profit_entry.1 {
+         distance: 1200
+         distance_on_job: true
+        }
+        profit_log_entry : _nameless.profit_entry.2 {
+         distance: 1789
+         distance_on_job: false
         }
         profit_log : _nameless.profit.2 {
          acc_distance_on_job: 333

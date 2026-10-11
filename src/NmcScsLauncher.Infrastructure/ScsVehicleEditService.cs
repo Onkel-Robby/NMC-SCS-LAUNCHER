@@ -457,11 +457,23 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
         EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
         var profitLogUnit = document.GetRequiredUniqueUnit(profitLogId);
+        EnsureUnitType(profitLogUnit, "profit_log", "Truck-Profit-Log");
 
         _ = document.GetRequiredUnitScalar(truckUnit, "odometer");
         _ = document.GetRequiredUnitScalar(profitLogUnit, "acc_distance_on_job");
 
+        var historyDistance = ReadProfitLogHistoryDistance(document, profitLogUnit);
+        if (historyDistance > kilometers)
+        {
+            throw new ScsSaveEditException(
+                $"Der gewünschte Truck-Manager-Kilometerstand ({kilometers:0} km) liegt unter " +
+                $"den noch gespeicherten Profit-Log-Historienkilometern ({historyDistance:0} km). " +
+                "Die Historie wird aus Sicherheitsgründen nicht verändert.");
+        }
+
+        var accumulatedDistance = kilometers - historyDistance;
         var value = kilometers.ToString("0", CultureInfo.InvariantCulture);
+        var accumulatedValue = accumulatedDistance.ToString("0", CultureInfo.InvariantCulture);
         var updated = document.SetRequiredUnitScalar(truckUnit, "odometer", value);
 
         var currentTruck = updated.GetRequiredUniqueUnit(refs.TruckId);
@@ -486,7 +498,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         updated = updated.SetRequiredUnitScalar(
             currentProfitLog,
             "acc_distance_on_job",
-            value);
+            accumulatedValue);
 
         currentProfitLog = updated.GetRequiredUniqueUnit(profitLogId);
         if (updated.TryGetOptionalUnitScalar(currentProfitLog, "acc_distance_free") is not null)
@@ -508,13 +520,24 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         }
 
         var validatedProfitLog = updated.GetRequiredUniqueUnit(profitLogId);
-        if (!string.Equals(
-                updated.GetRequiredUnitScalar(validatedProfitLog, "acc_distance_on_job").Trim(),
-                value,
-                StringComparison.Ordinal))
+        var validatedAccumulatedOnJob = ReadWholeDistance(
+            updated.GetRequiredUnitScalar(validatedProfitLog, "acc_distance_on_job"),
+            "acc_distance_on_job");
+        var validatedAccumulatedFree = updated.TryGetOptionalUnitScalar(
+            validatedProfitLog,
+            "acc_distance_free") is { } freeValue
+            ? ReadWholeDistance(freeValue, "acc_distance_free")
+            : 0m;
+        var validatedHistory = ReadProfitLogHistoryDistance(updated, validatedProfitLog);
+        var validatedManagerDistance =
+            validatedAccumulatedOnJob +
+            validatedAccumulatedFree +
+            validatedHistory;
+
+        if (validatedManagerDistance != kilometers)
         {
             throw new ScsSaveEditException(
-                "Der Truck-Manager-Kilometerwert konnte vor dem Schreiben nicht validiert werden.");
+                "Der Truck-Manager-Kilometerwert konnte vor dem Schreiben nicht konsistent validiert werden.");
         }
 
         return await ApplyAsync(
@@ -1354,6 +1377,55 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
         throw new ScsSaveEditException(
             "Die Trailer-Kette überschreitet die Sicherheitsgrenze von 20 Units.");
+    }
+
+    private static decimal ReadProfitLogHistoryDistance(
+        ScsSiiUnitDocument document,
+        ScsSiiUnit profitLogUnit)
+    {
+        var total = 0m;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var item in document.GetIndexedUnitScalars(profitLogUnit, "stats_data"))
+        {
+            if (ScsSaveStructureResolver.IsNullReference(item.Value))
+                continue;
+
+            var entryId = NormalizeReference(item.Value, $"stats_data[{item.Index}]");
+            if (!seen.Add(entryId))
+            {
+                throw new ScsSaveEditException(
+                    $"Truck-Profit-Log referenziert Historieneintrag '{entryId}' mehrfach.");
+            }
+
+            var entry = document.GetRequiredUniqueUnit(entryId);
+            EnsureUnitType(entry, "profit_log_entry", $"stats_data[{item.Index}]");
+
+            var distance = ReadWholeDistance(
+                document.GetRequiredUnitScalar(entry, "distance"),
+                $"profit_log_entry '{entryId}'.distance");
+
+            total = checked(total + distance);
+        }
+
+        return total;
+    }
+
+    private static decimal ReadWholeDistance(string value, string field)
+    {
+        if (!decimal.TryParse(
+                value.Trim(),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var parsed) ||
+            parsed < 0m ||
+            decimal.Truncate(parsed) != parsed)
+        {
+            throw new ScsSaveEditException(
+                $"{field} enthält keinen unterstützten nichtnegativen Ganzzahl-Kilometerwert.");
+        }
+
+        return parsed;
     }
 
     private static decimal ReadOdometer(
