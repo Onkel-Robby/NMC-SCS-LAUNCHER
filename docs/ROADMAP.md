@@ -76,7 +76,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
 - [~] realer Feldtest der Kennzeichen-Formatierung in aktuellem ETS2 und ATS
 - [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
-- [~] reale Save-Editor-Feldtests: ETS2 Read-only, XP-Schreibtest, automatisches Backup und Restore mit anschließend jeweils erfolgreichem Spielstart bestätigt; weitere ETS2-Funktionen und ATS noch offen
+- [~] reale Save-Editor-Feldtests: ETS2 Read-only, XP-Schreibtest, automatisches Backup/Restore sowie Schreibsperre bei laufendem ETS2 bestätigt; weitere ETS2-Funktionen und ATS noch offen
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
