@@ -513,6 +513,18 @@ public partial class MainViewModel
                 "0.############################",
                 CultureInfo.CurrentCulture) ?? string.Empty;
 
+            try
+            {
+                var mileage = await _saveEditorVehicleEditService.GetActiveTruckMileageAsync(save);
+                SaveEditorMileageText = mileage.ToString(
+                    "0.############################",
+                    CultureInfo.CurrentCulture);
+            }
+            catch (ScsSaveEditException)
+            {
+                SaveEditorMileageText = string.Empty;
+            }
+
             foreach (var truck in inventory.Trucks)
                 SaveEditorTrucks.Add(truck);
             foreach (var trailer in inventory.Trailers)
