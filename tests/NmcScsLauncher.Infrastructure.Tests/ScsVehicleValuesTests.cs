@@ -63,7 +63,8 @@ public sealed class ScsVehicleValuesTests : IDisposable
 
         Assert.Equal(9876.5m, await editor.GetActiveTruckMileageAsync(save));
         var text = await File.ReadAllTextAsync(save.GameSiiPath);
-        Assert.Contains(" odometer: 9876.5", text);
+        Assert.Contains("odometer: 9876.5", text);
+        Assert.DoesNotContain("odometer_float_part:", text);
     }
 
     [Fact]
