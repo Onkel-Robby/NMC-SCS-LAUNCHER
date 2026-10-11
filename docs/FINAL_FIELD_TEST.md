@@ -89,6 +89,8 @@ Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
 ## F. Backup/Restore
 
+**Feldteststatus:** ETS2 erfolgreich. Das automatisch erzeugte Backup des vorherigen XP-Stands wurde über „Letztes Backup wiederherstellen“ zurückgespielt; der wiederhergestellte Save ließ sich anschließend erneut erfolgreich in ETS2 laden.
+
 1. Eine sichtbare Änderung durchführen.
 2. Im Save-Editor „Letztes Backup wiederherstellen“ verwenden.
 3. Save erneut auswählen.
