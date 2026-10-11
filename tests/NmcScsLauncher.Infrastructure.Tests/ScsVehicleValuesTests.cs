@@ -23,7 +23,7 @@ public sealed class ScsVehicleValuesTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMileageUpdatesOnlyTruckOdometerAndPreservesOtherDistanceCounters()
+    public async Task SetMileageUpdatesActiveTruckAndMatchingProfitLogConsistently()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
@@ -37,14 +37,36 @@ public sealed class ScsVehicleValuesTests : IDisposable
         Assert.Contains(" odometer: 123456", text);
         Assert.Contains(" odometer_float_part: &3f000000", text);
 
-        Assert.Contains(" integrity_odometer: 7", text);
+        Assert.Contains(" integrity_odometer: 123456", text);
         Assert.Contains(" integrity_odometer_float_part: &3e800000", text);
-        Assert.Contains(" trip_distance_km: 42", text);
-        Assert.Contains(" acc_distance_on_job: 100", text);
-        Assert.Contains(" acc_distance_free: 25", text);
+        Assert.Contains(" trip_distance_km: 123456", text);
+        Assert.Contains(" acc_distance_on_job: 123456", text);
+        Assert.Contains(" acc_distance_free: 0", text);
 
         Assert.Contains(" odometer: 222", text);
+        Assert.Contains(" integrity_odometer: 11", text);
+        Assert.Contains(" trip_distance_km: 12", text);
         Assert.Contains(" acc_distance_on_job: 333", text);
+        Assert.Contains(" acc_distance_free: 44", text);
+    }
+
+    [Fact]
+    public async Task SetMileageFailsClosedWhenMatchingProfitLogIsMissing()
+    {
+        var source = CreateSave()
+            .Replace(
+                " truck_profit_logs[0]: _nameless.profit.1\n",
+                string.Empty,
+                StringComparison.Ordinal);
+
+        var (save, codec, saveEdit) = await CreateAsync(source);
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var before = await File.ReadAllTextAsync(save.GameSiiPath);
+
+        await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            editor.SetActiveTruckMileageAsync(save, 650000m));
+
+        Assert.Equal(before, await File.ReadAllTextAsync(save.GameSiiPath));
     }
 
     [Fact]
