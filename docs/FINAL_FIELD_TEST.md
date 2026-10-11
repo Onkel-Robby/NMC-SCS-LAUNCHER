@@ -45,7 +45,7 @@ Dieser Test bestätigt insbesondere, dass ein decodierter Save nach dem Schreibe
 
 ## C. Profil/Karriere
 
-**Feldteststatus:** ETS2 XP, Geld und alle Karriere-Skills erfolgreich. ADR sowie Fernfahrten, hochwertige Fracht, zerbrechliche Fracht, Eilaufträge und Eco-Driving wurden in einem realen Save geändert und im Spiel erfolgreich verifiziert. XP und Geld wurden zusätzlich jeweils über das automatisch erzeugte Backup erfolgreich auf den vorherigen Stand zurückgesetzt.
+**Feldteststatus:** ETS2 XP, Geld und alle Karriere-Skills erfolgreich. ADR sowie Fernfahrten, hochwertige Fracht, zerbrechliche Fracht, Eilaufträge und Eco-Driving wurden in einem realen Save geändert und im Spiel erfolgreich verifiziert. XP und Geld wurden zusätzlich jeweils über das automatisch erzeugte Backup erfolgreich auf den vorherigen Stand zurückgesetzt. **Profilname noch offen:** Der erste reale Umbenennungstest änderte nur `profile.sii`; ETS2 übernahm den sichtbaren Namen nicht, weil der hex-codierte Profilordner nicht mit umbenannt wurde.
 
 Nacheinander testen:
 
