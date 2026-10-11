@@ -273,15 +273,17 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task SetSaveEditorMileageAsync()
     {
-        if (!TryParseDecimalInput(SaveEditorMileageText, out var value) || value < 0m)
+        if (!TryParseDecimalInput(SaveEditorMileageText, out var value) ||
+            value < 0m ||
+            decimal.Truncate(value) != value)
         {
-            SaveEditorStatusText = "Kilometerstand muss eine nichtnegative Zahl sein.";
+            SaveEditorStatusText = "Kilometerstand muss eine nichtnegative ganze Kilometerzahl sein.";
             return;
         }
 
         await ExecuteSelectedVehicleEditAsync(
             "Kilometerstand ändern",
-            $"Kilometerstand des aktiven Trucks auf {value} km setzen?",
+            $"Kilometerstand des aktiven Trucks auf {value:0} km setzen?",
             () => _saveEditorVehicleEditService!.SetActiveTruckMileageAsync(SaveEditorSelectedSave!, value));
     }
 
