@@ -13,6 +13,8 @@ Diese Checkliste deckt ausschließlich Punkte ab, die nicht sinnvoll durch CI si
 
 ## A. Read-only Kompatibilitätsprüfung
 
+**Feldteststatus:** ETS2 mit aktuellem verschlüsseltem Save erfolgreich. Profil/Save, Geld, XP, Skills, aktiver Truck, aktiver Trailer sowie Motor/Getriebe wurden aus einem realen Save ohne Parserfehler geladen. ATS steht noch aus.
+
 1. Save-Editor öffnen.
 2. ETS2 wählen und Profile laden.
 3. Lokales oder Steam-Profil auswählen.
@@ -26,6 +28,8 @@ Erwartung:
 - bis zu diesem Punkt wird keine Save-Datei verändert.
 
 ## B. Einfacher Schreibtest
+
+**Feldteststatus:** ETS2 erfolgreich. XP wurde in einem realen verschlüsselten Save geändert; der bearbeitete Save ließ sich anschließend in ETS2 ohne Ladefehler öffnen und der Schreibpfad Decoder → Edit → Save wurde damit praktisch bestätigt. ATS steht noch aus.
 
 Je Spiel zunächst nur eine einzelne ungefährliche Änderung durchführen, zum Beispiel Geld oder XP.
 
