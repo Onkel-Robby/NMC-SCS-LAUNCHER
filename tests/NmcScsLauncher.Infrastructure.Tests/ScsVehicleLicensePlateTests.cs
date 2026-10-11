@@ -19,7 +19,7 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
 
         var result = await editor.SetActiveTruckLicensePlateAsync(
             save,
-            "NMC-123",
+            "SI AA 998",
             "germany",
             "ffffff",
             "111111");
@@ -27,7 +27,9 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
         Assert.True(File.Exists(result.BackupPath));
 
         var text = await File.ReadAllTextAsync(save.GameSiiPath);
-        Assert.Contains("NMC-123</align></margin>|germany", text);
+        Assert.Contains(
+            "<font xscale=1.00 yscale=1.25>SI<offset hshift=4 vshift=-2.5><img src=/material/ui/lp/germany/b.mat color=FFFFFFFF><offset hshift=4 vshift=2>AA 998</font>|germany",
+            text);
         Assert.Contains(" license_plate: \"OTHER|germany\"", text);
         Assert.DoesNotContain(" license_plate: \"OLDTRUCK|germany\"", text);
     }
@@ -40,7 +42,7 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
 
         var result = await editor.SetActiveTrailerLicensePlateAsync(
             save,
-            "NMC-TRAILER",
+            "SI AB 123",
             "germany",
             "ffffff",
             "000000");
@@ -50,7 +52,9 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
         var text = await File.ReadAllTextAsync(save.GameSiiPath);
         Assert.Equal(
             2,
-            CountOccurrences(text, "NMC-TRAILER</align></margin>|germany"));
+            CountOccurrences(
+                text,
+                "<font xscale=1.00 yscale=1.25>SI<offset hshift=4 vshift=-2.5><img src=/material/ui/lp/germany/b.mat color=FFFFFFFF><offset hshift=4 vshift=2>AB 123</font>|germany"));
         Assert.Contains(" license_plate: \"OTHERTRAILER|germany\"", text);
     }
 
@@ -73,7 +77,7 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
     }
 
     [Fact]
-    public async Task InvalidRgbIsRejectedWithoutWriting()
+    public async Task GermanPlateRejectsMissingDistrictStructureWithoutWriting()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
@@ -84,10 +88,28 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
                 save,
                 "NMC-1",
                 "germany",
-                "FFFFFG",
+                "ffffff",
                 "000000"));
 
         Assert.Equal(before, await File.ReadAllTextAsync(save.GameSiiPath));
+    }
+
+    [Fact]
+    public async Task NonGermanCountryUsesNativeTextAndCountryCode()
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+
+        await editor.SetActiveTruckLicensePlateAsync(
+            save,
+            "YN16 MSO",
+            "uk",
+            "ffffff",
+            "000000");
+
+        var text = await File.ReadAllTextAsync(save.GameSiiPath);
+        Assert.Contains("license_plate: \"YN16 MSO|uk\"", text);
+        Assert.DoesNotContain("/material/ui/white.mat", text);
     }
 
     public void Dispose()

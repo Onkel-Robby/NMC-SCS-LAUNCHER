@@ -12,14 +12,14 @@ public sealed class ScsVehicleValuesTests : IDisposable
         Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task GetMileageReadsSplitOdometer()
+    public async Task GetMileageReadsVisibleOdometerWithoutFloatPart()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
 
         var mileage = await editor.GetActiveTruckMileageAsync(save);
 
-        Assert.Equal(100.5m, mileage);
+        Assert.Equal(100m, mileage);
     }
 
     [Fact]
@@ -28,14 +28,14 @@ public sealed class ScsVehicleValuesTests : IDisposable
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
 
-        var result = await editor.SetActiveTruckMileageAsync(save, 123456.75m);
+        var result = await editor.SetActiveTruckMileageAsync(save, 123456m);
 
         Assert.True(File.Exists(result.BackupPath));
-        Assert.Equal(123456.75m, await editor.GetActiveTruckMileageAsync(save));
+        Assert.Equal(123456m, await editor.GetActiveTruckMileageAsync(save));
 
         var text = await File.ReadAllTextAsync(save.GameSiiPath);
         Assert.Contains(" odometer: 123456", text);
-        Assert.Contains(" odometer_float_part: &3f400000", text);
+        Assert.Contains(" odometer_float_part: &3f000000", text);
 
         Assert.Contains(" integrity_odometer: 7", text);
         Assert.Contains(" integrity_odometer_float_part: &3e800000", text);
@@ -48,20 +48,16 @@ public sealed class ScsVehicleValuesTests : IDisposable
     }
 
     [Fact]
-    public async Task SetMileageSupportsLegacyOdometerWithoutFloatPart()
+    public async Task SetMileageRejectsFractionalKilometersWithoutWriting()
     {
-        var source = CreateSave()
-            .Replace(
-                " odometer_float_part: &3f000000\n",
-                string.Empty,
-                StringComparison.Ordinal);
-
-        var (save, codec, saveEdit) = await CreateAsync(source);
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
         var editor = new ScsVehicleEditService(codec, saveEdit);
+        var before = await File.ReadAllTextAsync(save.GameSiiPath);
 
-        await editor.SetActiveTruckMileageAsync(save, 9876.5m);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            editor.SetActiveTruckMileageAsync(save, 9876.5m));
 
-        Assert.Equal(9876.5m, await editor.GetActiveTruckMileageAsync(save));
+        Assert.Equal(before, await File.ReadAllTextAsync(save.GameSiiPath));
     }
 
     [Fact]
