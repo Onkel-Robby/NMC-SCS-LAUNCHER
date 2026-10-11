@@ -63,6 +63,10 @@ Nach mehreren Änderungen Save einmal im Spiel laden und Werte plausibilisieren.
 
 ## D. Truck
 
+**Feldteststatus ETS2:** Kraftstoff ändern inklusive Backup/Restore erfolgreich; Truck reparieren erfolgreich; Truck-Kennzeichen erfolgreich; Wechsel auf einen anderen eigenen Truck erfolgreich. Der erste Kilometerstand-Test mit der alten Implementierung schlug fehl und führte zur Korrektur auf die echten `odometer`/`odometer_float_part`-Felder; dieser Fix muss noch real erneut getestet werden. Motor/Getriebe stehen ebenfalls noch aus.
+
+**Performancebeobachtung:** Auf dem vorherigen Build dauerten Save-Schreibvorgänge teilweise bis zu etwa einer Minute. Ursache war mehrfaches Decodieren derselben unveränderten verschlüsselten `game.sii`. Der neue Decoder-Cache muss im nächsten Feldtest zeitlich mitgeprüft werden.
+
 Mit einem Testprofil mit mindestens zwei eigenen Trucks:
 
 1. Truck reparieren.
@@ -79,6 +83,8 @@ Wichtig:
 Der Powertrain-Katalog zeigt absichtlich nur Definitionen, die bereits bei eigenen Trucks desselben Truck-Modells im ausgewählten Save vorkommen.
 
 ## E. Trailer
+
+**Feldteststatus ETS2:** Trailer-Kennzeichen erfolgreich geändert und im Spiel bestätigt. Trailer-Reparatur, cargo_mass, Trailer-Wechsel und Mehrfach-/Slave-Trailer stehen noch aus.
 
 Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
