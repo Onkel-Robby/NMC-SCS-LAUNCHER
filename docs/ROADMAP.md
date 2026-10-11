@@ -56,7 +56,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
 - [x] Save-Editor-Grundlage: nur game.sii/profile.sii, textuelles SiiNunit, automatisches Backup, SHA-256, atomarer Austausch, Restore und Sperre bei laufendem ETS2/ATS
 - [x] Decoder-Adapter für binäre/verschlüsselte SCS-Saves: DecryptTruck 1.3.7 (MIT), gepinnte SHA-256, Runtime-Integritätsprüfung, temporäre Ausgabe und fail-closed Fallback
-- [~] realer Feldtest des Decoders mit einem aktuellen verschlüsselten ETS2-Save und ATS-Save
+- [~] realer Feldtest des Decoders: aktueller verschlüsselter ETS2-Save erfolgreich gelesen, geändert und anschließend wieder im Spiel geladen; ATS-Save noch offen
 - [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
 - [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
 - [x] Profil-Editor: Karriere-Skills ADR, Fernfahrten, hochwertige Fracht, zerbrechliche Fracht, Eilaufträge und Eco-Driving mit validierten Wertebereichen
@@ -76,7 +76,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
 - [~] realer Feldtest der Kennzeichen-Formatierung in aktuellem ETS2 und ATS
 - [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
-- [~] reale Save-Editor-Feldtests mit aktuellen ETS2-/ATS-Profilen, verschlüsselten Saves und anschließendem Spielstart
+- [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profilname, XP, Geld, sämtliche Karriere-Skills, automatisches Backup/Restore sowie Schreibsperre bei laufendem ETS2 bestätigt; Truck-/Trailer-Funktionen und ATS noch offen
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 

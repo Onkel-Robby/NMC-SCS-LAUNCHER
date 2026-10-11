@@ -13,6 +13,8 @@ Diese Checkliste deckt ausschließlich Punkte ab, die nicht sinnvoll durch CI si
 
 ## A. Read-only Kompatibilitätsprüfung
 
+**Feldteststatus:** ETS2 erfolgreich. Ein aktueller verschlüsselter ETS2-Save wurde ohne Parserfehler gelesen; Profil/Save, Geld, XP, alle Karriere-Skills, aktiver Truck, aktiver Trailer sowie Motor/Getriebe wurden korrekt erkannt. ATS steht noch aus.
+
 1. Save-Editor öffnen.
 2. ETS2 wählen und Profile laden.
 3. Lokales oder Steam-Profil auswählen.
@@ -27,6 +29,8 @@ Erwartung:
 
 ## B. Einfacher Schreibtest
 
+**Feldteststatus:** ETS2 erfolgreich. XP und Geld wurden in einem realen verschlüsselten Save geändert und anschließend erfolgreich in ETS2 geladen. Damit ist der Pfad Decoder → Edit → Schreiben → Spiel lädt Save für ETS2 praktisch bestätigt. ATS steht noch aus.
+
 Je Spiel zunächst nur eine einzelne ungefährliche Änderung durchführen, zum Beispiel Geld oder XP.
 
 1. Änderung bestätigen.
@@ -40,6 +44,8 @@ Je Spiel zunächst nur eine einzelne ungefährliche Änderung durchführen, zum 
 Dieser Test bestätigt insbesondere, dass ein decodierter Save nach dem Schreiben in der vom Launcher erzeugten Form von der aktuellen Spielversion akzeptiert wird.
 
 ## C. Profil/Karriere
+
+**Feldteststatus:** ETS2 vollständig für den aktuellen Funktionsumfang bestätigt. Profilname, Geld, XP, ADR, Fernfahrten, hochwertige Fracht, zerbrechliche Fracht, Eilaufträge und Eco-Driving wurden real getestet. Die Profilumbenennung wurde nach dem Fix erneut geprüft; der neue Name wird nach gemeinsamer Aktualisierung von `profile.sii` und dem UTF-8-Hex-Profilordner im Launcher und in ETS2 korrekt übernommen.
 
 Nacheinander testen:
 
@@ -85,6 +91,8 @@ Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
 ## F. Backup/Restore
 
+**Feldteststatus:** ETS2 erfolgreich. Das automatisch erzeugte Backup wurde nach einer Änderung wiederhergestellt und der zurückgesetzte Save anschließend erneut erfolgreich in ETS2 geladen.
+
 1. Eine sichtbare Änderung durchführen.
 2. Im Save-Editor „Letztes Backup wiederherstellen“ verwenden.
 3. Save erneut auswählen.
@@ -92,6 +100,8 @@ Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 5. Prüfen, ob der vorherige Zustand wiederhergestellt wurde.
 
 ## G. Negativtests
+
+**Feldteststatus:** Die Schreibsperre bei laufendem ETS2 ist real bestätigt; ein Änderungsversuch wurde vollständig blockiert. Die übrigen Negativfälle bleiben noch offen.
 
 Folgende Fälle müssen ohne Save-Schreibvorgang abgewiesen werden:
 
