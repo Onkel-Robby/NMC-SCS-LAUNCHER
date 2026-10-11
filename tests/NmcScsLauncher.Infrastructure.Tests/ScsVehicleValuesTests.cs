@@ -55,8 +55,8 @@ public sealed class ScsVehicleValuesTests : IDisposable
     {
         var source = CreateSave()
             .Replace(
-                " truck_profit_logs[0]: _nameless.profit.1\n",
-                string.Empty,
+                "truck_profit_logs[0]: _nameless.profit.1",
+                "truck_profit_logs[2]: _nameless.profit.1",
                 StringComparison.Ordinal);
 
         var (save, codec, saveEdit) = await CreateAsync(source);
