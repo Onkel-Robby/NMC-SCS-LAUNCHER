@@ -167,9 +167,15 @@ public partial class MainViewModel
         }
 
         var newName = SaveEditorProfileNameText.Trim();
+        var cloudWarning = profile.StorageKind == ScsProfileStorageKind.SteamCloud
+            ? "\n\nSteam-Cloud-Profil: Steam darf während der Umbenennung nicht synchronisieren."
+            : string.Empty;
+
         if (!_confirmationService.ConfirmSaveEdit(
                 "Profil umbenennen",
-                $"Profil '{profile.DisplayName}' in '{newName}' umbenennen?"))
+                $"Profil '{profile.DisplayName}' in '{newName}' umbenennen? " +
+                "profile.sii und der hex-codierte SCS-Profilordner werden gemeinsam aktualisiert." +
+                cloudWarning))
         {
             return;
         }
@@ -177,7 +183,8 @@ public partial class MainViewModel
         await ExecuteSaveEditorEditAsync(
             "Profilname",
             () => _saveEditorProfileEditService.RenameProfileAsync(profile, newName),
-            refreshProfiles: true);
+            refreshProfiles: true,
+            exposeBackupForRestore: false);
     }
 
     [RelayCommand]
@@ -599,7 +606,8 @@ public partial class MainViewModel
     private async Task ExecuteSaveEditorEditAsync(
         string operationName,
         Func<Task<ScsSaveEditResult>> operation,
-        bool refreshProfiles = false)
+        bool refreshProfiles = false,
+        bool exposeBackupForRestore = true)
     {
         if (IsBusy) return;
 
@@ -607,10 +615,22 @@ public partial class MainViewModel
         try
         {
             var result = await operation();
-            SaveEditorLastBackupPath = result.BackupPath;
-            _saveEditorLastEditedFilePath = result.FilePath;
-            SaveEditorStatusText =
-                $"{operationName} abgeschlossen. Backup wurde automatisch erstellt.";
+
+            if (exposeBackupForRestore)
+            {
+                SaveEditorLastBackupPath = result.BackupPath;
+                _saveEditorLastEditedFilePath = result.FilePath;
+                SaveEditorStatusText =
+                    $"{operationName} abgeschlossen. Backup wurde automatisch erstellt.";
+            }
+            else
+            {
+                SaveEditorLastBackupPath = "–";
+                _saveEditorLastEditedFilePath = null;
+                SaveEditorStatusText =
+                    $"{operationName} abgeschlossen. profile.sii und Profilordner wurden aktualisiert.";
+            }
+
             await _logger.WriteAsync(
                 "INFO",
                 $"Save editor change completed. Operation={result.Operation}; File={result.FilePath}; Backup={result.BackupPath}; OriginalSha={result.OriginalSha256}; UpdatedSha={result.UpdatedSha256}");
