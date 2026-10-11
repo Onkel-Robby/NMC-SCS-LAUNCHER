@@ -56,6 +56,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] lokale Mod-Verwaltung pro Modset: Mod-Liste mit Datei/Ordner, Typ, Größe, Änderungsdatum, Pfad, Suche, Sortierung, Typ-Filter und Explorer-Aktion
 - [x] Save-Editor-Grundlage: nur game.sii/profile.sii, textuelles SiiNunit, automatisches Backup, SHA-256, atomarer Austausch, Restore und Sperre bei laufendem ETS2/ATS
 - [x] Decoder-Adapter für binäre/verschlüsselte SCS-Saves: DecryptTruck 1.3.7 (MIT), gepinnte SHA-256, Runtime-Integritätsprüfung, temporäre Ausgabe und fail-closed Fallback
+- [x] Save-Editor-Performance: unveränderte verschlüsselte `game.sii` wird pro Dateistand nur einmal extern decodiert und anschließend über einen automatisch invalidierenden In-Memory-Cache wiederverwendet
 - [~] realer Feldtest des Decoders: aktueller verschlüsselter ETS2-Save erfolgreich gelesen, geändert und anschließend wieder im Spiel geladen; ATS-Save noch offen
 - [x] Profil-/Save-Erkennung für `profiles` und `steam_profiles` mit validierten Save-Referenzen
 - [x] erste Profil-Editor-Funktionen für Klartext-Saves: Profilname, Geld und XP
@@ -64,7 +65,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Truck-Editor-Grundlage: aktiven Truck eindeutig auflösen, reparieren und Kraftstoffwert 0..1 setzen
 - [x] Fahrzeug-Inventar: eigene Trucks/Trailer aus den validierten `trucks[n]`-/`trailers[n]`-Referenzen lesen und aktiven Zustand markieren
 - [x] Truck-Editor: sicheren Wechsel auf einen vorhandenen eigenen Truck inklusive player_vehicles-, Garage-/Driver- und HQ-Konsistenzprüfung
-- [x] Truck-Editor: Kilometerstand inklusive korrespondierendem `truck_profit_logs[n]` sicher ändern
+- [x] Truck-Editor: echten Truck-Kilometerstand über `odometer` plus optionalen `odometer_float_part` ändern, ohne Wartungs-, Trip- oder Truck-Manager-Zähler fälschlich mitzuschreiben
 - [x] Truck-Editor: Kennzeichen des aktiven Trucks mit validiertem SCS-Format ändern
 - [x] Truck-Editor-Backend: aktive Engine-/Transmission-Accessory eindeutig über `accessories[n]` und `data_path` auflösen und validierten Definition-Pfad ändern
 - [x] sicherer Powertrain-Auswahlkatalog: Motoren/Getriebe aus bereits vorhandenen eigenen Trucks desselben Modells im aktuellen Save ableiten und als UI-Auswahl anbieten
@@ -74,9 +75,9 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen
 - [x] Trailer-Editor: `cargo_mass` der aktiven Trailer-/Slave-Kette sicher ändern
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
-- [~] realer Feldtest der Kennzeichen-Formatierung in aktuellem ETS2 und ATS
+- [~] realer Feldtest der Kennzeichen-Formatierung: Truck- und Trailer-Kennzeichen in aktuellem ETS2 erfolgreich bestätigt; ATS noch offen
 - [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
-- [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profilname, XP, Geld, sämtliche Karriere-Skills, automatisches Backup/Restore sowie Schreibsperre bei laufendem ETS2 bestätigt; Truck-/Trailer-Funktionen und ATS noch offen
+- [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profil/Karriere, Backup/Restore und Schreibsperre bestätigt; zusätzlich Kraftstoff, Truck-Reparatur, Truck-/Trailer-Kennzeichen und Truck-Wechsel erfolgreich. Kilometerstand-Fix und Performance-Cache müssen erneut real getestet werden; weitere Truck-/Trailer-Funktionen und ATS bleiben offen
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
