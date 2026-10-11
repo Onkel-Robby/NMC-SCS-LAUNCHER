@@ -418,29 +418,108 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
                 nameof(kilometers),
                 "Der Kilometerstand darf nicht negativ sein.");
 
+        if (decimal.Truncate(kilometers) != kilometers)
+        {
+            throw new ArgumentException(
+                "Der Truck-Kilometerstand muss als ganze Kilometerzahl angegeben werden.",
+                nameof(kilometers));
+        }
+
         var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
         var document = ScsSiiUnitDocument.Parse(source.Content);
         var refs = ResolveActiveReferences(document);
-        var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
-        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+        var inventory = BuildInventory(document, refs);
 
-        var updated = SetOdometer(document, truckUnit, kilometers);
-        var validatedTruckUnit = updated.GetRequiredUniqueUnit(refs.TruckId);
-        var validated = ReadOdometer(updated, validatedTruckUnit);
-
-        if (Math.Abs(validated - kilometers) > 0.0001m)
+        var activeTrucks = inventory.Trucks.Where(item => item.IsActive).ToArray();
+        if (activeTrucks.Length != 1)
         {
             throw new ScsSaveEditException(
-                "Der neue Kilometerstand konnte vor dem Schreiben nicht konsistent validiert werden.");
+                "Der aktive Truck konnte im Besitz-Array nicht eindeutig einem Slot zugeordnet werden.");
         }
 
-        var displayValue = kilometers.ToString(
-            "0.############################",
-            CultureInfo.InvariantCulture);
+        var activeTruck = activeTrucks[0];
+        var player = ResolvePlayerUnit(document);
+        var profitLogEntries = document
+            .GetIndexedUnitScalars(player, "truck_profit_logs")
+            .Where(item => item.Index == activeTruck.Slot)
+            .ToArray();
+
+        if (profitLogEntries.Length != 1)
+        {
+            throw new ScsSaveEditException(
+                $"Für Truck-Slot {activeTruck.Slot} wurde kein eindeutiger truck_profit_logs-Eintrag gefunden.");
+        }
+
+        var profitLogId = NormalizeReference(
+            profitLogEntries[0].Value,
+            $"truck_profit_logs[{activeTruck.Slot}]");
+
+        var truckUnit = document.GetRequiredUniqueUnit(refs.TruckId);
+        EnsureUnitType(truckUnit, "vehicle", "aktiver Truck");
+        var profitLogUnit = document.GetRequiredUniqueUnit(profitLogId);
+
+        _ = document.GetRequiredUnitScalar(truckUnit, "odometer");
+        _ = document.GetRequiredUnitScalar(profitLogUnit, "acc_distance_on_job");
+
+        var value = kilometers.ToString("0", CultureInfo.InvariantCulture);
+        var updated = document.SetRequiredUnitScalar(truckUnit, "odometer", value);
+
+        var currentTruck = updated.GetRequiredUniqueUnit(refs.TruckId);
+        if (updated.TryGetOptionalUnitScalar(currentTruck, "integrity_odometer") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentTruck,
+                "integrity_odometer",
+                value);
+            currentTruck = updated.GetRequiredUniqueUnit(refs.TruckId);
+        }
+
+        if (updated.TryGetOptionalUnitScalar(currentTruck, "trip_distance_km") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentTruck,
+                "trip_distance_km",
+                value);
+        }
+
+        var currentProfitLog = updated.GetRequiredUniqueUnit(profitLogId);
+        updated = updated.SetRequiredUnitScalar(
+            currentProfitLog,
+            "acc_distance_on_job",
+            value);
+
+        currentProfitLog = updated.GetRequiredUniqueUnit(profitLogId);
+        if (updated.TryGetOptionalUnitScalar(currentProfitLog, "acc_distance_free") is not null)
+        {
+            updated = updated.SetRequiredUnitScalar(
+                currentProfitLog,
+                "acc_distance_free",
+                "0");
+        }
+
+        var validatedTruck = updated.GetRequiredUniqueUnit(refs.TruckId);
+        if (!string.Equals(
+                updated.GetRequiredUnitScalar(validatedTruck, "odometer").Trim(),
+                value,
+                StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Der Odometer-Wert konnte vor dem Schreiben nicht validiert werden.");
+        }
+
+        var validatedProfitLog = updated.GetRequiredUniqueUnit(profitLogId);
+        if (!string.Equals(
+                updated.GetRequiredUnitScalar(validatedProfitLog, "acc_distance_on_job").Trim(),
+                value,
+                StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Der Truck-Manager-Kilometerwert konnte vor dem Schreiben nicht validiert werden.");
+        }
 
         return await ApplyAsync(
             save,
-            $"Kilometerstand des aktiven Trucks ändern: {displayValue} km",
+            $"Kilometerstand des aktiven Trucks konsistent ändern: {value} km",
             updated,
             cancellationToken);
     }
