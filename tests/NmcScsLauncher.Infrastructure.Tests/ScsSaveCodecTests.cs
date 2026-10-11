@@ -49,6 +49,45 @@ public sealed class ScsSaveCodecTests : IDisposable
     }
 
     [Fact]
+    public async Task ReadAsync_ReusesDecodedResultWhileBinarySourceIsUnchanged()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "game.sii");
+        await File.WriteAllBytesAsync(path, [0x00, 0x01, 0x02, 0x03]);
+
+        var decoder = new FakeDecoder(
+            "SiiNunit\n{\n money_account: 123\n experience_points: 456\n}\n");
+        var codec = new ScsSaveCodec(new ScsPlainTextSaveCodec(), decoder);
+
+        var first = await codec.ReadAsync(path);
+        var second = await codec.ReadAsync(path);
+        var third = await codec.ReadAsync(path);
+
+        Assert.Equal(ScsSaveDocumentFormat.DecodedText, first.Format);
+        Assert.Equal(first.Content, second.Content);
+        Assert.Equal(second.Content, third.Content);
+        Assert.Equal(1, decoder.CallCount);
+    }
+
+    [Fact]
+    public async Task ReadAsync_DecodesAgainAfterBinarySourceChanges()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "game.sii");
+        await File.WriteAllBytesAsync(path, [0x00, 0x01, 0x02, 0x03]);
+
+        var decoder = new FakeDecoder(
+            "SiiNunit\n{\n money_account: 123\n experience_points: 456\n}\n");
+        var codec = new ScsSaveCodec(new ScsPlainTextSaveCodec(), decoder);
+
+        _ = await codec.ReadAsync(path);
+        await File.WriteAllBytesAsync(path, [0x00, 0x01, 0x02, 0x03, 0x04]);
+        _ = await codec.ReadAsync(path);
+
+        Assert.Equal(2, decoder.CallCount);
+    }
+
+    [Fact]
     public async Task ReadAsync_FailsClosedWhenDecoderReturnsInvalidText()
     {
         Directory.CreateDirectory(_root);
