@@ -63,7 +63,7 @@ Nach mehreren Änderungen Save einmal im Spiel laden und Werte plausibilisieren.
 
 ## D. Truck
 
-**Feldteststatus ETS2:** Kraftstoff ändern inklusive Backup/Restore erfolgreich; Truck reparieren erfolgreich; Truck-Kennzeichentext erfolgreich; Wechsel auf einen anderen eigenen Truck erfolgreich. Der erste Kilometerstand-Fix zeigte im Launcher fälschlich `odometer + odometer_float_part` (z. B. 7400,8058427). Der zweite Fix verwendet deshalb nur noch den sichtbaren/manuell editierbaren `odometer`-Wert in ganzen Kilometern und lässt `odometer_float_part` unangetastet; dieser Stand muss erneut real getestet werden. Beim Kennzeichen wurde außerdem bestätigt, dass das bisherige generische weiße Custom-Markup trotz `|germany` nicht die deutsche Länderoptik erzeugt. Der neue Länderformat-Fix muss ebenfalls erneut im Spiel geprüft werden. Motor/Getriebe stehen noch aus.
+**Feldteststatus ETS2:** Kraftstoff ändern inklusive Backup/Restore erfolgreich; Truck reparieren erfolgreich; Truck-Kennzeichentext erfolgreich; Wechsel auf einen anderen eigenen Truck erfolgreich. Der erste Kilometerstand-Fix zeigte im Launcher fälschlich `odometer + odometer_float_part` (z. B. 7400,8058427). Der zweite Fix verwendet deshalb nur noch den sichtbaren/manuell editierbaren `odometer`-Wert in ganzen Kilometern und lässt `odometer_float_part` unangetastet; dieser Stand muss erneut real getestet werden. Beim Kennzeichen wurde außerdem bestätigt, dass das bisherige generische weiße Custom-Markup trotz `|germany` nicht die deutsche Länderoptik erzeugt. Der anschließende Länderformat-Fix wurde real erneut getestet: das deutsche Kennzeichen wird jetzt im Spiel mit der erwarteten Länderoptik übernommen. Motor/Getriebe stehen noch aus.
 
 **Performancebeobachtung:** Auf dem vorherigen Build dauerten Save-Schreibvorgänge teilweise bis zu etwa einer Minute. Ursache war mehrfaches Decodieren derselben unveränderten verschlüsselten `game.sii`. Der neue Decoder-Cache muss im nächsten Feldtest zeitlich mitgeprüft werden.
 
@@ -84,7 +84,7 @@ Der Powertrain-Katalog zeigt absichtlich nur Definitionen, die bereits bei eigen
 
 ## E. Trailer
 
-**Feldteststatus ETS2:** Trailer-Kennzeichentext wurde erfolgreich geändert und im Spiel angezeigt; die deutsche Länderoptik fehlte jedoch noch. Der neue native Länderformat-Fix muss erneut getestet werden. Trailer-Reparatur, cargo_mass, Trailer-Wechsel und Mehrfach-/Slave-Trailer stehen noch aus.
+**Feldteststatus ETS2:** Trailer-Kennzeichentext wurde erfolgreich geändert und im Spiel angezeigt. Der native deutsche Länderformat-Fix ist für Kennzeichen im ETS2-Feldtest bestätigt. Trailer-Reparatur, cargo_mass, Trailer-Wechsel und Mehrfach-/Slave-Trailer stehen noch aus.
 
 Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
