@@ -906,8 +906,15 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             new ScsSaveEditRequest(
                 save.GameSiiPath,
                 operation,
-                updated.ToText()),
+                updated.ToText(),
+                ResolveWriteMode(save),
+                save.LastWriteTimeUtc),
             cancellationToken);
+
+    private static ScsSaveWriteMode ResolveWriteMode(ScsSaveReference save) =>
+        save.Kind is ScsSaveKind.Manual or ScsSaveKind.QuickSave
+            ? ScsSaveWriteMode.AllowWhileGameRunning
+            : ScsSaveWriteMode.RequireGameStopped;
 
     private static ActiveTruckPowertrain ResolveActiveTruckPowertrain(
         ScsSiiUnitDocument document,
