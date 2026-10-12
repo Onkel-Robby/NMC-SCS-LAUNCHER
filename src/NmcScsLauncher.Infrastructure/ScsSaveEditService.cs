@@ -34,13 +34,13 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         ArgumentNullException.ThrowIfNull(request);
 
         var targetPath = ValidateTargetPath(request.FilePath);
-        EnsureWriteAllowed(
+        var isLiveWrite = EnsureWriteAllowed(
             targetPath,
             request.WriteMode,
             request.ExpectedLastWriteTimeUtc);
         ValidateExpectedLastWriteTime(
             targetPath,
-            request.ExpectedLastWriteTimeUtc);
+            isLiveWrite ? request.ExpectedLastWriteTimeUtc : null);
 
         var operation = string.IsNullOrWhiteSpace(request.Operation)
             ? "Save edit"
@@ -49,7 +49,7 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         _ = await _codec.ReadAsync(targetPath, cancellationToken);
         ValidateExpectedLastWriteTime(
             targetPath,
-            request.ExpectedLastWriteTimeUtc);
+            isLiveWrite ? request.ExpectedLastWriteTimeUtc : null);
         _ = ScsSiiTextDocument.Parse(request.UpdatedContent);
 
         Directory.CreateDirectory(_backupRoot);
@@ -82,7 +82,7 @@ public sealed class ScsSaveEditService : IScsSaveEditService
 
             ValidateExpectedLastWriteTime(
                 targetPath,
-                request.ExpectedLastWriteTimeUtc);
+                isLiveWrite ? request.ExpectedLastWriteTimeUtc : null);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
 
             var updatedSha256 = await ComputeSha256Async(targetPath, cancellationToken);
@@ -121,10 +121,14 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             throw new ScsSaveEditException("Das ausgewählte Save-Backup wurde nicht gefunden.");
 
         var targetPath = ValidateTargetPath(targetFilePath);
-        EnsureWriteAllowed(targetPath, writeMode, expectedLastWriteTimeUtc);
-        ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
+        var isLiveWrite = EnsureWriteAllowed(targetPath, writeMode, expectedLastWriteTimeUtc);
+        ValidateExpectedLastWriteTime(
+            targetPath,
+            isLiveWrite ? expectedLastWriteTimeUtc : null);
         _ = await _codec.ReadAsync(fullBackupPath, cancellationToken);
-        ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
+        ValidateExpectedLastWriteTime(
+            targetPath,
+            isLiveWrite ? expectedLastWriteTimeUtc : null);
 
         var tempPath = Path.Combine(
             Path.GetDirectoryName(targetPath)!,
@@ -137,7 +141,9 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         {
             File.Copy(fullBackupPath, tempPath, overwrite: false);
             _ = await _codec.ReadAsync(tempPath, cancellationToken);
-            ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
+            ValidateExpectedLastWriteTime(
+                targetPath,
+                isLiveWrite ? expectedLastWriteTimeUtc : null);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
         }
         catch (Exception ex) when (ex is not ScsSaveEditException)
@@ -151,13 +157,13 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         }
     }
 
-    private void EnsureWriteAllowed(
+    private bool EnsureWriteAllowed(
         string targetPath,
         ScsSaveWriteMode writeMode,
         DateTimeOffset? expectedLastWriteTimeUtc)
     {
         if (!_processGuard.IsAnyScsGameRunning())
-            return;
+            return false;
 
         var fileName = Path.GetFileName(targetPath);
         if (writeMode == ScsSaveWriteMode.AllowWhileGameRunning &&
@@ -170,7 +176,7 @@ public sealed class ScsSaveEditService : IScsSaveEditService
                     "Bitte den Save im Launcher neu laden.");
             }
 
-            return;
+            return true;
         }
 
         if (fileName.Equals("profile.sii", StringComparison.OrdinalIgnoreCase))
