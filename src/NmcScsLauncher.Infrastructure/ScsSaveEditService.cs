@@ -32,14 +32,24 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        EnsureGameStopped();
 
         var targetPath = ValidateTargetPath(request.FilePath);
+        EnsureWriteAllowed(
+            targetPath,
+            request.WriteMode,
+            request.ExpectedLastWriteTimeUtc);
+        ValidateExpectedLastWriteTime(
+            targetPath,
+            request.ExpectedLastWriteTimeUtc);
+
         var operation = string.IsNullOrWhiteSpace(request.Operation)
             ? "Save edit"
             : request.Operation.Trim();
 
-        var source = await _codec.ReadAsync(targetPath, cancellationToken);
+        _ = await _codec.ReadAsync(targetPath, cancellationToken);
+        ValidateExpectedLastWriteTime(
+            targetPath,
+            request.ExpectedLastWriteTimeUtc);
         _ = ScsSiiTextDocument.Parse(request.UpdatedContent);
 
         Directory.CreateDirectory(_backupRoot);
@@ -70,6 +80,9 @@ public sealed class ScsSaveEditService : IScsSaveEditService
 
             _ = await _codec.ReadAsync(tempPath, cancellationToken);
 
+            ValidateExpectedLastWriteTime(
+                targetPath,
+                request.ExpectedLastWriteTimeUtc);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
 
             var updatedSha256 = await ComputeSha256Async(targetPath, cancellationToken);
@@ -96,10 +109,10 @@ public sealed class ScsSaveEditService : IScsSaveEditService
     public async Task RestoreBackupAsync(
         string backupPath,
         string targetFilePath,
+        ScsSaveWriteMode writeMode = ScsSaveWriteMode.RequireGameStopped,
+        DateTimeOffset? expectedLastWriteTimeUtc = null,
         CancellationToken cancellationToken = default)
     {
-        EnsureGameStopped();
-
         var fullBackupPath = Path.GetFullPath(backupPath);
         if (!IsWithinRoot(fullBackupPath, _backupRoot))
             throw new ScsSaveEditException("Das Backup liegt nicht im verwalteten NMC-Save-Backupbereich.");
@@ -108,7 +121,10 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             throw new ScsSaveEditException("Das ausgewählte Save-Backup wurde nicht gefunden.");
 
         var targetPath = ValidateTargetPath(targetFilePath);
+        EnsureWriteAllowed(targetPath, writeMode, expectedLastWriteTimeUtc);
+        ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
         _ = await _codec.ReadAsync(fullBackupPath, cancellationToken);
+        ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
 
         var tempPath = Path.Combine(
             Path.GetDirectoryName(targetPath)!,
@@ -121,6 +137,7 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         {
             File.Copy(fullBackupPath, tempPath, overwrite: false);
             _ = await _codec.ReadAsync(tempPath, cancellationToken);
+            ValidateExpectedLastWriteTime(targetPath, expectedLastWriteTimeUtc);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
         }
         catch (Exception ex) when (ex is not ScsSaveEditException)
@@ -134,11 +151,53 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         }
     }
 
-    private void EnsureGameStopped()
+    private void EnsureWriteAllowed(
+        string targetPath,
+        ScsSaveWriteMode writeMode,
+        DateTimeOffset? expectedLastWriteTimeUtc)
     {
-        if (_processGuard.IsAnyScsGameRunning())
+        if (!_processGuard.IsAnyScsGameRunning())
+            return;
+
+        var fileName = Path.GetFileName(targetPath);
+        if (writeMode == ScsSaveWriteMode.AllowWhileGameRunning &&
+            fileName.Equals("game.sii", StringComparison.OrdinalIgnoreCase))
+        {
+            if (expectedLastWriteTimeUtc is null)
+            {
+                throw new ScsSaveEditException(
+                    "Bearbeiten bei laufendem ETS2/ATS erfordert einen aktuellen Save-Dateistand. " +
+                    "Bitte den Save im Launcher neu laden.");
+            }
+
+            return;
+        }
+
+        if (fileName.Equals("profile.sii", StringComparison.OrdinalIgnoreCase))
+        {
             throw new ScsSaveEditException(
-                "ETS2 oder ATS läuft noch. Save-Dateien werden nur bei beendetem Spiel verändert.");
+                "Profiländerungen werden nur bei vollständig beendetem ETS2/ATS durchgeführt.");
+        }
+
+        throw new ScsSaveEditException(
+            "Dieser Save-Typ wird bei laufendem ETS2/ATS nicht verändert. " +
+            "Quicksaves und manuelle Saves können direkt bearbeitet werden.");
+    }
+
+    private static void ValidateExpectedLastWriteTime(
+        string targetPath,
+        DateTimeOffset? expectedLastWriteTimeUtc)
+    {
+        if (expectedLastWriteTimeUtc is null)
+            return;
+
+        var actualUtc = File.GetLastWriteTimeUtc(targetPath);
+        if (actualUtc.Ticks != expectedLastWriteTimeUtc.Value.UtcDateTime.Ticks)
+        {
+            throw new ScsSaveEditException(
+                "Die Save-Datei wurde seit dem Einlesen verändert. " +
+                "Der Schreibvorgang wurde abgebrochen; bitte den Save neu laden.");
+        }
     }
 
     private static string ValidateTargetPath(string filePath)
