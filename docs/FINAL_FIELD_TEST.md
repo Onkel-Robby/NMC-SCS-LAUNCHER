@@ -4,7 +4,7 @@ Diese Checkliste deckt ausschließlich Punkte ab, die nicht sinnvoll durch CI si
 
 ## Voraussetzungen
 
-- ETS2/ATS vollständig beenden.
+- Für Profilumbenennung sowie Tests an Autosaves/unklaren Save-Typen ETS2/ATS vollständig beenden. Manuelle Saves und Quicksaves werden zusätzlich gezielt bei laufendem Spiel getestet.
 - Steam darf nicht gerade denselben Save synchronisieren.
 - Einen nicht kritischen Test-Save verwenden.
 - Vor dem ersten Test zusätzlich eine manuelle Kopie des kompletten Profils außerhalb des SCS-Dokumentenordners anlegen.
@@ -107,11 +107,13 @@ Mit einem Testprofil mit mindestens zwei eigenen Trailern:
 
 ## G. Negativtests
 
-**Feldteststatus:** Die Schreibsperre bei laufendem ETS2 ist real bestätigt; ein Änderungsversuch wurde vollständig blockiert. Die übrigen Negativfälle bleiben noch offen.
+**Feldteststatus:** Die frühere globale Schreibsperre bei laufendem ETS2 wurde durch eine gezielte Live-Write-Policy ersetzt. Automatisiert geprüft ist: manuelle Saves und Quicksaves dürfen bei laufendem Spiel geschrieben werden; Autosaves, unbekannte Save-Typen und `profile.sii` bleiben gesperrt. Zusätzlich bricht ein Live-Write ab, wenn sich die Save-Datei seit der Auswahl bzw. während des Schreibvorgangs verändert. Der reale ETS2-Live-Test dieser neuen Policy steht noch aus.
 
 Folgende Fälle müssen ohne Save-Schreibvorgang abgewiesen werden:
 
-- ETS2 oder ATS läuft während einer Änderung.
+- Profilumbenennung bei laufendem ETS2/ATS.
+- Autosave oder unbekannter Save-Typ bei laufendem ETS2/ATS.
+- Quicksave/manueller Save wurde seit der Auswahl oder während des Schreibvorgangs verändert.
 - Kraftstoff außerhalb 0–1.
 - negative Kilometer oder cargo_mass.
 - Skill-Level außerhalb der erlaubten Bereiche.
