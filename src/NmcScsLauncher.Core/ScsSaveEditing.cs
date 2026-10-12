@@ -14,10 +14,18 @@ public sealed record ScsSaveDocument(
     string Content,
     ScsSaveDocumentFormat Format);
 
+public enum ScsSaveWriteMode
+{
+    RequireGameStopped = 1,
+    AllowWhileGameRunning = 2
+}
+
 public sealed record ScsSaveEditRequest(
     string FilePath,
     string Operation,
-    string UpdatedContent);
+    string UpdatedContent,
+    ScsSaveWriteMode WriteMode = ScsSaveWriteMode.RequireGameStopped,
+    DateTimeOffset? ExpectedLastWriteTimeUtc = null);
 
 public sealed record ScsSaveEditResult(
     string FilePath,
@@ -55,6 +63,8 @@ public interface IScsSaveEditService
     Task RestoreBackupAsync(
         string backupPath,
         string targetFilePath,
+        ScsSaveWriteMode writeMode = ScsSaveWriteMode.RequireGameStopped,
+        DateTimeOffset? expectedLastWriteTimeUtc = null,
         CancellationToken cancellationToken = default);
 }
 

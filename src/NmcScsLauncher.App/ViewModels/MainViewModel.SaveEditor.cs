@@ -13,6 +13,8 @@ public partial class MainViewModel
     private IScsVehicleEditService? _saveEditorVehicleEditService;
     private IScsSaveEditService? _saveEditorSaveEditService;
     private string? _saveEditorLastEditedFilePath;
+    private ScsSaveKind? _saveEditorLastEditedSaveKind;
+    private DateTimeOffset? _saveEditorLastEditedLastWriteTimeUtc;
 
     [ObservableProperty] private GameType _saveEditorSelectedGame = GameType.Ets2;
     [ObservableProperty] private ScsProfileReference? _saveEditorSelectedProfile;
@@ -418,9 +420,18 @@ public partial class MainViewModel
         IsBusy = true;
         try
         {
+            var writeMode = _saveEditorLastEditedSaveKind
+                is ScsSaveKind.Manual or ScsSaveKind.QuickSave
+                    ? ScsSaveWriteMode.AllowWhileGameRunning
+                    : ScsSaveWriteMode.RequireGameStopped;
+
             await _saveEditorSaveEditService.RestoreBackupAsync(
                 SaveEditorLastBackupPath,
-                _saveEditorLastEditedFilePath);
+                _saveEditorLastEditedFilePath,
+                writeMode,
+                _saveEditorLastEditedLastWriteTimeUtc);
+            _saveEditorLastEditedLastWriteTimeUtc =
+                File.GetLastWriteTimeUtc(_saveEditorLastEditedFilePath);
             SaveEditorStatusText = "Das letzte Save-Editor-Backup wurde wiederhergestellt.";
             await _logger.WriteAsync(
                 "INFO",
@@ -628,12 +639,16 @@ public partial class MainViewModel
         IsBusy = true;
         try
         {
+            var editedSaveKind = SaveEditorSelectedSave?.Kind;
             var result = await operation();
 
             if (exposeBackupForRestore)
             {
                 SaveEditorLastBackupPath = result.BackupPath;
                 _saveEditorLastEditedFilePath = result.FilePath;
+                _saveEditorLastEditedSaveKind = editedSaveKind;
+                _saveEditorLastEditedLastWriteTimeUtc =
+                    File.GetLastWriteTimeUtc(result.FilePath);
                 SaveEditorStatusText =
                     $"{operationName} abgeschlossen. Backup wurde automatisch erstellt.";
             }
@@ -641,6 +656,8 @@ public partial class MainViewModel
             {
                 SaveEditorLastBackupPath = "–";
                 _saveEditorLastEditedFilePath = null;
+                _saveEditorLastEditedSaveKind = null;
+                _saveEditorLastEditedLastWriteTimeUtc = null;
                 SaveEditorStatusText =
                     $"{operationName} abgeschlossen. profile.sii und Profilordner wurden aktualisiert.";
             }

@@ -90,7 +90,7 @@ public sealed class ScsProfileEditService : IScsProfileEditService
                     await _saveEditService.RestoreBackupAsync(
                         result.BackupPath,
                         sourceProfileSii,
-                        cancellationToken);
+                        cancellationToken: cancellationToken);
                 }
             }
             catch (Exception rollbackException)
@@ -264,8 +264,15 @@ public sealed class ScsProfileEditService : IScsProfileEditService
             new ScsSaveEditRequest(
                 save.GameSiiPath,
                 operation,
-                document.ToText()),
+                document.ToText(),
+                ResolveWriteMode(save),
+                save.LastWriteTimeUtc),
             cancellationToken);
+
+    private static ScsSaveWriteMode ResolveWriteMode(ScsSaveReference save) =>
+        save.Kind is ScsSaveKind.Manual or ScsSaveKind.QuickSave
+            ? ScsSaveWriteMode.AllowWhileGameRunning
+            : ScsSaveWriteMode.RequireGameStopped;
 
     private static long ParseLongScalar(
         ScsSiiUnitDocument document,
