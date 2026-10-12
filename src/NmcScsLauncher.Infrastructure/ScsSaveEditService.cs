@@ -50,6 +50,9 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         ValidateExpectedLastWriteTime(
             targetPath,
             isLiveWrite ? request.ExpectedLastWriteTimeUtc : null);
+        var liveOriginalSha256 = isLiveWrite
+            ? await ComputeSha256Async(targetPath, cancellationToken)
+            : null;
         _ = ScsSiiTextDocument.Parse(request.UpdatedContent);
 
         Directory.CreateDirectory(_backupRoot);
@@ -62,7 +65,8 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         var backupPath = Path.Combine(backupDirectory, Path.GetFileName(targetPath));
         File.Copy(targetPath, backupPath, overwrite: false);
 
-        var originalSha256 = await ComputeSha256Async(targetPath, cancellationToken);
+        var originalSha256 = liveOriginalSha256
+            ?? await ComputeSha256Async(targetPath, cancellationToken);
         var tempPath = Path.Combine(
             Path.GetDirectoryName(targetPath)!,
             $".nmc-save-edit-{Guid.NewGuid():N}.tmp");
@@ -83,6 +87,10 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             ValidateExpectedLastWriteTime(
                 targetPath,
                 isLiveWrite ? request.ExpectedLastWriteTimeUtc : null);
+            await ValidateUnchangedSha256Async(
+                targetPath,
+                liveOriginalSha256,
+                cancellationToken);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
 
             var updatedSha256 = await ComputeSha256Async(targetPath, cancellationToken);
@@ -129,6 +137,9 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         ValidateExpectedLastWriteTime(
             targetPath,
             isLiveWrite ? expectedLastWriteTimeUtc : null);
+        var liveOriginalSha256 = isLiveWrite
+            ? await ComputeSha256Async(targetPath, cancellationToken)
+            : null;
 
         var tempPath = Path.Combine(
             Path.GetDirectoryName(targetPath)!,
@@ -144,6 +155,10 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             ValidateExpectedLastWriteTime(
                 targetPath,
                 isLiveWrite ? expectedLastWriteTimeUtc : null);
+            await ValidateUnchangedSha256Async(
+                targetPath,
+                liveOriginalSha256,
+                cancellationToken);
             File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
         }
         catch (Exception ex) when (ex is not ScsSaveEditException)
@@ -203,6 +218,23 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             throw new ScsSaveEditException(
                 "Die Save-Datei wurde seit dem Einlesen verändert. " +
                 "Der Schreibvorgang wurde abgebrochen; bitte den Save neu laden.");
+        }
+    }
+
+    private static async Task ValidateUnchangedSha256Async(
+        string targetPath,
+        string? expectedSha256,
+        CancellationToken cancellationToken)
+    {
+        if (expectedSha256 is null)
+            return;
+
+        var currentSha256 = await ComputeSha256Async(targetPath, cancellationToken);
+        if (!string.Equals(currentSha256, expectedSha256, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die Save-Datei wurde während des Schreibvorgangs verändert. " +
+                "Die Änderung wurde nicht angewendet; bitte den Save neu laden.");
         }
     }
 
