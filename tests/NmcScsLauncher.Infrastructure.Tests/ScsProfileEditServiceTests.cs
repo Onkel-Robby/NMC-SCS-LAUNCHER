@@ -178,6 +178,72 @@ public sealed class ScsProfileEditServiceTests : IDisposable
             gameText);
     }
 
+    [Theory]
+    [InlineData(ScsSaveKind.Manual, true)]
+    [InlineData(ScsSaveKind.QuickSave, true)]
+    [InlineData(ScsSaveKind.AutoSave, false)]
+    [InlineData(ScsSaveKind.Unknown, false)]
+    public async Task SaveKindControlsEditingWhileGameIsRunning(
+        ScsSaveKind kind,
+        bool shouldSucceed)
+    {
+        var profileDirectory = Path.Combine(_root, "profiles", "524F424259");
+        var directoryName = kind switch
+        {
+            ScsSaveKind.QuickSave => "quicksave",
+            ScsSaveKind.AutoSave => "autosave",
+            ScsSaveKind.Unknown => "custom-save",
+            _ => "1"
+        };
+        var saveDirectory = Path.Combine(profileDirectory, "save", directoryName);
+        Directory.CreateDirectory(saveDirectory);
+
+        var gameSii = Path.Combine(saveDirectory, "game.sii");
+        await File.WriteAllTextAsync(
+            gameSii,
+            """
+            SiiNunit
+            {
+            economy : _nameless.economy {
+             bank: _nameless.bank
+             experience_points: 20
+            }
+            bank : _nameless.bank {
+             money_account: 10
+            }
+            }
+            """);
+
+        var lastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(gameSii));
+        var codec = new ScsPlainTextSaveCodec();
+        var saveEdit = new ScsSaveEditService(
+            codec,
+            new AlwaysRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var editor = new ScsProfileEditService(codec, saveEdit);
+        var save = new ScsSaveReference(
+            GameType.Ets2,
+            profileDirectory,
+            saveDirectory,
+            directoryName,
+            directoryName,
+            kind,
+            gameSii,
+            lastWrite);
+
+        if (shouldSucceed)
+        {
+            await editor.SetMoneyAsync(save, 1234);
+            Assert.Equal(1234, await editor.GetMoneyAsync(save));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+                editor.SetMoneyAsync(save, 1234));
+            Assert.Equal(10, await editor.GetMoneyAsync(save));
+        }
+    }
+
     [Fact]
     public async Task SetMoney_FailsClosedWhenReferencedBankFieldIsAmbiguous()
     {
@@ -228,5 +294,10 @@ public sealed class ScsProfileEditServiceTests : IDisposable
     private sealed class NeverRunningGuard : IScsGameProcessGuard
     {
         public bool IsAnyScsGameRunning() => false;
+    }
+
+    private sealed class AlwaysRunningGuard : IScsGameProcessGuard
+    {
+        public bool IsAnyScsGameRunning() => true;
     }
 }

@@ -29,7 +29,7 @@ Launcher-Einstellungen werden atomar als JSON unter `%LOCALAPPDATA%\NMC Network\
 
 Save-Editing ist ab der Nach-1.0.0-Entwicklung als explizite, abgesicherte Funktion vorgesehen. Der erste technische Stand bearbeitet ausschließlich `game.sii` und `profile.sii` und nur dann, wenn die Datei bereits als unterstütztes textuelles `SiiNunit` gelesen werden kann.
 
-Vor jeder Änderung wird ein Backup unter `%LOCALAPPDATA%\NMC Network\NMC SCS Launcher\save-editor-backups` erzeugt. Die Quelldatei und das Ergebnis werden per SHA-256 erfasst. Geschrieben wird zunächst in eine temporäre Datei im selben Verzeichnis; erst nach erneuter Formatvalidierung wird die Zieldatei per Replace ausgetauscht. Läuft ETS2 oder ATS, wird der Schreibvorgang blockiert.
+Vor jeder Änderung wird ein Backup unter `%LOCALAPPDATA%\NMC Network\NMC SCS Launcher\save-editor-backups` erzeugt. Die Quelldatei und das Ergebnis werden per SHA-256 erfasst. Geschrieben wird zunächst in eine temporäre Datei im selben Verzeichnis; erst nach erneuter Formatvalidierung wird die Zieldatei per Replace ausgetauscht. Manuelle Saves und Quicksaves dürfen auch bei laufendem ETS2/ATS bearbeitet und wiederhergestellt werden. Dafür muss der im Launcher ausgewählte Dateistand noch aktuell sein: Last-Write-Zeit und ein zusätzlicher SHA-256-Snapshot schützen vor einem konkurrierenden Spiel-Write; bei Abweichung wird fail-closed abgebrochen. Autosaves und unbekannte Save-Typen bleiben bei laufendem Spiel gesperrt. `profile.sii` und insbesondere die Profilumbenennung bleiben vollständig an ein beendetes ETS2/ATS gebunden.
 
 Binäre/verschlüsselte Saves werden über einen getrennten Decoder-Adapter gelesen. Verwendet wird die gepinnte Windows-Version von DecryptTruck 1.3.7 (MIT). Die Release-Binary wird ausschließlich im CI-/Release-Build heruntergeladen, gegen die fest hinterlegte SHA-256-Prüfsumme verifiziert und zusammen mit Lizenz/Notice unter `third-party/decrypt-truck` ausgeliefert. Vor jeder Ausführung prüft der Launcher dieselbe SHA-256-Prüfsumme erneut. Da mehrere Save-Editor-Teilbereiche dieselbe `game.sii` lesen, hält der Codec genau das zuletzt erfolgreich decodierte Dokument anhand von vollständigem Pfad, Dateilänge und Last-Write-Zeit im Speicher. Unveränderte Saves starten den externen Decoder dadurch nur einmal; jede Dateiänderung invalidiert den Cache. Wird die Quelldatei während des Decodierens verändert, bricht der Vorgang fail-closed ab.
 
@@ -56,7 +56,7 @@ Motor und Getriebe werden über die `accessories[n]`-Referenzen des aktiven Truc
 ## Sicherheitsregeln
 
 - Savegame-Änderungen nur über den zentralen Save-Editing-Service.
-- Kein Schreiben bei laufendem ETS2/ATS.
+- Bei laufendem ETS2/ATS nur manuelle Saves und Quicksaves schreiben; Autosaves, unbekannte Save-Typen und `profile.sii` bleiben gesperrt.
 - Vor jeder Save-Änderung automatisches Backup.
 - Unbekannte oder nicht validierte SII-Formate werden nicht verändert.
 - Keine Steam-Cloud-API-/Sync-Manipulation; lokale `steam_profiles` werden nur als Dateien bearbeitet und dürfen währenddessen nicht aktiv von Steam synchronisiert werden.

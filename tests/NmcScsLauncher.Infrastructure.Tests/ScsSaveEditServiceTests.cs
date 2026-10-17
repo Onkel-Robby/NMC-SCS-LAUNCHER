@@ -62,6 +62,82 @@ public sealed class ScsSaveEditServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Apply_AllowsGameSiiWhileGameIsRunningWithMatchingTimestamp()
+    {
+        Directory.CreateDirectory(_root);
+        var target = Path.Combine(_root, "game.sii");
+        await File.WriteAllTextAsync(target, "SiiNunit\n{\n money_account: 1\n}\n");
+
+        var expectedLastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
+        var service = new ScsSaveEditService(
+            new ScsPlainTextSaveCodec(),
+            new AlwaysRunningGuard(),
+            Path.Combine(_root, "backups"));
+
+        var result = await service.ApplyAsync(new ScsSaveEditRequest(
+            target,
+            "Money test",
+            "SiiNunit\n{\n money_account: 2\n}\n",
+            ScsSaveWriteMode.AllowWhileGameRunning,
+            expectedLastWrite));
+
+        Assert.True(File.Exists(result.BackupPath));
+        Assert.Contains("money_account: 2", await File.ReadAllTextAsync(target));
+    }
+
+    [Fact]
+    public async Task Apply_RejectsLiveWriteWhenSaveChangedSinceSelection()
+    {
+        Directory.CreateDirectory(_root);
+        var target = Path.Combine(_root, "game.sii");
+        await File.WriteAllTextAsync(target, "SiiNunit\n{\n money_account: 1\n}\n");
+
+        var expectedLastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
+        File.SetLastWriteTimeUtc(target, expectedLastWrite.UtcDateTime.AddSeconds(2));
+
+        var service = new ScsSaveEditService(
+            new ScsPlainTextSaveCodec(),
+            new AlwaysRunningGuard(),
+            Path.Combine(_root, "backups"));
+
+        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            service.ApplyAsync(new ScsSaveEditRequest(
+                target,
+                "Money test",
+                "SiiNunit\n{\n money_account: 2\n}\n",
+                ScsSaveWriteMode.AllowWhileGameRunning,
+                expectedLastWrite)));
+
+        Assert.Contains("seit dem Einlesen verändert", exception.Message);
+        Assert.Contains("money_account: 1", await File.ReadAllTextAsync(target));
+    }
+
+    [Fact]
+    public async Task Apply_DoesNotAllowLiveProfileSiiWrite()
+    {
+        Directory.CreateDirectory(_root);
+        var target = Path.Combine(_root, "profile.sii");
+        await File.WriteAllTextAsync(target, "SiiNunit\n{\n profile_name: \"Original\"\n}\n");
+
+        var expectedLastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
+        var service = new ScsSaveEditService(
+            new ScsPlainTextSaveCodec(),
+            new AlwaysRunningGuard(),
+            Path.Combine(_root, "backups"));
+
+        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            service.ApplyAsync(new ScsSaveEditRequest(
+                target,
+                "Rename profile",
+                "SiiNunit\n{\n profile_name: \"NMC\"\n}\n",
+                ScsSaveWriteMode.AllowWhileGameRunning,
+                expectedLastWrite)));
+
+        Assert.Contains("Profiländerungen", exception.Message);
+        Assert.Contains("profile_name: \"Original\"", await File.ReadAllTextAsync(target));
+    }
+
+    [Fact]
     public async Task Codec_RejectsBinarySave()
     {
         Directory.CreateDirectory(_root);
