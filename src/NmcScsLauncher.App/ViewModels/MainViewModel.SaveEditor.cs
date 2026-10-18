@@ -322,7 +322,7 @@ public partial class MainViewModel
 
         await ExecuteSelectedVehicleEditAsync(
             "Truck wechseln",
-            $"Aktiven Truck auf '{target.Id}' wechseln? Garage, Fahrer-Slot und HQ werden konsistent angepasst.",
+            $"Aktiven Truck auf '{target.DisplayName ?? target.Id}' wechseln? Garage, Fahrer-Slot und HQ werden konsistent angepasst.",
             () => _saveEditorVehicleEditService!.SwitchActiveTruckAsync(SaveEditorSelectedSave!, target.Id));
     }
 
@@ -334,7 +334,7 @@ public partial class MainViewModel
 
         await ExecuteSelectedVehicleEditAsync(
             "Trailer wechseln",
-            $"Aktiven Trailer auf '{target.Id}' wechseln?",
+            $"Aktiven Trailer auf '{target.DisplayName ?? target.Id}' wechseln?",
             () => _saveEditorVehicleEditService!.SwitchActiveTrailerAsync(SaveEditorSelectedSave!, target.Id));
     }
 
@@ -524,8 +524,12 @@ public partial class MainViewModel
             var state = await _saveEditorVehicleEditService.InspectActiveVehiclesAsync(save);
             var inventory = await _saveEditorVehicleEditService.GetVehicleInventoryAsync(save);
 
-            SaveEditorActiveTruckText = state.TruckId;
-            SaveEditorActiveTrailerText = state.TrailerId ?? "Kein aktiver Trailer";
+            SaveEditorActiveTruckText = inventory.Trucks
+                .FirstOrDefault(item => item.IsActive)?.DisplayName ?? state.TruckId;
+            SaveEditorActiveTrailerText = state.TrailerId is null
+                ? "Kein aktiver Trailer"
+                : inventory.Trailers.FirstOrDefault(item => item.IsActive)?.DisplayName
+                  ?? state.TrailerId;
             SaveEditorFuelText = state.FuelRelative?.ToString(
                 "0.############################",
                 CultureInfo.CurrentCulture) ?? string.Empty;
@@ -588,7 +592,7 @@ public partial class MainViewModel
             }
 
             SaveEditorStatusText =
-                $"Save geladen · Truck: {state.TruckId} · Trailer: {state.TrailerId ?? "–"}";
+                $"Save geladen · Truck: {SaveEditorActiveTruckText} · Trailer: {SaveEditorActiveTrailerText}";
         }
         catch (Exception ex)
         {
