@@ -10,12 +10,12 @@
         Icon="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher.ico">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="245" />
+            <ColumnDefinition Width="252" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="#1F2B39" BorderThickness="0,0,1,0">
-            <Grid Margin="20,24,20,20">
+        <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+            <Grid Margin="20,27,20,22">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -30,32 +30,139 @@
                            Stretch="Uniform"
                            HorizontalAlignment="Left"
                            SnapsToDevicePixels="True" />
-                    <Border Margin="0,14,0,20" Height="1" Background="#263342" />
+                    <Border Margin="0,18,0,22" Height="1" Background="{StaticResource BorderBrush}" />
                 </StackPanel>
 
-                <ListBox Grid.Row="1"
-                         SelectedIndex="{Binding CurrentPageIndex, Mode=TwoWay}"
-                         Style="{StaticResource NavigationListStyle}"
-                         ItemContainerStyle="{StaticResource NavigationItemStyle}">
-                    <ListBoxItem><TextBlock Text="⌂   Übersicht" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="🚛  Euro Truck Simulator 2" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="🚚  American Truck Simulator" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="▦   Modsets" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="☁   Workshop" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="💾  Save-Editor" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="⚙   Einstellungen" /></ListBoxItem>
-                    <ListBoxItem><TextBlock Text="ⓘ   Info" /></ListBoxItem>
-                </ListBox>
+                <StackPanel Grid.Row="1">
+                    <TextBlock Text="NAVIGATION" Style="{StaticResource OverlineStyle}"
+                               Margin="13,0,0,12" />
+                    <ListBox SelectedIndex="{Binding CurrentPageIndex, Mode=TwoWay}"
+                             Style="{StaticResource NavigationListStyle}"
+                             ItemContainerStyle="{StaticResource NavigationItemStyle}">
+                        <ListBoxItem ToolTip="Übersicht">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M2,8 L10,2 L18,8 M4,7 V18 H16 V7 M8,18 V12 H12 V18"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Übersicht"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Euro Truck Simulator 2">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M1,5 H12 V14 H1 Z M12,8 H16 L19,12 V14 H12 M4,16 A2,2 0 1 0 8,16 A2,2 0 1 0 4,16 M14,16 A2,2 0 1 0 18,16 A2,2 0 1 0 14,16"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Euro Truck Simulator 2"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="American Truck Simulator">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M2,7 H11 V15 H2 Z M11,9 H16 L19,13 V15 H11 M4,17 A2,2 0 1 0 8,17 A2,2 0 1 0 4,17 M14,17 A2,2 0 1 0 18,17 A2,2 0 1 0 14,17"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="American Truck Simulator"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Modsets">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M3,3 H17 V8 H3 Z M3,11 H17 V16 H3 Z M6,5 H8 M6,13 H8"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Modsets"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Workshop">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M4,15 C2,15 2,11 5,10 C5,6 9,4 12,6 C15,5 18,8 18,11 C21,11 21,16 18,16 H6"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Workshop"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Save-Editor">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M4,3 H15 L18,6 V18 H3 V3 Z M7,3 V9 H14 V3 M7,18 V13 H14 V18"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Save-Editor"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Einstellungen">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M10,2 A8,8 0 1 0 10,18 A8,8 0 1 0 10,2 M10,7 A3,3 0 1 0 10,13 A3,3 0 1 0 10,7"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Einstellungen"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                        <ListBoxItem ToolTip="Info">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="M10,2 A8,8 0 1 0 10,18 A8,8 0 1 0 10,2 M10,8 V15 M10,5 V6"
+                                      Width="19" Height="19" Margin="0,0,13,0"
+                                      Stretch="Uniform" StrokeThickness="1.65"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Fill="Transparent"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <TextBlock Text="Info"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            </StackPanel>
+                        </ListBoxItem>
+                    </ListBox>
+                </StackPanel>
 
                 <StackPanel Grid.Row="3">
-                    <Border Background="#0E151E" BorderBrush="#263342" BorderThickness="1" Padding="12" CornerRadius="8" Margin="0,0,0,12">
+                    <Border Background="#192738" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="14" CornerRadius="12" Margin="0,0,0,16">
                         <StackPanel>
-                            <TextBlock Text="Ausgewählt" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                            <TextBlock Text="AKTIVES MODSET" Style="{StaticResource OverlineStyle}" />
                             <TextBlock Text="{Binding SelectedModsetName}" Margin="0,4,0,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="{Binding SelectedModsetGameText}" Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                    <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="12,0,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -75,9 +182,10 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
-                            <TextBlock Text="Übersicht" FontSize="30" FontWeight="Bold" />
-                            <TextBlock Text="Spiele, Modsets und der nächste Start auf einen Blick." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
+                        <StackPanel Margin="34,32,34,32">
+                            <TextBlock Text="STARTSEITE" Style="{StaticResource OverlineStyle}" Margin="0,0,0,8" />
+                            <TextBlock Text="Übersicht" Style="{StaticResource PageTitleStyle}" />
+                            <TextBlock Text="Deine Spiele und Modsets. Alles bereit für die nächste Fahrt." Margin="0,7,0,26" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -101,8 +209,8 @@
 
                             <Grid Margin="0,26,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Zuletzt verwendete Modsets" FontSize="21" FontWeight="SemiBold"/><TextBlock Text="Wähle ein Setup aus und starte direkt." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,0"/></StackPanel>
-                                <Button Grid.Column="1" Content="▶  AUSGEWÄHLTES MODSET STARTEN" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16,9" VerticalAlignment="Center" />
+                                <StackPanel><TextBlock Text="Zuletzt verwendete Modsets" Style="{StaticResource SectionHeadingStyle}" /><TextBlock Text="Wähle ein Setup aus und starte direkt." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,0"/></StackPanel>
+                                <Button Grid.Column="1" Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16,9" VerticalAlignment="Center" />
                             </Grid>
 
                             <ListBox ItemsSource="{Binding DashboardModsets}" SelectedItem="{Binding SelectedModset}" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" ItemContainerStyle="{StaticResource CardListItemStyle}">
@@ -130,13 +238,13 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
-                            <TextBlock Text="Euro Truck Simulator 2" FontSize="30" FontWeight="Bold" />
+                        <StackPanel Margin="34,32,34,32">
+                            <TextBlock Text="Euro Truck Simulator 2" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Installation prüfen und ETS2-Modsets verwalten." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Installationsstatus" Foreground="{StaticResource SecondaryTextBrush}"/><TextBlock Text="{Binding Ets2Status}" FontSize="18" FontWeight="SemiBold" Margin="0,5,0,0"/><TextBlock Text="{Binding Ets2InstallPath}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><Button Content="Automatisch erkennen" Command="{Binding DetectEts2Command}" Margin="0,0,8,0"/><Button Content="Ordner auswählen" Command="{Binding BrowseEts2Command}"/></StackPanel></Grid>
                             </Border>
-                            <Grid Margin="0,24,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="ETS2-Modsets" FontSize="21" FontWeight="SemiBold"/><Button Grid.Column="1" Content="▶ STARTEN" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}"/></Grid>
+                            <Grid Margin="0,24,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="ETS2-Modsets" FontSize="21" FontWeight="SemiBold"/><Button Grid.Column="1" Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}"/></Grid>
                             <ListBox ItemsSource="{Binding Ets2Modsets}" SelectedItem="{Binding SelectedModset}" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" ItemContainerStyle="{StaticResource CardListItemStyle}">
                                 <ListBox.ItemTemplate><DataTemplate><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,4"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"/><TextBlock Text="{Binding Description}" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding ModFolderDisplayPath}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
@@ -146,13 +254,13 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
-                            <TextBlock Text="American Truck Simulator" FontSize="30" FontWeight="Bold" />
+                        <StackPanel Margin="34,32,34,32">
+                            <TextBlock Text="American Truck Simulator" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Installation prüfen und ATS-Modsets verwalten." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Installationsstatus" Foreground="{StaticResource SecondaryTextBrush}"/><TextBlock Text="{Binding AtsStatus}" FontSize="18" FontWeight="SemiBold" Margin="0,5,0,0"/><TextBlock Text="{Binding AtsInstallPath}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"><Button Content="Automatisch erkennen" Command="{Binding DetectAtsCommand}" Margin="0,0,8,0"/><Button Content="Ordner auswählen" Command="{Binding BrowseAtsCommand}"/></StackPanel></Grid>
                             </Border>
-                            <Grid Margin="0,24,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="ATS-Modsets" FontSize="21" FontWeight="SemiBold"/><Button Grid.Column="1" Content="▶ STARTEN" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}"/></Grid>
+                            <Grid Margin="0,24,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="ATS-Modsets" FontSize="21" FontWeight="SemiBold"/><Button Grid.Column="1" Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}"/></Grid>
                             <ListBox ItemsSource="{Binding AtsModsets}" SelectedItem="{Binding SelectedModset}" Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" ItemContainerStyle="{StaticResource CardListItemStyle}">
                                 <ListBox.ItemTemplate><DataTemplate><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,4"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16"/><TextBlock Text="{Binding Description}" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="1" Text="{Binding ModFolderDisplayPath}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
@@ -162,10 +270,10 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
-                            <TextBlock Text="Modsets" FontSize="30" FontWeight="Bold" />
+                        <StackPanel Margin="34,32,34,32">
+                            <TextBlock Text="Modsets" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Getrennte Mod-Ordner erstellen, importieren, duplizieren und starten. Profile bleiben im normalen SCS-Dokumentenpfad." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
-                            <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding ModsetCountText}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="▶ STARTEN" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,9,0"/><Button Content="+ Neu" Command="{Binding CreateModsetCommand}" Margin="0,0,7,0"/><Button Content="Importieren" Command="{Binding ImportModsetCommand}" Margin="0,0,7,0"/><Button Content="Bearbeiten" Command="{Binding EditModsetCommand}" Margin="0,0,7,0"/><Button Content="Duplizieren" Command="{Binding DuplicateSelectedModsetCommand}" Margin="0,0,7,0"/><Button Content="Mod-Ordner öffnen" Command="{Binding OpenModsetHomeCommand}" Margin="0,0,7,0"/><Button Content="Entfernen" Command="{Binding RemoveModsetCommand}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></Grid>
+                            <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding ModsetCountText}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,9,0"/><Button Content="+ Neu" Command="{Binding CreateModsetCommand}" Margin="0,0,7,0"/><Button Content="Importieren" Command="{Binding ImportModsetCommand}" Margin="0,0,7,0"/><Button Content="Bearbeiten" Command="{Binding EditModsetCommand}" Margin="0,0,7,0"/><Button Content="Duplizieren" Command="{Binding DuplicateSelectedModsetCommand}" Margin="0,0,7,0"/><Button Content="Mod-Ordner öffnen" Command="{Binding OpenModsetHomeCommand}" Margin="0,0,7,0"/><Button Content="Entfernen" Command="{Binding RemoveModsetCommand}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></Grid>
                             <Border Margin="0,0,0,12" Padding="12" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
                                 <StackPanel>
                                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Duplizierung" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding DuplicationProgress, StringFormat={}{0:F0}%}" Foreground="{StaticResource SecondaryTextBrush}"/></Grid>
@@ -252,8 +360,8 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
-                            <TextBlock Text="Steam Workshop" FontSize="30" FontWeight="Bold" />
+                        <StackPanel Margin="34,32,34,32">
+                            <TextBlock Text="Steam Workshop" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Lokal installierte ETS2-/ATS-Workshop-Inhalte mit Steam-Titeln durchsuchen und verwalten. Steam-Abonnements werden vom Launcher nicht verändert." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" TextWrapping="Wrap" />
 
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
@@ -325,14 +433,14 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28">
+                        <StackPanel Margin="34,32,34,32">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Save-Editor" FontSize="30" FontWeight="Bold" />
+                                    <TextBlock Text="Save-Editor" Style="{StaticResource PageTitleStyle}" />
                                     <TextBlock Text="Profile, Saves sowie Truck- und Trailerwerte sicher bearbeiten." Margin="0,7,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Content="Profile laden" Command="{Binding RefreshSaveEditorCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16,9" VerticalAlignment="Center" />
@@ -554,8 +662,8 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28" MaxWidth="900" HorizontalAlignment="Left">
-                            <TextBlock Text="Einstellungen" FontSize="30" FontWeight="Bold" />
+                        <StackPanel Margin="34,32,34,32" MaxWidth="900" HorizontalAlignment="Left">
+                            <TextBlock Text="Einstellungen" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Launcher-Verhalten und Standardpfade konfigurieren." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
                                 <StackPanel>
@@ -587,9 +695,9 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="38,30,38,28" MaxWidth="850" HorizontalAlignment="Left">
+                        <StackPanel Margin="34,32,34,32" MaxWidth="850" HorizontalAlignment="Left">
                             <Image Source="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher-logo.png" Width="340" Height="113" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" />
-                            <TextBlock Text="NMC SCS LAUNCHER" FontSize="30" FontWeight="Bold" />
+                            <TextBlock Text="NMC SCS LAUNCHER" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Moderner Windows-Launcher für getrennte ETS2- und ATS-Modsets." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
                                 <StackPanel>
@@ -605,7 +713,7 @@
                 </TabItem>
             </TabControl>
 
-            <Border Grid.Row="1" Background="#0E151E" BorderBrush="#1F2B39" BorderThickness="0,1,0,0" Padding="18,8">
+            <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="24,10">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" VerticalAlignment="Center"/>
