@@ -156,7 +156,7 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
 internal static class ScsSaveKindClassifier
 {
     // The same directory rule must protect both save discovery and live writes.
-    public static ScsSaveKind Classify(string directoryName)
+    public static ScsSaveKind Classify(string? directoryName)
     {
         if (string.IsNullOrEmpty(directoryName))
             return ScsSaveKind.Unknown;
