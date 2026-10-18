@@ -21,6 +21,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
     private Dispatcher? _dispatcher;
     private InstallerWindow? _window;
     private bool _packageInstalled;
+    private bool _previousManagedBuildInstalled;
     private bool _actionInProgress;
     private bool _silent;
     private LaunchAction _currentAction = LaunchAction.Install;
@@ -85,6 +86,7 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         _legacyInstall = DetectLegacyInnoInstall();
 
         var managedPath = DetectManagedInstallPath();
+        _previousManagedBuildInstalled = IsManagedInstallationPresent(managedPath);
         var initialPath = !string.IsNullOrWhiteSpace(managedPath)
             ? managedPath
             : !string.IsNullOrWhiteSpace(_legacyInstall?.InstallLocation)
@@ -208,13 +210,18 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
 
         Ui(() =>
         {
-            _window?.SetInstalled(_packageInstalled);
+            var previousBuildDetected = !_packageInstalled && _previousManagedBuildInstalled;
+            AppendDiagnostic(
+                $"Installation detection: currentPackage={_packageInstalled}; priorManagedBuild={previousBuildDetected}; legacyInno={_legacyInstall is not null}.");
+            _window?.SetInstalled(_packageInstalled, previousBuildDetected);
             _window?.SetBusy(false,
                 _packageInstalled
                     ? "NMC SCS LAUNCHER ist installiert. Reparatur oder Deinstallation ist möglich."
-                    : _legacyInstall is not null
-                        ? "Bestehende Inno-Installation erkannt. Der Installationspfad wird übernommen."
-                        : "Bereit zur Installation.");
+                    : previousBuildDetected
+                        ? "Eine frühere NMC SCS LAUNCHER-Installation wurde erkannt. Mit „Aktualisieren“ wird sie ersetzt."
+                        : _legacyInstall is not null
+                            ? "Bestehende Inno-Installation erkannt. Der Installationspfad wird übernommen."
+                            : "Bereit zur Installation.");
             _window?.SetProgress(0, "Bereit");
         });
     }
@@ -533,6 +540,26 @@ internal sealed class NmcInstallerBootstrapperApplication : BootstrapperApplicat
         catch
         {
             return null;
+        }
+    }
+
+    private static bool IsManagedInstallationPresent(string? installPath)
+    {
+        if (string.IsNullOrWhiteSpace(installPath))
+            return false;
+
+        try
+        {
+            // The registry marker alone could be stale. Require both the MSI
+            // package marker and the installed launcher executable.
+            using var key = Registry.CurrentUser.OpenSubKey(ManagedInstallKey);
+            var packageVersion = key?.GetValue("InstallerPackageVersion") as string;
+            return !string.IsNullOrWhiteSpace(packageVersion) &&
+                File.Exists(Path.Combine(installPath, "NmcScsLauncher.App.exe"));
+        }
+        catch
+        {
+            return false;
         }
     }
 

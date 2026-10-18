@@ -9,6 +9,7 @@ namespace NmcScsLauncher.Installer;
 public partial class InstallerWindow : Window
 {
     private bool _installed;
+    private bool _previousBuildInstalled;
     private bool _busy;
 
     public InstallerWindow(string version, string initialInstallPath)
@@ -27,15 +28,22 @@ public partial class InstallerWindow : Window
     public bool CreateDesktopShortcut => DesktopShortcutCheckBox.IsChecked == true;
     public bool LaunchAfterFinish => LaunchAfterFinishCheckBox.IsChecked == true;
 
-    public void SetInstalled(bool installed)
+    public void SetInstalled(bool installed, bool previousBuildInstalled = false)
     {
         _installed = installed;
-        InstalledStateText.Text = installed ? "Installiert" : "Nicht installiert";
-        TitleText.Text = installed ? "NMC SCS LAUNCHER verwalten" : "NMC SCS LAUNCHER installieren";
-        PrimaryButton.Content = installed ? "Reparieren" : "Installieren";
+        _previousBuildInstalled = !installed && previousBuildInstalled;
+        InstalledStateText.Text = installed
+            ? "Installiert"
+            : _previousBuildInstalled ? "Vorherige Installation erkannt" : "Nicht installiert";
+        TitleText.Text = installed
+            ? "NMC SCS LAUNCHER verwalten"
+            : _previousBuildInstalled ? "NMC SCS LAUNCHER aktualisieren" : "NMC SCS LAUNCHER installieren";
+        PrimaryButton.Content = installed ? "Reparieren" : _previousBuildInstalled ? "Aktualisieren" : "Installieren";
+        // A previous MSI is upgraded via Install/MajorUpgrade. Uninstalling it via
+        // this new (not-yet-installed) bundle is not a supported maintenance action.
         UninstallButton.Visibility = installed ? Visibility.Visible : Visibility.Collapsed;
-        InstallPathTextBox.IsEnabled = !installed && !_busy;
-        BrowseButton.IsEnabled = !installed && !_busy;
+        InstallPathTextBox.IsEnabled = !installed && !_previousBuildInstalled && !_busy;
+        BrowseButton.IsEnabled = !installed && !_previousBuildInstalled && !_busy;
         DesktopShortcutCheckBox.IsEnabled = !_busy;
     }
 
@@ -46,8 +54,8 @@ public partial class InstallerWindow : Window
         PrimaryButton.IsEnabled = !busy;
         UninstallButton.IsEnabled = !busy;
         CancelButton.IsEnabled = !busy;
-        InstallPathTextBox.IsEnabled = !busy && !_installed;
-        BrowseButton.IsEnabled = !busy && !_installed;
+        InstallPathTextBox.IsEnabled = !busy && !_installed && !_previousBuildInstalled;
+        BrowseButton.IsEnabled = !busy && !_installed && !_previousBuildInstalled;
         DesktopShortcutCheckBox.IsEnabled = !busy;
         ProgressBar.IsIndeterminate = busy && ProgressBar.Value <= 0;
         Cursor = busy ? System.Windows.Input.Cursors.Wait : System.Windows.Input.Cursors.Arrow;
@@ -94,7 +102,7 @@ public partial class InstallerWindow : Window
         PrimaryButton.Visibility = Visibility.Visible;
         CancelButton.Visibility = Visibility.Visible;
         FinishButton.Visibility = Visibility.Collapsed;
-        SetInstalled(_installed);
+        SetInstalled(_installed, _previousBuildInstalled);
         Cursor = System.Windows.Input.Cursors.Arrow;
     }
 
@@ -114,7 +122,7 @@ public partial class InstallerWindow : Window
 
     private void PrimaryButton_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_installed)
+        if (!_installed && !_previousBuildInstalled)
         {
             try
             {
