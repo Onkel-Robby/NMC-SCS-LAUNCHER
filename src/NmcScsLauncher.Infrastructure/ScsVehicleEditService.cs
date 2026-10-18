@@ -100,14 +100,16 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             player,
             "trucks",
             "vehicle",
-            refs.TruckId);
+            refs.TruckId,
+            includeDisplayNames: true);
 
         var trailers = ReadInventory(
             document,
             player,
             "trailers",
             "trailer",
-            refs.TrailerId);
+            refs.TrailerId,
+            includeDisplayNames: true);
 
         return new ScsVehicleInventory(
             refs.TruckId,
@@ -1253,7 +1255,8 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         ScsSiiUnit player,
         string arrayPrefix,
         string expectedUnitType,
-        string? activeId)
+        string? activeId,
+        bool includeDisplayNames = false)
     {
         var indexed = document.GetIndexedUnitScalars(player, arrayPrefix);
         var result = new List<ScsVehicleInventoryItem>();
@@ -1271,11 +1274,23 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             var unit = document.GetRequiredUniqueUnit(id);
             EnsureUnitType(unit, expectedUnitType, arrayPrefix);
 
+            // Vehicle switches and save writes need IDs only. Resolve model names
+            // exclusively for read-only UI inventory to avoid slowing down edits.
+            string? displayName = null;
+            if (includeDisplayNames)
+            {
+                var isTruck = string.Equals(
+                    expectedUnitType, "vehicle", StringComparison.Ordinal);
+                displayName = ScsVehicleDisplayNameResolver.Resolve(
+                    document, unit, isTruck, item.Index);
+            }
+
             result.Add(new ScsVehicleInventoryItem(
                 id,
                 item.Index,
                 activeId is not null &&
-                string.Equals(id, activeId, StringComparison.Ordinal)));
+                string.Equals(id, activeId, StringComparison.Ordinal),
+                displayName));
         }
 
         return result;

@@ -36,6 +36,59 @@ public sealed class ScsVehicleInventoryTests : IDisposable
     }
 
     [Fact]
+    public async Task InventoryUsesActualAccessoryModelPathsForDisplayLabels()
+    {
+        var source = CreateSave()
+            .Replace(
+                "vehicle : _nameless.truck.1 {",
+                "vehicle : _nameless.truck.1 {\n accessories: 1\n accessories[0]: _nameless.accessory.truck",
+                StringComparison.Ordinal)
+            .Replace(
+                "trailer : _nameless.trailer.1 {",
+                "trailer : _nameless.trailer.1 {\n accessories: 1\n accessories[0]: _nameless.accessory.trailer",
+                StringComparison.Ordinal);
+
+        var insert = source.LastIndexOf('}');
+        Assert.True(insert >= 0);
+        source = source.Insert(insert,
+            """
+            vehicle_accessory : _nameless.accessory.truck {
+             data_path: "/def/vehicle/truck/scania.s_2016/engine/500.sii"
+            }
+            vehicle_accessory : _nameless.accessory.trailer {
+             data_path: "/def/vehicle/trailer_owned/krone.profi_liner/chassis/chassis.sii"
+            }
+
+            """);
+
+        var (save, codec, saveEdit) = await CreateAsync(source);
+        var inventory = await new ScsVehicleEditService(codec, saveEdit)
+            .GetVehicleInventoryAsync(save);
+
+        Assert.Equal(
+            "Scania S 2016 (Truck 1)",
+            inventory.Trucks.Single(item => item.IsActive).DisplayName);
+        Assert.Equal(
+            "Krone Profi Liner (Trailer 1)",
+            inventory.Trailers.Single(item => item.IsActive).DisplayName);
+
+        // Labels are UI-only; the stable internal SCS IDs are preserved.
+        Assert.Equal("_nameless.truck.1", inventory.Trucks[0].Id);
+        Assert.Equal("_nameless.trailer.1", inventory.Trailers[0].Id);
+    }
+
+    [Fact]
+    public async Task InventoryFallsBackWithoutModelMetadata()
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        var inventory = await new ScsVehicleEditService(codec, saveEdit)
+            .GetVehicleInventoryAsync(save);
+
+        Assert.Equal("Truck 1 (Modell unbekannt)", inventory.Trucks[0].DisplayName);
+        Assert.Equal("Trailer 1 (Modell unbekannt)", inventory.Trailers[0].DisplayName);
+    }
+
+    [Fact]
     public async Task SwitchTrailerUpdatesOnlyPlayerVehicleUnitsForActiveTruck()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
