@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Save-Editor: Bestätigungsdialog beschreibt die Live-Write-Policy jetzt korrekt; Quicksaves und manuelle Saves dürfen bei laufendem ETS2/ATS bearbeitet werden, während Autosaves und Profiländerungen gesperrt bleiben.
 - Save-Editor: manuelle Saves und Quicksaves können jetzt auch bei laufendem ETS2/ATS bearbeitet und aus dem letzten NMC-Backup wiederhergestellt werden. Live-Writes verwenden Last-Write-Zeit plus SHA-256-Snapshot und brechen fail-closed ab, wenn das Spiel denselben `game.sii`-Stand zwischenzeitlich verändert. Autosaves, unbekannte Save-Typen und `profile.sii` bleiben bei laufendem Spiel gesperrt; Profilumbenennungen erfordern weiterhin ein vollständig beendetes ETS2/ATS.
 - Save-Editor: Truck-Kilometerstand wird konsistent für Tacho und Truck-Manager aktualisiert. Der Truck-Manager berücksichtigt zusätzlich die noch über `stats_data[n]` referenzierten `profit_log_entry.distance`-Historien; diese werden summiert und als Offset von `acc_distance_on_job` abgezogen, statt die Auftrags-/Profit-Historie zu löschen. `odometer`, vorhandenes `integrity_odometer` und `trip_distance_km` erhalten den Zielwert; `acc_distance_free` wird falls vorhanden auf 0 gesetzt und `*_float_part`-Felder bleiben unverändert.
 - Save-Editor: Länderkennzeichen verwenden wieder native SCS-Länderformatierung statt eines generischen weißen Custom-Hintergrunds. Deutschland erhält das ETS2-Material `/material/ui/lp/germany/b.mat` zwischen Ortskürzel und restlichem Kennzeichen.
