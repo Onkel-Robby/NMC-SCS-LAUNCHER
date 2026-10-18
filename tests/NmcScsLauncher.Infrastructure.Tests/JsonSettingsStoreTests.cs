@@ -75,9 +75,22 @@ public sealed class JsonSettingsStoreTests
         var file = Path.Combine(root, "settings.json");
         try
         {
-            var stores = Enumerable.Range(0, 8).Select(_ => new JsonSettingsStore(file)).ToArray();
-            await Task.WhenAll(stores.Select((store, index) =>
-                store.SaveAsync(new LauncherSettings { Ets2InstallPath = $"X:/Steam/Game-{index}" })));
+            // Distinct instances and an equivalent non-normalized path must
+            // serialize the final replacement, not just use unique temp names.
+            var aliasedFile = Path.Combine(root, "unused", "..", "settings.json");
+            var stores = Enumerable.Range(0, 16)
+                .Select(i => new JsonSettingsStore(i % 2 == 0 ? file : aliasedFile))
+                .ToArray();
+
+            for (var wave = 0; wave < 4; wave++)
+            {
+                var round = wave;
+                await Task.WhenAll(stores.Select((store, index) =>
+                    store.SaveAsync(new LauncherSettings
+                    {
+                        Ets2InstallPath = $"X:/Steam/Game-{round}-{index}"
+                    })));
+            }
 
             var loaded = await stores[0].LoadAsync();
             Assert.StartsWith("X:/Steam/Game-", loaded.Ets2InstallPath);
