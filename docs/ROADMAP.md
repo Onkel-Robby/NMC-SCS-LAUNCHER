@@ -64,6 +64,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [ ] Profil-Editor: weitere Karrierewerte erst nach konkretem Bedarf und realer Save-Verifikation
 - [x] Truck-Editor-Grundlage: aktiven Truck eindeutig auflösen, reparieren und Kraftstoffwert 0..1 setzen
 - [x] Fahrzeug-Inventar: eigene Trucks/Trailer aus den validierten `trucks[n]`-/`trailers[n]`-Referenzen lesen und aktiven Zustand markieren
+- [x] Fahrzeugnamen in der Save-Editor-UI: read-only Modellbezeichnung aus bereits gespeicherten Zubehör-/Definition-Pfaden, mit neutralem Fallback statt `_nameless`-Referenzen; ETS2-Feldtest bestätigt Anzeige von `Scania S 2016` und `Kassbohrer Scx`.
 - [x] Truck-Editor: sicheren Wechsel auf einen vorhandenen eigenen Truck inklusive player_vehicles-, Garage-/Driver- und HQ-Konsistenzprüfung
 - [x] Truck-Editor: Kilometerstand des aktiven Trucks konsistent über `odometer`, vorhandene Fahrzeug-Kilometerfelder und den slotgleichen `truck_profit_logs[n]`-Eintrag aktualisieren; Truck-Manager-Historien aus `stats_data[n] -> profit_log_entry.distance` werden als Offset berücksichtigt und nicht verändert; `*_float_part`-Felder bleiben unangetastet
 - [x] Truck-Editor: Kennzeichen des aktiven Trucks mit validiertem SCS-Format ändern
@@ -77,7 +78,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Trailer-Editor: Kennzeichen der aktiven Trailer-/Slave-Kette mit validiertem SCS-Format ändern
 - [~] realer Feldtest der Kennzeichen-Formatierung: Truck-/Trailer-Kennzeichentext sowie native deutsche Länderoptik in ETS2 bestätigt; ATS noch offen
 - [x] Save-Editor-UI im Launcher mit ETS2/ATS-Profil-/Save-Auswahl, Änderungsbestätigung, Profile/Karriere, Truck/Trailer, Kennzeichen, Kilometer, cargo_mass, Engine/Transmission und Wiederherstellung des letzten Sitzungs-Backups
-- [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profil/Karriere und Backup/Restore bestätigt; zusätzlich Kraftstoff, Truck-Reparatur, Kennzeichentext, Truck-Wechsel und der synchronisierte Kilometerstand für Tacho + Truck-Manager erfolgreich. Die neue Live-Write-Policy für manuelle Saves/Quicksaves muss real getestet werden; native deutsche Länderkennzeichen sind bestätigt; Performance-Cache, weitere Truck-/Trailer-Funktionen und ATS bleiben offen
+- [~] reale Save-Editor-Feldtests: ETS2 Read-only, Profil/Karriere und Backup/Restore bestätigt; Kraftstoff, Truck-Reparatur, Kennzeichentext, **Truck-Wechsel und Trailer-Wechsel** sowie der synchronisierte Kilometerstand für Tacho + Truck-Manager vom Nutzer als erfolgreich bestätigt. Profil-/Save-Laden spürbar schneller und Save-Änderungen im ETS2-Feldtest nach PR #66 nach Nutzerangabe ca. 80 % schneller; bestätigte neue Dialogtexte. Lesbare Truck-/Trailer-Modellnamen nach PR #67 im ETS2-Screenshot bestätigt. Die vollständige End-to-End-Verifikation der Live-Write-Policy (Änderung bei laufendem Spiel und danach im Spiel neu laden) sowie weitere Truck-/Trailer-Funktionen und ATS-Tests bleiben offen.
 - [ ] SteamUGC-Schreibaktionen wie Subscribe/Unsubscribe erst mit verifiziertem Steam-Auth-/API-Vertrag
 - [ ] weitere UI- und Komfortverbesserungen nach Praxiserfahrung
 
