@@ -45,6 +45,11 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorTruckPlateText = string.Empty;
     [ObservableProperty] private string _saveEditorTrailerPlateText = string.Empty;
     [ObservableProperty] private string _saveEditorPlateCountry = "germany";
+    [ObservableProperty] private ScsPlateRegion? _saveEditorSelectedPlateRegion =
+        ScsPlateRegionCatalog.DefaultFor(GameType.Ets2);
+    [ObservableProperty] private string _saveEditorOtherPlateCountryCode = string.Empty;
+    public bool SaveEditorUsesOtherPlateCountry =>
+        SaveEditorSelectedPlateRegion?.Code == ScsPlateRegionCatalog.OtherCode;
     [ObservableProperty] private string _saveEditorPlateBackgroundRgb = "ffffff";
     [ObservableProperty] private string _saveEditorPlateTextRgb = "000000";
     [ObservableProperty] private string _saveEditorEnginePath = string.Empty;
@@ -56,6 +61,8 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorLastBackupPath = "–";
 
     public IReadOnlyList<GameType> SaveEditorGames { get; } = Enum.GetValues<GameType>();
+    public ObservableCollection<ScsPlateRegion> SaveEditorPlateRegions { get; } =
+        new(ScsPlateRegionCatalog.For(GameType.Ets2));
     public ObservableCollection<ScsProfileReference> SaveEditorProfiles { get; } = new();
     public ObservableCollection<ScsSaveReference> SaveEditorSaves { get; } = new();
     public ObservableCollection<ScsVehicleInventoryItem> SaveEditorTrucks { get; } = new();
@@ -235,12 +242,33 @@ public partial class MainViewModel
 
     partial void OnSaveEditorSelectedGameChanged(GameType value)
     {
+        // ETS2 uses country definitions, while ATS uses individual US states.
+        // Switching games must never silently retain the other game's plate code.
+        SaveEditorPlateRegions.Clear();
+        foreach (var region in ScsPlateRegionCatalog.For(value))
+            SaveEditorPlateRegions.Add(region);
+        SaveEditorSelectedPlateRegion = ScsPlateRegionCatalog.DefaultFor(value);
+
         SaveEditorProfiles.Clear();
         SaveEditorSelectedProfile = null;
         ClearSaveEditorSaveState();
         SaveEditorGameHome = GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome();
         SaveEditorStatusText =
             $"{GameDefinition.For(value).DisplayName}: auf „Profile laden“ klicken.";
+    }
+
+    partial void OnSaveEditorSelectedPlateRegionChanged(ScsPlateRegion? value)
+    {
+        OnPropertyChanged(nameof(SaveEditorUsesOtherPlateCountry));
+        SaveEditorPlateCountry = value?.Code == ScsPlateRegionCatalog.OtherCode
+            ? SaveEditorOtherPlateCountryCode.Trim()
+            : value?.Code ?? string.Empty;
+    }
+
+    partial void OnSaveEditorOtherPlateCountryCodeChanged(string value)
+    {
+        if (SaveEditorUsesOtherPlateCountry)
+            SaveEditorPlateCountry = value.Trim();
     }
 
     partial void OnSaveEditorSelectedProfileChanged(ScsProfileReference? value)
