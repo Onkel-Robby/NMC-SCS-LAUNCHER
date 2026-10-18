@@ -18,6 +18,8 @@ public sealed class JsonSettingsStoreTests
             var expected = new LauncherSettings
             {
                 Ets2InstallPath = @"D:\Games\ETS2",
+                Ets2ProfileHomePath = @"D:\SCS-Profiles\ETS2",
+                AtsProfileHomePath = @"D:\SCS-Profiles\ATS",
                 ShowStartCheck = false
             };
 
@@ -25,6 +27,8 @@ public sealed class JsonSettingsStoreTests
             var actual = await store.LoadAsync();
 
             Assert.Equal(expected.Ets2InstallPath, actual.Ets2InstallPath);
+            Assert.Equal(expected.Ets2ProfileHomePath, actual.Ets2ProfileHomePath);
+            Assert.Equal(expected.AtsProfileHomePath, actual.AtsProfileHomePath);
             Assert.False(actual.ShowStartCheck);
         }
         finally
