@@ -365,7 +365,8 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Border Background="#203B53" BorderBrush="#375D7B" BorderThickness="1"
-                                                        CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                        CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                        Margin="{StaticResource NmcTableContentInset}">
                                                     <TextBlock Text="{Binding Game}" Foreground="#A9D8FF" FontSize="12" FontWeight="SemiBold" />
                                                 </Border>
                                             </DataTemplate>
@@ -381,7 +382,8 @@
                                         <DataGridTemplateColumn Header="Status" SortMemberPath="IsManagedDirectory" Width="145">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <Border Background="#193C35" CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <Border Background="#193C35" CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                        Margin="{StaticResource NmcTableContentInset}">
                                                         <TextBlock FontSize="12" FontWeight="SemiBold">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
@@ -462,7 +464,8 @@
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <Border Background="#26384C" CornerRadius="6" Padding="7,3"
-                                                                    HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                    Margin="{StaticResource NmcTableContentInset}">
                                                                 <TextBlock Text="{Binding TypeText}" Foreground="#C4DBF0"
                                                                            FontSize="12" FontWeight="SemiBold" />
                                                             </Border>
@@ -554,8 +557,9 @@
                                                                 Width="2.4*" MinWidth="260">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" MaxWidth="600">
-                                                        <TextBlock Text="{Binding DisplayName}"
+                                                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" MaxWidth="600"
+                                                                Margin="{StaticResource NmcTableContentInset}">
+                                                        <TextBlock Text="{Binding DisplayName}" Margin="0"
                                                                    Style="{StaticResource NmcTableNameTextStyle}" />
                                                         <TextBlock Text="{Binding PublishedFileId, StringFormat='Workshop-ID: {0}'}"
                                                                    Foreground="{StaticResource SecondaryTextBrush}"
@@ -568,7 +572,8 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Border Background="#203B53" BorderBrush="#375D7B" BorderThickness="1"
-                                                        CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                        CornerRadius="6" Padding="7,3" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                        Margin="{StaticResource NmcTableContentInset}">
                                                     <TextBlock Text="{Binding Game}" Foreground="#A9D8FF" FontSize="12" FontWeight="SemiBold" />
                                                 </Border>
                                             </DataTemplate>
