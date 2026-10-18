@@ -537,12 +537,25 @@ public partial class MainViewModel : ObservableObject
         try
         {
             var installation = await _gameDetector.DetectAsync(gameType, useSavedPath ? GetSavedPath(gameType) : null);
-            ApplyInstallation(gameType, installation);
             if (installation is null)
             {
-                StatusText = $"{GameDefinition.For(gameType).DisplayName} wurde über Steam nicht gefunden.";
+                // A failed new Steam scan must not hide a previously valid manual
+                // installation. Keep the saved path; do not change stored settings.
+                var savedPath = GetSavedPath(gameType);
+                var saved = !string.IsNullOrWhiteSpace(savedPath)
+                    ? _gameDetector.Validate(gameType, savedPath, GameInstallationSource.SavedPath)
+                    : null;
+                ApplyInstallation(gameType, saved);
+                StatusText = saved is null
+                    ? $"{GameDefinition.For(gameType).DisplayName} wurde über Steam nicht gefunden. Bitte Installationsordner manuell auswählen."
+                    : $"{GameDefinition.For(gameType).DisplayName}: Steam-Suche ohne Treffer. Der bereits gespeicherte, gültige Installationspfad bleibt verwendbar.";
+                await _logger.WriteAsync("WARN",
+                    $"Steam auto-detection returned no valid installation for {gameType}. " +
+                    (saved is null ? "No valid saved installation." : "Keeping existing saved installation."));
                 return;
             }
+
+            ApplyInstallation(gameType, installation);
 
             SetSavedPath(gameType, installation.InstallPath);
             await _settingsStore.SaveAsync(_settings);

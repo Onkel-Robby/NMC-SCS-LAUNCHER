@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
@@ -48,6 +49,8 @@ public sealed partial class SteamLibraryLocator
         if (OperatingSystem.IsWindows())
         {
             AddWindowsRegistrySteamCandidates(candidates);
+            AddRunningSteamCandidates(candidates);
+            AddCommonSteamLibraryCandidates(candidates);
         }
 
         AddKnownWindowsSteamFolder(candidates, Environment.SpecialFolder.ProgramFilesX86);
@@ -76,6 +79,8 @@ public sealed partial class SteamLibraryLocator
                 TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "SteamPath", candidates);
                 TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "InstallPath", candidates);
                 TryReadRegistryValue(currentUser, @"Software\Valve\Steam", "SteamExe", candidates, valueIsExecutable: true);
+                TryReadSteamAppPath(currentUser, candidates);
+                TryReadSteamUninstallPath(currentUser, candidates);
             }
             catch (Exception)
             {
@@ -88,11 +93,100 @@ public sealed partial class SteamLibraryLocator
                 TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "InstallPath", candidates);
                 TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "SteamPath", candidates);
                 TryReadRegistryValue(localMachine, @"SOFTWARE\Valve\Steam", "SteamExe", candidates, valueIsExecutable: true);
+                TryReadSteamAppPath(localMachine, candidates);
+                TryReadSteamUninstallPath(localMachine, candidates);
             }
             catch (Exception)
             {
                 // Registry discovery is best-effort. Other views/candidates remain available.
             }
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void TryReadSteamAppPath(RegistryKey root, ISet<string> candidates)
+    {
+        const string path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\steam.exe";
+        TryReadRegistryValue(root, path, "Path", candidates);
+        TryReadRegistryValue(root, path, string.Empty, candidates, valueIsExecutable: true);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void TryReadSteamUninstallPath(RegistryKey root, ISet<string> candidates)
+    {
+        const string path = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam";
+        TryReadRegistryValue(root, path, "InstallLocation", candidates);
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void AddRunningSteamCandidates(ISet<string> candidates)
+    {
+        try
+        {
+            foreach (var process in Process.GetProcessesByName("steam"))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        var exe = process.MainModule?.FileName;
+                        if (!string.IsNullOrWhiteSpace(exe))
+                        {
+                            var directory = Path.GetDirectoryName(exe);
+                            if (!string.IsNullOrWhiteSpace(directory))
+                                candidates.Add(directory);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // A protected or inaccessible process must not interrupt detection.
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Steam may not be running or the process list may be inaccessible.
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static void AddCommonSteamLibraryCandidates(ISet<string> candidates)
+    {
+        // Bounded exact-folder probes: never recursively crawl the user's disks.
+        // Steam may be installed on a different fixed drive with missing/stale
+        // registry entries or a missing libraryfolders.vdf.
+        try
+        {
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                if (drive.DriveType != DriveType.Fixed)
+                    continue;
+
+                foreach (var relativePath in new[]
+                {
+                    "SteamLibrary",
+                    "Steam",
+                    Path.Combine("Games", "SteamLibrary"),
+                    Path.Combine("Games", "Steam")
+                })
+                {
+                    try
+                    {
+                        var path = Path.Combine(drive.Name, relativePath);
+                        if (Directory.Exists(path))
+                            candidates.Add(path);
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore unavailable disks and inaccessible folders.
+                    }
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Registry and standard install locations remain available.
         }
     }
 

@@ -72,18 +72,29 @@ public sealed partial class SteamGameInstallationDetector : IGameInstallationDet
 
             var steamAppsPath = Path.Combine(libraryRoot, "steamapps");
             var manifestPath = Path.Combine(steamAppsPath, $"appmanifest_{definition.SteamAppId}.acf");
-            if (!File.Exists(manifestPath))
+            if (File.Exists(manifestPath))
             {
-                continue;
+                var installDirectoryName = ReadInstallDirectoryName(manifestPath);
+                if (!string.IsNullOrWhiteSpace(installDirectoryName))
+                {
+                    var manifestInstall = Validate(
+                        gameType,
+                        Path.Combine(steamAppsPath, "common", installDirectoryName),
+                        GameInstallationSource.SteamAutoDetection);
+                    if (manifestInstall is not null)
+                        return Task.FromResult<GameInstallation?>(manifestInstall);
+                }
             }
 
-            var installDirectoryName = ReadInstallDirectoryName(manifestPath) ?? definition.DefaultInstallDirectoryName;
-            var installPath = Path.Combine(steamAppsPath, "common", installDirectoryName);
-            var installation = Validate(gameType, installPath, GameInstallationSource.SteamAutoDetection);
-            if (installation is not null)
-            {
-                return Task.FromResult<GameInstallation?>(installation);
-            }
+            // Steam may have an absent/stale appmanifest after a library move.
+            // Only probe the canonical game folder in an already trusted Steam
+            // library, and always require the exact game's x64 executable.
+            var defaultInstall = Validate(
+                gameType,
+                Path.Combine(steamAppsPath, "common", definition.DefaultInstallDirectoryName),
+                GameInstallationSource.SteamAutoDetection);
+            if (defaultInstall is not null)
+                return Task.FromResult<GameInstallation?>(defaultInstall);
         }
 
         return Task.FromResult<GameInstallation?>(null);
