@@ -411,7 +411,7 @@
                                               MinHeight="260"
                                               MaxHeight="480">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Mod-Name / Datei" Binding="{Binding Name}" Width="260" />
+                                            <DataGridTextColumn Header="Mod-Name / Datei" Binding="{Binding Name}" Width="300" ElementStyle="{StaticResource GridPathTextStyle}" />
                                             <DataGridTextColumn Header="Typ" Binding="{Binding TypeText}" Width="85" />
                                             <DataGridTextColumn Header="Größe" Binding="{Binding SizeText}" Width="105" />
                                             <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
@@ -482,7 +482,7 @@
 
                             <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330" MaxHeight="540">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Mod-Name" Binding="{Binding DisplayName}" Width="260" />
+                                    <DataGridTextColumn Header="Mod-Name" Binding="{Binding DisplayName}" Width="330" ElementStyle="{StaticResource GridPathTextStyle}" />
                                     <DataGridTextColumn Header="PublishedFileId" Binding="{Binding PublishedFileId}" Width="135" />
                                     <DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="80" />
                                     <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding DisplayLastUpdatedUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
@@ -742,13 +742,13 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Stretch">
+                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Left">
                             <TextBlock Text="Einstellungen" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Launcher-Verhalten und Standardpfade konfigurieren." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
                                 <StackPanel>
                                     <TextBlock Text="Standardordner für neue Mod-Ordner" FontSize="17" FontWeight="SemiBold" />
-                                    <TextBlock Text="Dieser Pfad ist der Standardordner für neu angelegte Mod-Ordner. Beim Modset selbst wird der ausgewählte Ordner direkt verwendet." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,10" />
+                                    <TextBlock Text="Dieser Pfad ist der Standardordner für neu angelegte Mod-Ordner. Beim Modset selbst wird der ausgewählte Ordner direkt verwendet." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,10" />
                                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding SettingsDefaultModsetRoot, UpdateSourceTrigger=PropertyChanged}" Padding="9,7"/><Button Grid.Column="1" Content="Durchsuchen …" Command="{Binding BrowseDefaultModsetRootCommand}" Margin="8,0,0,0"/></Grid>
                                 </StackPanel>
                             </Border>
@@ -775,7 +775,7 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Stretch">
+                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Left">
                             <Image Source="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher-logo.png" Width="340" Height="113" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" />
                             <TextBlock Text="NMC SCS LAUNCHER" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Moderner Windows-Launcher für getrennte ETS2- und ATS-Modsets." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
