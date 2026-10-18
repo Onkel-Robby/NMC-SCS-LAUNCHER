@@ -50,6 +50,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
 - [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair vor dem LicenseHub-Update, Desktop-Verknüpfung, LicenseHub-Update und Uninstall mit erhaltenen Benutzerdaten bestätigt
+- [x] Windows-Feldtest der Installations-Erkennung nach PR #69: Der Installer aus `main`-Build #94 zeigt bei einer vorhandenen älteren Installation die Aktion „Aktualisieren“, und der Launcher ließ sich laut Nutzer anschließend starten. Die automatisierte CI prüft zusätzlich den Ersatz der Programmdateien bei gleicher öffentlicher Version 1.0.0; eine separate Dateihash-Prüfung auf dem Nutzerrechner ist nicht dokumentiert.
 - [ ] Repair nach einem LicenseHub-Update testen, damit MSI-Dateibesitz und Updater-Dateibesitz keinen Versions-Rollback verursachen
 - [x] lokale Steam-Workshop-Verwaltung: ETS2/ATS-Auswahl, Refresh, lokaler Ordner und Steam-Seite
 - [x] öffentliche Steam-Workshop-Metadaten: Mod-Titel, Suche, Sortierung und Titel-Filter mit ID-Fallback
