@@ -274,6 +274,9 @@
 
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="MinHeight" Value="28" />
         </Style>
 
         <Style x:Key="NavigationListStyle" TargetType="ListBox">
