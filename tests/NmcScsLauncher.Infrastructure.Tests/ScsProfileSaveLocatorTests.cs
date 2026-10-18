@@ -59,6 +59,79 @@ public sealed class ScsProfileSaveLocatorTests : IDisposable
         Assert.Equal(Path.GetFullPath(Path.Combine(localSave, "game.sii")), save.GameSiiPath);
     }
 
+    [Fact]
+    public async Task FindsActualCloudSaveInSteamUserdataAndKeepsGamesSeparate()
+    {
+        Directory.CreateDirectory(_root);
+        var steamRoot = Path.Combine(_root, "Steam");
+        var profileId = Convert.ToHexString(Encoding.UTF8.GetBytes("Cloud Driver"));
+        var etsRemote = Path.Combine(steamRoot, "userdata", "123456", "227300", "remote");
+        var atsRemote = Path.Combine(steamRoot, "userdata", "123456", "270880", "remote");
+
+        var etsProfile = Path.Combine(etsRemote, "profiles", profileId);
+        var etsSave = Path.Combine(etsProfile, "save", "quicksave");
+        Directory.CreateDirectory(etsSave);
+        await File.WriteAllTextAsync(Path.Combine(etsProfile, "profile.sii"), "SiiNunit");
+        await File.WriteAllTextAsync(Path.Combine(etsSave, "game.sii"), "SiiNunit");
+
+        var atsProfile = Path.Combine(atsRemote, "profiles", profileId);
+        var atsSave = Path.Combine(atsProfile, "save", "autosave");
+        Directory.CreateDirectory(atsSave);
+        await File.WriteAllTextAsync(Path.Combine(atsProfile, "profile.sii"), "SiiNunit");
+        await File.WriteAllTextAsync(Path.Combine(atsSave, "game.sii"), "SiiNunit");
+
+        // Some directory entries under userdata are not Steam accounts.
+        var invalidAccount = Path.Combine(steamRoot, "userdata", "backup", "227300",
+            "remote", "profiles", "FakeProfile");
+        Directory.CreateDirectory(invalidAccount);
+        await File.WriteAllTextAsync(Path.Combine(invalidAccount, "profile.sii"), "SiiNunit");
+
+        var locator = new ScsProfileSaveLocator(new SteamLibraryLocator([steamRoot]));
+        var ets = Assert.Single(await locator.FindSteamCloudProfilesAsync(GameType.Ets2));
+        var ats = Assert.Single(await locator.FindSteamCloudProfilesAsync(GameType.Ats));
+
+        Assert.Equal(ScsProfileStorageKind.SteamCloudRemote, ets.StorageKind);
+        Assert.Equal(ScsProfileStorageKind.SteamCloudRemote, ats.StorageKind);
+        Assert.Equal(Path.GetFullPath(etsProfile), ets.ProfileDirectory);
+        Assert.Equal(Path.GetFullPath(atsProfile), ats.ProfileDirectory);
+        Assert.Contains("Steam Cloud", ets.DisplayName);
+        Assert.Equal(ScsSaveKind.QuickSave, Assert.Single(await locator.FindSavesAsync(ets)).Kind);
+        Assert.Equal(ScsSaveKind.AutoSave, Assert.Single(await locator.FindSavesAsync(ats)).Kind);
+    }
+
+    [Fact]
+    public async Task ManuallySelectedSteamUserdataHomeCannotMasqueradeAsLocalProfile()
+    {
+        var remoteHome = Path.Combine(_root, "Steam", "userdata", "123456", "227300", "remote");
+        var profileDirectory = Path.Combine(remoteHome, "profiles", "AABBCCDD");
+        Directory.CreateDirectory(profileDirectory);
+        await File.WriteAllTextAsync(Path.Combine(profileDirectory, "profile.sii"), "SiiNunit");
+
+        var locator = new ScsProfileSaveLocator();
+        var profile = Assert.Single(await locator.FindProfilesAsync(GameType.Ets2, remoteHome));
+
+        Assert.Equal(ScsProfileStorageKind.SteamCloudRemote, profile.StorageKind);
+        Assert.Contains("(Steam Cloud)", profile.DisplayName);
+        Assert.True(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ets2, profile.ProfileDirectory));
+        Assert.False(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ats, profile.ProfileDirectory));
+        Assert.False(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ets2, Path.Combine(_root, "profiles", "AABBCCDD")));
+    }
+
+    [Fact]
+    public async Task CloudProfileWithoutProfileSiiIsIgnored()
+    {
+        Directory.CreateDirectory(_root);
+        var steamRoot = Path.Combine(_root, "Steam");
+        Directory.CreateDirectory(Path.Combine(steamRoot, "userdata", "789", "227300",
+            "remote", "profiles", "AABBCCDD"));
+
+        var locator = new ScsProfileSaveLocator(new SteamLibraryLocator([steamRoot]));
+        Assert.Empty(await locator.FindSteamCloudProfilesAsync(GameType.Ets2));
+    }
+
     public void Dispose()
     {
         try

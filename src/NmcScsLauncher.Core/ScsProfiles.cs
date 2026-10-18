@@ -3,7 +3,8 @@ namespace NmcScsLauncher.Core;
 public enum ScsProfileStorageKind
 {
     Local = 1,
-    SteamCloud = 2
+    SteamCloud = 2,
+    SteamCloudRemote = 3
 }
 
 public enum ScsSaveKind
@@ -46,6 +47,11 @@ public interface IScsProfileSaveLocator
     Task<IReadOnlyList<ScsProfileReference>> FindProfilesAsync(
         GameType gameType,
         string gameHomeDirectory,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Discover real Steam Cloud profile files from Steam userdata, read-only.</summary>
+    Task<IReadOnlyList<ScsProfileReference>> FindSteamCloudProfilesAsync(
+        GameType gameType,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<ScsSaveReference>> FindSavesAsync(

@@ -20,7 +20,8 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<IAppLogger, FileAppLogger>();
-        services.AddSingleton<SteamLibraryLocator>();
+        // Explicitly select runtime Steam discovery. DI can otherwise inject an empty IEnumerable<string>.
+        services.AddSingleton<SteamLibraryLocator>(_ => new SteamLibraryLocator());
         services.AddSingleton<IGameInstallationDetector, SteamGameInstallationDetector>();
         services.AddSingleton<IWorkshopContentLocator, SteamWorkshopContentLocator>();
         services.AddSingleton<IWorkshopMetadataProvider, SteamWorkshopMetadataProvider>();
