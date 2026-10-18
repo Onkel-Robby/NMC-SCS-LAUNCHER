@@ -27,6 +27,12 @@ public sealed class ScsSaveCodec : IScsSaveCodec
         if (!File.Exists(fullPath))
             return await _plainTextCodec.ReadAsync(fullPath, cancellationToken);
 
+        // A cached decoded save needs only a cheap file fingerprint check.
+        // Avoid reading the full binary payload for every inspection.
+        var fingerprint = GetFingerprint(fullPath);
+        if (TryGetCached(fullPath, fingerprint, out var cached))
+            return cached;
+
         try
         {
             var plainText = await _plainTextCodec.ReadAsync(fullPath, cancellationToken);
@@ -38,8 +44,8 @@ public sealed class ScsSaveCodec : IScsSaveCodec
             // Binary/encrypted saves fall through to the pinned decoder.
         }
 
-        var fingerprint = GetFingerprint(fullPath);
-        if (TryGetCached(fullPath, fingerprint, out var cached))
+        fingerprint = GetFingerprint(fullPath);
+        if (TryGetCached(fullPath, fingerprint, out cached))
             return cached;
 
         await _decodeGate.WaitAsync(cancellationToken);

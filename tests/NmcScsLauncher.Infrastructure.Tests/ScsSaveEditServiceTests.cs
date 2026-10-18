@@ -34,6 +34,11 @@ public sealed class ScsSaveEditServiceTests : IDisposable
             updated));
 
         Assert.True(File.Exists(result.BackupPath));
+        Assert.Equal(original, await File.ReadAllTextAsync(result.BackupPath));
+        Assert.Equal(
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                await File.ReadAllBytesAsync(result.BackupPath))).ToLowerInvariant(),
+            result.OriginalSha256);
         Assert.Contains(" profile_name: \"NMC\"", await File.ReadAllTextAsync(target));
         Assert.NotEqual(result.OriginalSha256, result.UpdatedSha256);
 

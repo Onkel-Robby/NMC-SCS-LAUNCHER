@@ -67,6 +67,8 @@ public sealed class ScsSaveCodecTests : IDisposable
         Assert.Equal(first.Content, second.Content);
         Assert.Equal(second.Content, third.Content);
         Assert.Equal(1, decoder.CallCount);
+        Assert.Same(first, second);
+        Assert.Same(first, third);
     }
 
     [Fact]

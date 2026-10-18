@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using NmcScsLauncher.Core;
 
@@ -9,22 +10,31 @@ internal sealed class ScsSiiUnitDocument
         @"^\s*(?<type>[A-Za-z0-9_]+)\s*:\s*(?<id>[^\s{]+)\s*\{\s*$",
         RegexOptions.Compiled);
 
+    // Keep immutable parsed documents only while their source content is referenced.
+    private static readonly ConditionalWeakTable<string, ScsSiiUnitDocument> ParsedDocuments = new();
+
     private readonly string[] _lines;
+    private readonly Lazy<IReadOnlyList<ScsSiiUnit>> _units;
 
     private ScsSiiUnitDocument(string[] lines, string newline)
     {
         _lines = lines;
         Newline = newline;
+        _units = new Lazy<IReadOnlyList<ScsSiiUnit>>(BuildUnitIndex);
     }
 
     public string Newline { get; }
 
     public static ScsSiiUnitDocument Parse(string content)
     {
-        _ = ScsSiiTextDocument.Parse(content);
-        var newline = content.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
-        var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        return new ScsSiiUnitDocument(lines, newline);
+        ArgumentNullException.ThrowIfNull(content);
+        return ParsedDocuments.GetValue(content, static source =>
+        {
+            _ = ScsSiiTextDocument.Parse(source);
+            var newline = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+            var lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+            return new ScsSiiUnitDocument(lines, newline);
+        });
     }
 
     public string ToText() => string.Join(Newline, _lines);
@@ -223,7 +233,9 @@ internal sealed class ScsSiiUnitDocument
         return new ScsSiiUnitDocument(clone, Newline);
     }
 
-    private IReadOnlyList<ScsSiiUnit> FindUnits()
+    private IReadOnlyList<ScsSiiUnit> FindUnits() => _units.Value;
+
+    private IReadOnlyList<ScsSiiUnit> BuildUnitIndex()
     {
         var result = new List<ScsSiiUnit>();
 

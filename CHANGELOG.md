@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Save-Editor: schnellere wiederholte Inspektion verschlüsselter Saves durch Fingerprint-Cache vor dem Dateilesen, Wiederverwendung des geparsten SII-Dokuments und des Unit-Index; asynchrone Backup-Kopie mit Prüfsumme des tatsächlich gesicherten Dateistands, Laufzeitdiagnose für Edit/Refresh und kontextspezifische Bestätigungen für Profilumbenennung und Restore.
 - Save-Editor: Live-Schreib- und Restore-Operationen prüfen den Save-Ordner jetzt auch im Schreibdienst; nur manuelle Saves und Quicksaves sind bei laufendem Spiel zulässig. Regressionstests decken Autosaves und unbekannte Save-Typen ab.
 - Save-Editor: Bestätigungsdialog beschreibt die Live-Write-Policy jetzt korrekt; Quicksaves und manuelle Saves dürfen bei laufendem ETS2/ATS bearbeitet werden, während Autosaves und Profiländerungen gesperrt bleiben.
 - Save-Editor: manuelle Saves und Quicksaves können jetzt auch bei laufendem ETS2/ATS bearbeitet und aus dem letzten NMC-Backup wiederhergestellt werden. Live-Writes verwenden Last-Write-Zeit plus SHA-256-Snapshot und brechen fail-closed ab, wenn das Spiel denselben `game.sii`-Stand zwischenzeitlich verändert. Autosaves, unbekannte Save-Typen und `profile.sii` bleiben bei laufendem Spiel gesperrt; Profilumbenennungen erfordern weiterhin ein vollständig beendetes ETS2/ATS.

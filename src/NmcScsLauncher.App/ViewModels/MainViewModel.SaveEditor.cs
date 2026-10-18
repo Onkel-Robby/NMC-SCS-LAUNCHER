@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NmcScsLauncher.App.Services;
 using NmcScsLauncher.Core;
 
 namespace NmcScsLauncher.App.ViewModels;
@@ -177,7 +179,8 @@ public partial class MainViewModel
                 "Profil umbenennen",
                 $"Profil '{profile.DisplayName}' in '{newName}' umbenennen? " +
                 "profile.sii und der hex-codierte SCS-Profilordner werden gemeinsam aktualisiert." +
-                cloudWarning))
+                cloudWarning,
+                SaveEditConfirmationKind.ProfileRename))
         {
             return;
         }
@@ -412,7 +415,8 @@ public partial class MainViewModel
 
         if (!_confirmationService.ConfirmSaveEdit(
                 "Backup wiederherstellen",
-                $"Letztes Backup wiederherstellen?\n{SaveEditorLastBackupPath}"))
+                $"Letztes Backup wiederherstellen?\n{SaveEditorLastBackupPath}",
+                SaveEditConfirmationKind.BackupRestore))
         {
             return;
         }
@@ -637,10 +641,13 @@ public partial class MainViewModel
         if (IsBusy) return;
 
         IsBusy = true;
+        var timer = Stopwatch.StartNew();
+        SaveEditorStatusText = $"{operationName}: Save wird geprüft, gesichert und bearbeitet …";
         try
         {
             var editedSaveKind = SaveEditorSelectedSave?.Kind;
             var result = await operation();
+            var editOperationMs = timer.ElapsedMilliseconds;
 
             if (exposeBackupForRestore)
             {
@@ -670,9 +677,16 @@ public partial class MainViewModel
                 await RefreshSaveEditorAsync();
             else
                 await ReloadCurrentSaveEditorSelectionAsync();
+
+            await _logger.WriteAsync(
+                "INFO",
+                $"Save editor timing. Operation={operationName}; EditOperationMs={editOperationMs}; RefreshMs={timer.ElapsedMilliseconds - editOperationMs}; TotalMs={timer.ElapsedMilliseconds}");
         }
         catch (Exception ex)
         {
+            await _logger.WriteAsync(
+                "INFO",
+                $"Save editor timing (failed). Operation={operationName}; ElapsedMs={timer.ElapsedMilliseconds}");
             SaveEditorStatusText = ex.Message;
             await _logger.WriteAsync("ERROR", $"Save editor operation failed: {operationName}", ex);
         }
