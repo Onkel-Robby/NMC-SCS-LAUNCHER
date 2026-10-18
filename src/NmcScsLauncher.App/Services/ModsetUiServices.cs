@@ -24,10 +24,20 @@ public interface IModsetEditorService
     ModsetEditorData? Show(ModsetEditorMode mode, ModsetEditorData initialData);
 }
 
+public enum SaveEditConfirmationKind
+{
+    SaveChange,
+    ProfileRename,
+    BackupRestore
+}
+
 public interface IConfirmationService
 {
     bool ConfirmRemoveFromLauncher(Modset modset);
-    bool ConfirmSaveEdit(string title, string message);
+    bool ConfirmSaveEdit(
+        string title,
+        string message,
+        SaveEditConfirmationKind kind = SaveEditConfirmationKind.SaveChange);
 }
 
 public interface IExplorerService
@@ -65,15 +75,31 @@ public sealed class ConfirmationService : IConfirmationService
         return result == MessageBoxResult.Yes;
     }
 
-    public bool ConfirmSaveEdit(string title, string message)
+    public bool ConfirmSaveEdit(
+        string title,
+        string message,
+        SaveEditConfirmationKind kind = SaveEditConfirmationKind.SaveChange)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
 
+        var note = kind switch
+        {
+            SaveEditConfirmationKind.ProfileRename =>
+                "ETS2/ATS muss für die Profilumbenennung vollständig beendet sein. " +
+                "Vor der Änderung wird ein Backup der profile.sii erstellt.",
+            SaveEditConfirmationKind.BackupRestore =>
+                "Der zuletzt gesicherte Dateistand wird wiederhergestellt. " +
+                "Quicksaves und manuelle Saves können auch bei laufendem ETS2/ATS wiederhergestellt werden; " +
+                "Autosaves und Profiländerungen bleiben bei laufendem Spiel gesperrt.",
+            _ =>
+                "Reguläre Save-Änderungen erstellen automatisch ein Backup. " +
+                "Quicksaves und manuelle Saves können auch bei laufendem ETS2/ATS bearbeitet werden. " +
+                "Autosaves und Profiländerungen bleiben bei laufendem Spiel gesperrt."
+        };
+
         var result = MessageBox.Show(
-            message + "\n\nReguläre Save-Änderungen erstellen automatisch ein Backup. " +
-            "Quicksaves und manuelle Saves können auch bei laufendem ETS2/ATS bearbeitet werden. " +
-            "Autosaves und Profiländerungen bleiben bei laufendem Spiel gesperrt.",
+            message + "\n\n" + note,
             title,
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning,
