@@ -18,6 +18,9 @@ public partial class MainViewModel
     private string? _saveEditorLastEditedFilePath;
     private ScsSaveKind? _saveEditorLastEditedSaveKind;
     private DateTimeOffset? _saveEditorLastEditedLastWriteTimeUtc;
+    // A reload performs an awaited inspection and must not also start one via the
+    // SelectedSave property callback; otherwise the status updates can race.
+    private bool _suppressSaveEditorAutomaticInspection;
 
     [ObservableProperty] private GameType _saveEditorSelectedGame = GameType.Ets2;
     [ObservableProperty] private ScsProfileReference? _saveEditorSelectedProfile;
@@ -252,7 +255,8 @@ public partial class MainViewModel
 
     partial void OnSaveEditorSelectedSaveChanged(ScsSaveReference? value)
     {
-        _ = InspectSaveEditorVehicleStateAsync(value);
+        if (!_suppressSaveEditorAutomaticInspection)
+            _ = InspectSaveEditorVehicleStateAsync(value);
     }
 
     partial void OnSaveEditorSelectedTruckChanged(ScsVehicleInventoryItem? value) =>
@@ -543,11 +547,16 @@ public partial class MainViewModel
                 _saveEditorLastEditedLastWriteTimeUtc);
             _saveEditorLastEditedLastWriteTimeUtc =
                 File.GetLastWriteTimeUtc(_saveEditorLastEditedFilePath);
-            SaveEditorStatusText = "Das letzte Save-Editor-Backup wurde wiederhergestellt.";
             await _logger.WriteAsync(
                 "INFO",
                 $"Save editor backup restored. Backup={SaveEditorLastBackupPath}; Target={_saveEditorLastEditedFilePath}");
             await ReloadCurrentSaveEditorSelectionAsync();
+            // Keep an inspection failure visible instead of masking it as success.
+            if (SaveEditorSelectedSave is not null &&
+                SaveEditorStatusText.StartsWith("Save geladen ·", StringComparison.Ordinal))
+            {
+                SaveEditorStatusText = "Das letzte Save-Editor-Backup wurde wiederhergestellt.";
+            }
         }
         catch (Exception ex)
         {
@@ -807,9 +816,22 @@ public partial class MainViewModel
                 $"Save editor change completed. Operation={result.Operation}; File={result.FilePath}; Backup={result.BackupPath}; OriginalSha={result.OriginalSha256}; UpdatedSha={result.UpdatedSha256}");
 
             if (refreshProfiles)
+            {
                 await RefreshSaveEditorAsync();
+            }
             else
+            {
                 await ReloadCurrentSaveEditorSelectionAsync();
+                // The reload ordinarily displays "Save geladen", hiding the last edit.
+                // Report success only if re-inspection succeeded; keep errors visible.
+                if (SaveEditorSelectedSave is not null &&
+                    SaveEditorStatusText.StartsWith("Save geladen ·", StringComparison.Ordinal))
+                {
+                    SaveEditorStatusText = exposeBackupForRestore
+                        ? $"{operationName} erfolgreich gespeichert. Sicherheits-Backup wurde erstellt."
+                        : $"{operationName} erfolgreich gespeichert.";
+                }
+            }
 
             await _logger.WriteAsync(
                 "INFO",
@@ -842,16 +864,31 @@ public partial class MainViewModel
         foreach (var save in saves)
             SaveEditorSaves.Add(save);
 
-        SaveEditorSelectedSave =
-            saves.FirstOrDefault(item =>
-                string.Equals(
-                    item.SaveDirectory,
-                    saveDirectory,
-                    StringComparison.OrdinalIgnoreCase))
-            ?? saves.FirstOrDefault();
+        // Prevent a second, unawaited inspection triggered by the selection setter.
+        _suppressSaveEditorAutomaticInspection = true;
+        try
+        {
+            SaveEditorSelectedSave =
+                saves.FirstOrDefault(item =>
+                    string.Equals(
+                        item.SaveDirectory,
+                        saveDirectory,
+                        StringComparison.OrdinalIgnoreCase))
+                ?? saves.FirstOrDefault();
+        }
+        finally
+        {
+            _suppressSaveEditorAutomaticInspection = false;
+        }
 
-        if (SaveEditorSelectedSave is not null)
-            await InspectSaveEditorVehicleStateAsync(SaveEditorSelectedSave);
+        if (SaveEditorSelectedSave is null)
+        {
+            SaveEditorStatusText =
+                "Der Schreibvorgang wurde abgeschlossen, der Save konnte danach jedoch nicht erneut gefunden werden.";
+            return;
+        }
+
+        await InspectSaveEditorVehicleStateAsync(SaveEditorSelectedSave);
     }
 
     private void ClearSaveEditorSaveState()
