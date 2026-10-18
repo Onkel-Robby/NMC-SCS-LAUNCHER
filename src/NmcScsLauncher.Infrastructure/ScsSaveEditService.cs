@@ -63,10 +63,17 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         Directory.CreateDirectory(backupDirectory);
 
         var backupPath = Path.Combine(backupDirectory, Path.GetFileName(targetPath));
-        File.Copy(targetPath, backupPath, overwrite: false);
+        await CopyFileAsync(targetPath, backupPath, cancellationToken);
 
-        var originalSha256 = liveOriginalSha256
-            ?? await ComputeSha256Async(targetPath, cancellationToken);
+        // Record the checksum of the bytes actually preserved in the backup.
+        var originalSha256 = await ComputeSha256Async(backupPath, cancellationToken);
+        if (isLiveWrite &&
+            !string.Equals(originalSha256, liveOriginalSha256, StringComparison.Ordinal))
+        {
+            throw new ScsSaveEditException(
+                "Die Save-Datei hat sich während der Backup-Erstellung verändert. " +
+                "Die Änderung wurde abgebrochen; bitte den Save neu laden.");
+        }
         var tempPath = Path.Combine(
             Path.GetDirectoryName(targetPath)!,
             $".nmc-save-edit-{Guid.NewGuid():N}.tmp");
@@ -150,7 +157,7 @@ public sealed class ScsSaveEditService : IScsSaveEditService
 
         try
         {
-            File.Copy(fullBackupPath, tempPath, overwrite: false);
+            await CopyFileAsync(fullBackupPath, tempPath, cancellationToken);
             _ = await _codec.ReadAsync(tempPath, cancellationToken);
             ValidateExpectedLastWriteTime(
                 targetPath,
@@ -257,6 +264,31 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             throw new ScsSaveEditException($"SII-Datei wurde nicht gefunden: {fullPath}");
 
         return fullPath;
+    }
+
+    private static async Task CopyFileAsync(
+        string sourcePath,
+        string destinationPath,
+        CancellationToken cancellationToken)
+    {
+        const int bufferSize = 128 * 1024;
+        await using var source = new FileStream(
+            sourcePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete,
+            bufferSize,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var destination = new FileStream(
+            destinationPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        await source.CopyToAsync(destination, bufferSize, cancellationToken);
+        await destination.FlushAsync(cancellationToken);
     }
 
     private static async Task<string> ComputeSha256Async(
