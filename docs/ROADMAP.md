@@ -5,6 +5,7 @@ Status: `[ ]` geplant · `[~]` externe Verifikation offen · `[x]` implementiert
 ## Version 1.0.0
 - [x] Projektbasis, WPF-Shell, DI, Persistenz und Logging
 - [x] Steam-/ETS2-/ATS-Erkennung inklusive zusätzlicher Steam-Libraries
+- [~] erweiterte Windows-Steam-Erkennung für zusätzliche Installationsorte (Steam-Prozess, App-Paths-Registry und verbreitete Ordner auf lokalen Laufwerken), fehlende/veraltete App-Manifeste und Erhalt eines gültigen manuellen Spielpfads bei fehlgeschlagenem Steam-Scan; CI-Prüfung und externer Feldtest beim ATS-Tester stehen aus
 - [x] manuelle Spielpfade
 - [x] getrennte Modsets pro Spiel
 - [x] direkter Mod-Ordner pro Modset ohne zusätzliche SCS-Pfadverschachtelung
