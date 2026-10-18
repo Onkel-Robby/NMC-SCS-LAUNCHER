@@ -26,6 +26,7 @@ public partial class MainViewModel
     [ObservableProperty] private ScsVehicleInventoryItem? _saveEditorSelectedTrailer;
     [ObservableProperty] private string _saveEditorStatusText = "Spiel auswählen und Profile laden.";
     [ObservableProperty] private string _saveEditorGameHome = "–";
+    [ObservableProperty] private string _saveEditorCloudNotice = string.Empty;
     [ObservableProperty] private string _saveEditorProfileNameText = string.Empty;
     [ObservableProperty] private string _saveEditorMoneyText = string.Empty;
     [ObservableProperty] private string _saveEditorExperienceText = string.Empty;
@@ -109,38 +110,43 @@ public partial class MainViewModel
                 break;
             }
 
-            SaveEditorGameHome = home;
+            // Local steam_profiles usually holds machine-specific settings,
+            // while actual Steam Cloud game.sii saves live in Steam userdata.
+            var remoteProfiles = await _saveEditorLocator.FindSteamCloudProfilesAsync(SaveEditorSelectedGame);
+            var combined = remoteProfiles.Concat(profiles)
+                .DistinctBy(static item => item.ProfileDirectory, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
             var previousProfilePath = SaveEditorSelectedProfile?.ProfileDirectory;
             SaveEditorProfiles.Clear();
-            foreach (var profile in profiles)
-            {
+            foreach (var profile in combined)
                 SaveEditorProfiles.Add(profile);
-            }
 
             SaveEditorSelectedProfile =
-                profiles.FirstOrDefault(item =>
-                    string.Equals(
-                        item.ProfileDirectory,
-                        previousProfilePath,
-                        StringComparison.OrdinalIgnoreCase))
-                ?? profiles.FirstOrDefault();
+                combined.FirstOrDefault(item =>
+                    string.Equals(item.ProfileDirectory, previousProfilePath, StringComparison.OrdinalIgnoreCase))
+                ?? combined.FirstOrDefault();
+            SaveEditorGameHome = SaveEditorSelectedProfile?.GameHomeDirectory ?? home;
 
             if (SaveEditorSelectedProfile is null)
             {
                 ClearSaveEditorSaveState();
                 SaveEditorStatusText =
                     $"{GameDefinition.For(SaveEditorSelectedGame).DisplayName}: keine Profile mit profile.sii gefunden. " +
-                    "Bitte mit „Profilordner wählen“ das SCS-Spielverzeichnis auswählen.";
+                    "Dokumenten- und Steam-Cloud-Verzeichnisse geprüft. Bitte Profilpfade kontrollieren.";
                 await _logger.WriteAsync("WARN",
                     $"Save editor found no profiles for {SaveEditorSelectedGame}. " +
-                    $"Searched directories: {string.Join("; ", attemptedPaths)}; First candidate: {home}");
+                    $"Searched document directories: {string.Join("; ", attemptedPaths)}; " +
+                    $"First candidate: {home}; Remote Steam profiles: {remoteProfiles.Count}");
             }
             else
             {
                 SaveEditorStatusText =
-                    $"{profiles.Count} Profil(e) gefunden in {home}. Profil und Save auswählen.";
+                    $"{combined.Length} Profil(e) gefunden (davon {remoteProfiles.Count} Steam Cloud). " +
+                    "Profil und Save auswählen.";
                 await _logger.WriteAsync("INFO",
-                    $"Save editor profiles found. Game={SaveEditorSelectedGame}; Home={home}; Count={profiles.Count}");
+                    $"Save editor profiles found. Game={SaveEditorSelectedGame}; DocumentHome={home}; " +
+                    $"DocumentCount={profiles.Count}; RemoteCloudCount={remoteProfiles.Count}");
             }
         }
         catch (Exception ex)
@@ -237,6 +243,10 @@ public partial class MainViewModel
     partial void OnSaveEditorSelectedProfileChanged(ScsProfileReference? value)
     {
         SaveEditorProfileNameText = value?.DisplayName ?? string.Empty;
+        SaveEditorCloudNotice = value?.StorageKind == ScsProfileStorageKind.SteamCloudRemote
+            ? "Steam-Cloud-Profil aus Steam userdata: Saves können angezeigt werden. " +
+              "Änderungen und Wiederherstellung sind bis zur sicheren Cloud-Freigabe gesperrt."
+            : string.Empty;
         _ = LoadSaveEditorSavesAsync(value);
     }
 
@@ -260,6 +270,9 @@ public partial class MainViewModel
             SaveEditorStatusText = "Bitte zuerst ein Profil auswählen.";
             return;
         }
+
+        if (RejectRemoteSteamCloudWrite())
+            return;
 
         var newName = SaveEditorProfileNameText.Trim();
         var cloudWarning = profile.StorageKind == ScsProfileStorageKind.SteamCloud
@@ -496,6 +509,9 @@ public partial class MainViewModel
     [RelayCommand]
     private async Task RestoreSaveEditorLastBackupAsync()
     {
+        if (RejectRemoteSteamCloudWrite())
+            return;
+
         if (_saveEditorSaveEditService is null ||
             string.IsNullOrWhiteSpace(_saveEditorLastEditedFilePath) ||
             SaveEditorLastBackupPath == "–")
@@ -693,6 +709,17 @@ public partial class MainViewModel
         }
     }
 
+    private bool RejectRemoteSteamCloudWrite()
+    {
+        if (SaveEditorSelectedProfile?.StorageKind != ScsProfileStorageKind.SteamCloudRemote)
+            return false;
+
+        SaveEditorStatusText =
+            "Steam-Cloud-Profil ist vorerst schreibgeschützt. " +
+            "Direkte Änderungen in Steam userdata sind wegen der Cloud-Synchronisierung gesperrt.";
+        return true;
+    }
+
     private async Task ExecuteSelectedSaveEditAsync(
         string title,
         string confirmationMessage,
@@ -703,6 +730,9 @@ public partial class MainViewModel
             SaveEditorStatusText = "Bitte zuerst einen Save auswählen.";
             return;
         }
+
+        if (RejectRemoteSteamCloudWrite())
+            return;
 
         if (!_confirmationService.ConfirmSaveEdit(title, confirmationMessage))
             return;
@@ -721,6 +751,9 @@ public partial class MainViewModel
             return;
         }
 
+        if (RejectRemoteSteamCloudWrite())
+            return;
+
         if (!_confirmationService.ConfirmSaveEdit(title, confirmationMessage))
             return;
 
@@ -733,7 +766,8 @@ public partial class MainViewModel
         bool refreshProfiles = false,
         bool exposeBackupForRestore = true)
     {
-        if (IsBusy) return;
+        if (IsBusy || RejectRemoteSteamCloudWrite())
+            return;
 
         IsBusy = true;
         var timer = Stopwatch.StartNew();
