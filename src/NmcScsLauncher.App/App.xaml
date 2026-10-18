@@ -425,6 +425,10 @@
             <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
         </Style>
 
+        <!-- Insets applied to actual DataGrid cell content, not only DataGridCell.Padding.
+             Some WPF column templates do not transfer that Padding to their presenters. -->
+        <Thickness x:Key="NmcTableContentInset">14,0,8,0</Thickness>
+
         <!-- Scoped modern tables used by Modsets, local Mods and Steam Workshop only.
              Keep all other DataGrids and Save Editor controls unchanged. -->
         <Style x:Key="NmcTableRowStyle" TargetType="DataGridRow"
@@ -462,7 +466,8 @@
 
         <Style x:Key="NmcTableCellStyle" TargetType="DataGridCell"
                BasedOn="{StaticResource {x:Type DataGridCell}}">
-            <Setter Property="Padding" Value="12,8" />
+            <!-- Cell visuals receive their inset directly through the shared content styles. -->
+            <Setter Property="Padding" Value="0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Background" Value="Transparent" />
@@ -490,6 +495,7 @@
 
         <Style x:Key="NmcTableNameTextStyle" TargetType="TextBlock"
                BasedOn="{StaticResource GridPathTextStyle}">
+            <Setter Property="Margin" Value="{StaticResource NmcTableContentInset}" />
             <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -497,6 +503,7 @@
 
         <Style x:Key="NmcTableMetaTextStyle" TargetType="TextBlock"
                BasedOn="{StaticResource GridPathTextStyle}">
+            <Setter Property="Margin" Value="{StaticResource NmcTableContentInset}" />
             <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
             <Setter Property="FontSize" Value="12" />
         </Style>
