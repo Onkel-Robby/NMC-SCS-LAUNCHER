@@ -3,14 +3,20 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:NmcScsLauncher.App"
         Title="NMC SCS LAUNCHER"
-        Width="1280" Height="820" MinWidth="1080" MinHeight="700"
+        Width="1320" Height="840" MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource WindowBackgroundBrush}"
         Foreground="{StaticResource PrimaryTextBrush}"
         Icon="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher.ico">
+    <Window.Resources>
+        <!-- Launcher-page typography only: existing dialog layouts are preserved. -->
+        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="FontSize" Value="14" />
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="252" />
+            <ColumnDefinition Width="274" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
@@ -50,6 +56,7 @@
                                 <TextBlock Text="Übersicht"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -64,6 +71,7 @@
                                 <TextBlock Text="Euro Truck Simulator 2"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -78,6 +86,7 @@
                                 <TextBlock Text="American Truck Simulator"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -92,6 +101,7 @@
                                 <TextBlock Text="Modsets"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -106,6 +116,7 @@
                                 <TextBlock Text="Workshop"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -120,6 +131,7 @@
                                 <TextBlock Text="Save-Editor"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -134,6 +146,7 @@
                                 <TextBlock Text="Einstellungen"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -148,6 +161,7 @@
                                 <TextBlock Text="Info"
                                            VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis"
+                                           MaxWidth="165"
                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
                             </StackPanel>
                         </ListBoxItem>
@@ -159,10 +173,10 @@
                         <StackPanel>
                             <TextBlock Text="AKTIVES MODSET" Style="{StaticResource OverlineStyle}" />
                             <TextBlock Text="{Binding SelectedModsetName}" Margin="0,4,0,0" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding SelectedModsetGameText}" Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SelectedModsetGameText}" Margin="0,3,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="12,0,0,0" />
+                    <TextBlock Text="{Binding VersionText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="12,0,0,0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -273,17 +287,32 @@
                         <StackPanel Margin="34,32,34,32">
                             <TextBlock Text="Modsets" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Getrennte Mod-Ordner erstellen, importieren, duplizieren und starten. Profile bleiben im normalen SCS-Dokumentenpfad." Margin="0,7,0,22" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
-                            <Grid Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding ModsetCountText}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center"/><StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,9,0"/><Button Content="+ Neu" Command="{Binding CreateModsetCommand}" Margin="0,0,7,0"/><Button Content="Importieren" Command="{Binding ImportModsetCommand}" Margin="0,0,7,0"/><Button Content="Bearbeiten" Command="{Binding EditModsetCommand}" Margin="0,0,7,0"/><Button Content="Duplizieren" Command="{Binding DuplicateSelectedModsetCommand}" Margin="0,0,7,0"/><Button Content="Mod-Ordner öffnen" Command="{Binding OpenModsetHomeCommand}" Margin="0,0,7,0"/><Button Content="Entfernen" Command="{Binding RemoveModsetCommand}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></Grid>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="{Binding ModsetCountText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                                <WrapPanel Grid.Row="1" Margin="0,10,0,0">
+                                    <Button Content="Modset starten" Command="{Binding LaunchSelectedModsetCommand}" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,9,8"/>
+                                    <Button Content="+ Neu" Command="{Binding CreateModsetCommand}" Margin="0,0,7,8"/>
+                                    <Button Content="Importieren" Command="{Binding ImportModsetCommand}" Margin="0,0,7,8"/>
+                                    <Button Content="Bearbeiten" Command="{Binding EditModsetCommand}" Margin="0,0,7,8"/>
+                                    <Button Content="Duplizieren" Command="{Binding DuplicateSelectedModsetCommand}" Margin="0,0,7,8"/>
+                                    <Button Content="Mod-Ordner öffnen" Command="{Binding OpenModsetHomeCommand}" Margin="0,0,7,8"/>
+                                    <Button Content="Entfernen" Command="{Binding RemoveModsetCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,0,0,8"/>
+                                </WrapPanel>
+                            </Grid>
                             <Border Margin="0,0,0,12" Padding="12" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
                                 <StackPanel>
                                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Duplizierung" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding DuplicationProgress, StringFormat={}{0:F0}%}" Foreground="{StaticResource SecondaryTextBrush}"/></Grid>
                                     <ProgressBar Minimum="0" Maximum="100" Value="{Binding DuplicationProgress}" Height="7" Margin="0,8,0,7" />
-                                    <TextBlock Text="{Binding DuplicationProgressText}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="11" />
+                                    <TextBlock Text="{Binding DuplicationProgressText}" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" />
                                 </StackPanel>
                             </Border>
                             <local:ModsetBackupPanel />
-                            <DataGrid ItemsSource="{Binding Modsets}" SelectedItem="{Binding SelectedModset}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="210">
-                                <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180"/><DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="90"/><DataGridTextColumn Header="Mod-Ordner" Binding="{Binding ModFolderDisplayPath}" Width="*"/><DataGridTextColumn Header="Letzter Start" Binding="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="140"/><DataGridCheckBoxColumn Header="Verwaltet" Binding="{Binding IsManagedDirectory}" Width="80"/></DataGrid.Columns>
+                            <DataGrid ItemsSource="{Binding Modsets}" SelectedItem="{Binding SelectedModset}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="210" MaxHeight="300">
+                                <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180"/><DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="90"/><DataGridTextColumn Header="Mod-Ordner" Binding="{Binding ModFolderDisplayPath}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}"/><DataGridTextColumn Header="Letzter Start" Binding="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="140"/><DataGridCheckBoxColumn Header="Verwaltet" Binding="{Binding IsManagedDirectory}" Width="80"/></DataGrid.Columns>
                             </DataGrid>
 
                             <Border Margin="0,16,0,0" Padding="18" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
@@ -318,16 +347,16 @@
                                             <ColumnDefinition Width="150" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Margin="0,0,12,0">
-                                            <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                            <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
                                             <TextBox Text="{Binding LocalModSearchText, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                            <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                            <ComboBox ItemsSource="{Binding LocalModSortModes}" SelectedItem="{Binding LocalModSortMode}" Height="34" />
+                                            <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                            <ComboBox ItemsSource="{Binding LocalModSortModes}" SelectedItem="{Binding LocalModSortMode}" Height="40" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Typ" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                            <ComboBox ItemsSource="{Binding LocalModTypeFilters}" SelectedItem="{Binding LocalModTypeFilter}" Height="34" />
+                                            <TextBlock Text="Typ" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                            <ComboBox ItemsSource="{Binding LocalModTypeFilters}" SelectedItem="{Binding LocalModTypeFilter}" Height="40" />
                                         </StackPanel>
                                     </Grid>
 
@@ -338,13 +367,13 @@
                                               CanUserAddRows="False"
                                               HeadersVisibility="Column"
                                               MinHeight="260"
-                                              MaxHeight="420">
+                                              MaxHeight="480">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Mod-Name / Datei" Binding="{Binding Name}" Width="260" />
                                             <DataGridTextColumn Header="Typ" Binding="{Binding TypeText}" Width="85" />
                                             <DataGridTextColumn Header="Größe" Binding="{Binding SizeText}" Width="105" />
                                             <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
-                                            <DataGridTextColumn Header="Pfad" Binding="{Binding Path}" Width="*" />
+                                            <DataGridTextColumn Header="Pfad" Binding="{Binding Path}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}" />
                                         </DataGrid.Columns>
                                     </DataGrid>
 
@@ -373,7 +402,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Spiel" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding WorkshopGames}" SelectedItem="{Binding WorkshopSelectedGame}" Height="34" Padding="8,5" />
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding WorkshopGames}" SelectedItem="{Binding WorkshopSelectedGame}" Height="40" Padding="8,5" />
                                     <TextBlock Grid.Column="2" Text="{Binding WorkshopItemCountText}" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="18,0,0,0" />
                                     <Button Grid.Column="3" Content="Aktualisieren" Command="{Binding RefreshWorkshopCommand}" />
                                 </Grid>
@@ -387,16 +416,16 @@
                                         <ColumnDefinition Width="150" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Margin="0,0,12,0">
-                                        <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
+                                        <TextBlock Text="Suche" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
                                         <TextBox Text="{Binding WorkshopSearchText, UpdateSourceTrigger=PropertyChanged}" Padding="9,7" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="0,0,12,0">
-                                        <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <ComboBox ItemsSource="{Binding WorkshopSortModes}" SelectedItem="{Binding WorkshopSortMode}" Height="34" Padding="8,5" />
+                                        <TextBlock Text="Sortierung" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding WorkshopSortModes}" SelectedItem="{Binding WorkshopSortMode}" Height="40" Padding="8,5" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Titel-Filter" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <ComboBox ItemsSource="{Binding WorkshopTitleFilters}" SelectedItem="{Binding WorkshopTitleFilter}" Height="34" Padding="8,5" />
+                                        <TextBlock Text="Titel-Filter" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding WorkshopTitleFilters}" SelectedItem="{Binding WorkshopTitleFilter}" Height="40" Padding="8,5" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -404,18 +433,18 @@
                             <Border Margin="0,0,0,12" Padding="14" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="8">
                                 <StackPanel>
                                     <TextBlock Text="{Binding WorkshopStatusText}" TextWrapping="Wrap" />
-                                    <TextBlock Text="Gefundene Workshop-Pfade" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,10,0,3" />
-                                    <TextBlock Text="{Binding WorkshopRootsText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" />
+                                    <TextBlock Text="Gefundene Workshop-Pfade" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,10,0,3" />
+                                    <TextBlock Text="{Binding WorkshopRootsText}" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
 
-                            <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330">
+                            <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330" MaxHeight="540">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Mod-Name" Binding="{Binding DisplayName}" Width="260" />
                                     <DataGridTextColumn Header="PublishedFileId" Binding="{Binding PublishedFileId}" Width="135" />
                                     <DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="80" />
                                     <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding DisplayLastUpdatedUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
-                                    <DataGridTextColumn Header="Lokaler Workshop-Ordner" Binding="{Binding ContentPath}" Width="*" />
+                                    <DataGridTextColumn Header="Lokaler Workshop-Ordner" Binding="{Binding ContentPath}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}" />
                                 </DataGrid.Columns>
                             </DataGrid>
 
@@ -462,21 +491,21 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="Spiel" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <ComboBox ItemsSource="{Binding SaveEditorGames}" SelectedItem="{Binding SaveEditorSelectedGame}" Height="34" Padding="8,5" />
+                                        <TextBlock Text="Spiel" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorGames}" SelectedItem="{Binding SaveEditorSelectedGame}" Height="40" Padding="8,5" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Profil" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <ComboBox ItemsSource="{Binding SaveEditorProfiles}" SelectedItem="{Binding SaveEditorSelectedProfile}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                        <TextBlock Text="Profil" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorProfiles}" SelectedItem="{Binding SaveEditorSelectedProfile}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="3">
-                                        <TextBlock Text="Save" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" Margin="0,0,0,4" />
-                                        <ComboBox ItemsSource="{Binding SaveEditorSaves}" SelectedItem="{Binding SaveEditorSelectedSave}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                        <TextBlock Text="Save" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <ComboBox ItemsSource="{Binding SaveEditorSaves}" SelectedItem="{Binding SaveEditorSelectedSave}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
 
-                            <TextBlock Text="{Binding SaveEditorGameHome}" Margin="2,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding SaveEditorGameHome}" Margin="2,8,0,0" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
                             <TextBlock Text="{Binding SaveEditorCloudNotice}" Margin="2,8,0,0"
                                        Foreground="{StaticResource WarningBrush}" FontSize="12" TextWrapping="Wrap" />
 
@@ -492,19 +521,19 @@
                                         <StackPanel>
                                             <TextBlock Text="Profil &amp; Karriere" FontSize="18" FontWeight="SemiBold" />
                                             <TextBlock Text="Änderungen werden erst nach Bestätigung angewendet." Foreground="{StaticResource SecondaryTextBrush}" Margin="0,4,0,14" />
-                                            <TextBlock Text="Profilname" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Profilname" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorProfileNameText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                                 <Button Grid.Column="1" Content="Umbenennen" Command="{Binding RenameSaveEditorProfileCommand}" Margin="8,0,0,0" />
                                             </Grid>
-                                            <TextBlock Text="Geld" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Geld" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorMoneyText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                                 <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorMoneyCommand}" Margin="8,0,0,0" />
                                             </Grid>
-                                            <TextBlock Text="Erfahrungspunkte (XP)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Erfahrungspunkte (XP)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorExperienceText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
@@ -525,19 +554,19 @@
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel>
-                                                    <TextBlock Text="ADR-Maske" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="ADR-Maske" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorAdrMaskText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" Padding="8,6" />
-                                                    <TextBlock Text="Fernfahrten" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Fernfahrten" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorLongDistanceText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" Padding="8,6" />
-                                                    <TextBlock Text="Hochwertige Fracht" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Hochwertige Fracht" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorHighValueCargoText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" Padding="8,6" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Zerbrechliche Fracht" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Zerbrechliche Fracht" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorFragileCargoText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" Padding="8,6" />
-                                                    <TextBlock Text="Eilaufträge" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Eilaufträge" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorUrgentDeliveryText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,8" Padding="8,6" />
-                                                    <TextBlock Text="Eco-Driving" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Eco-Driving" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorEcoDrivingText, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" Padding="8,6" />
                                                 </StackPanel>
                                             </Grid>
@@ -550,10 +579,10 @@
                                             <TextBlock Text="Aktiver Truck" FontSize="18" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding SaveEditorActiveTruckText}" Foreground="{StaticResource SuccessBrush}" Margin="0,4,0,12" TextWrapping="Wrap" />
 
-                                            <TextBlock Text="Eigener Truck auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Eigener Truck auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                                <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" />
                                                 <Button Grid.Column="1" Content="Wechseln" Command="{Binding SwitchSaveEditorTruckCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
@@ -561,34 +590,34 @@
                                                 <Button Content="Truck reparieren" Command="{Binding RepairSaveEditorTruckCommand}" />
                                             </StackPanel>
 
-                                            <TextBlock Text="Kraftstoff (0–1)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Kraftstoff (0–1)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorFuelText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                                 <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorFuelCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
-                                            <TextBlock Text="Kilometerstand (Tacho + Truck-Manager)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Kilometerstand (Tacho + Truck-Manager)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorMileageText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                                 <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorMileageCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
-                                            <TextBlock Text="Motor · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Motor · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <ComboBox ItemsSource="{Binding SaveEditorEngines}" SelectedItem="{Binding SaveEditorSelectedEngine}" DisplayMemberPath="DataPath" Height="34" Padding="8,5" />
+                                                <ComboBox ItemsSource="{Binding SaveEditorEngines}" SelectedItem="{Binding SaveEditorSelectedEngine}" DisplayMemberPath="DataPath" Height="40" Padding="8,5" />
                                                 <Button Grid.Column="1" Content="Motor setzen" Command="{Binding SetSaveEditorEngineCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
-                                            <TextBlock Text="Getriebe · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Getriebe · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <ComboBox ItemsSource="{Binding SaveEditorTransmissions}" SelectedItem="{Binding SaveEditorSelectedTransmission}" DisplayMemberPath="DataPath" Height="34" Padding="8,5" />
+                                                <ComboBox ItemsSource="{Binding SaveEditorTransmissions}" SelectedItem="{Binding SaveEditorSelectedTransmission}" DisplayMemberPath="DataPath" Height="40" Padding="8,5" />
                                                 <Button Grid.Column="1" Content="Getriebe setzen" Command="{Binding SetSaveEditorTransmissionCommand}" Margin="8,0,0,0" />
                                             </Grid>
-                                            <TextBlock Text="Die Auswahl stammt nur aus bereits vorhandenen Trucks desselben Modells im aktuellen Save. Dadurch werden keine unbekannten Definitionen geraten." Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                            <TextBlock Text="Die Auswahl stammt nur aus bereits vorhandenen Trucks desselben Modells im aktuellen Save. Dadurch werden keine unbekannten Definitionen geraten." Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -599,16 +628,16 @@
                                             <TextBlock Text="Aktiver Trailer" FontSize="18" FontWeight="SemiBold" />
                                             <TextBlock Text="{Binding SaveEditorActiveTrailerText}" Foreground="{StaticResource SuccessBrush}" Margin="0,4,0,12" TextWrapping="Wrap" />
 
-                                            <TextBlock Text="Eigener Trailer auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Eigener Trailer auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                                <ComboBox ItemsSource="{Binding SaveEditorTrailers}" SelectedItem="{Binding SaveEditorSelectedTrailer}" DisplayMemberPath="DisplayName" Height="34" Padding="8,5" />
+                                                <ComboBox ItemsSource="{Binding SaveEditorTrailers}" SelectedItem="{Binding SaveEditorSelectedTrailer}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" />
                                                 <Button Grid.Column="1" Content="Wechseln" Command="{Binding SwitchSaveEditorTrailerCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
                                             <Button Content="Trailer reparieren" Command="{Binding RepairSaveEditorTrailerCommand}" HorizontalAlignment="Left" Margin="0,0,0,12" />
 
-                                            <TextBlock Text="Frachtgewicht (cargo_mass)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Frachtgewicht (cargo_mass)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorCargoMassText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
@@ -623,11 +652,11 @@
                                             <Grid Margin="0,12,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                 <StackPanel>
-                                                    <TextBlock Text="Ländercode" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Ländercode" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <TextBox Text="{Binding SaveEditorPlateCountry, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0" Padding="8,6" />
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2">
-                                                    <TextBlock Text="Hintergrund / Text RGB (nur custom)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                                    <TextBlock Text="Hintergrund / Text RGB (nur custom)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                                     <Grid Margin="0,4,0,0">
                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                         <TextBox Text="{Binding SaveEditorPlateBackgroundRgb, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
@@ -636,14 +665,14 @@
                                                 </StackPanel>
                                             </Grid>
 
-                                            <TextBlock Text="Truck-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Truck-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,10">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorTruckPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
                                                 <Button Grid.Column="1" Content="Truck setzen" Command="{Binding SetSaveEditorTruckPlateCommand}" Margin="8,0,0,0" />
                                             </Grid>
 
-                                            <TextBlock Text="Trailer-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="11" />
+                                            <TextBlock Text="Trailer-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
                                             <Grid Margin="0,4,0,0">
                                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                 <TextBox Text="{Binding SaveEditorTrailerPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
@@ -655,7 +684,7 @@
                                     <Border Margin="0,16,0,0" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="16">
                                         <StackPanel>
                                             <TextBlock Text="Sicherheits-Backup" FontSize="16" FontWeight="SemiBold" />
-                                            <TextBlock Text="{Binding SaveEditorLastBackupPath}" Margin="0,6,0,10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="11" />
+                                            <TextBlock Text="{Binding SaveEditorLastBackupPath}" Margin="0,6,0,10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" />
                                             <Button Content="Letztes Backup wiederherstellen" Command="{Binding RestoreSaveEditorLastBackupCommand}" HorizontalAlignment="Left" />
                                         </StackPanel>
                                     </Border>
@@ -671,7 +700,7 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="34,32,34,32" MaxWidth="900" HorizontalAlignment="Left">
+                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Stretch">
                             <TextBlock Text="Einstellungen" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Launcher-Verhalten und Standardpfade konfigurieren." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
                             <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="22">
@@ -704,7 +733,7 @@
 
                 <TabItem>
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="34,32,34,32" MaxWidth="850" HorizontalAlignment="Left">
+                        <StackPanel Margin="34,32,34,32" MaxWidth="1080" HorizontalAlignment="Stretch">
                             <Image Source="/NmcScsLauncher.App;component/Assets/nmc-scs-launcher-logo.png" Width="340" Height="113" Stretch="Uniform" HorizontalAlignment="Left" Margin="0,0,0,10" />
                             <TextBlock Text="NMC SCS LAUNCHER" Style="{StaticResource PageTitleStyle}" />
                             <TextBlock Text="Moderner Windows-Launcher für getrennte ETS2- und ATS-Modsets." Margin="0,7,0,24" Foreground="{StaticResource SecondaryTextBrush}" FontSize="15" />
