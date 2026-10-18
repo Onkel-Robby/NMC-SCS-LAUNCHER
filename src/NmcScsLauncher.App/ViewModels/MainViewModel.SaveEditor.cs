@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NmcScsLauncher.App.Services;
 using NmcScsLauncher.Core;
+using NmcScsLauncher.Infrastructure;
 
 namespace NmcScsLauncher.App.ViewModels;
 
@@ -82,16 +83,34 @@ public partial class MainViewModel
         IsBusy = true;
         try
         {
-            var home = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                GameDefinition.For(SaveEditorSelectedGame).HomeDirectoryName);
+            var candidates = ScsProfileHomeLocator.GetCandidates(
+                SaveEditorSelectedGame,
+                GetConfiguredSaveEditorHome(),
+                ScsProfileHomeLocator.GetDocumentRoots());
+            var home = candidates.FirstOrDefault() ?? GetDefaultSaveEditorHome();
+            IReadOnlyList<ScsProfileReference> profiles = Array.Empty<ScsProfileReference>();
+            var attemptedPaths = new List<string>();
+
+            foreach (var candidate in candidates)
+            {
+                if (!Directory.Exists(candidate))
+                    continue;
+
+                attemptedPaths.Add(candidate);
+                var discovered = await _saveEditorLocator.FindProfilesAsync(
+                    SaveEditorSelectedGame,
+                    candidate);
+
+                if (discovered.Count == 0)
+                    continue;
+
+                home = candidate;
+                profiles = discovered;
+                break;
+            }
 
             SaveEditorGameHome = home;
             var previousProfilePath = SaveEditorSelectedProfile?.ProfileDirectory;
-            var profiles = await _saveEditorLocator.FindProfilesAsync(
-                SaveEditorSelectedGame,
-                home);
-
             SaveEditorProfiles.Clear();
             foreach (var profile in profiles)
             {
@@ -110,12 +129,18 @@ public partial class MainViewModel
             {
                 ClearSaveEditorSaveState();
                 SaveEditorStatusText =
-                    $"{GameDefinition.For(SaveEditorSelectedGame).DisplayName}: keine Profile mit profile.sii gefunden.";
+                    $"{GameDefinition.For(SaveEditorSelectedGame).DisplayName}: keine Profile mit profile.sii gefunden. " +
+                    "Bitte mit „Profilordner wählen“ das SCS-Spielverzeichnis auswählen.";
+                await _logger.WriteAsync("WARN",
+                    $"Save editor found no profiles for {SaveEditorSelectedGame}. " +
+                    $"Searched directories: {string.Join("; ", attemptedPaths)}; First candidate: {home}");
             }
             else
             {
                 SaveEditorStatusText =
-                    $"{profiles.Count} Profil(e) gefunden. Profil und Save auswählen.";
+                    $"{profiles.Count} Profil(e) gefunden in {home}. Profil und Save auswählen.";
+                await _logger.WriteAsync("INFO",
+                    $"Save editor profiles found. Game={SaveEditorSelectedGame}; Home={home}; Count={profiles.Count}");
             }
         }
         catch (Exception ex)
@@ -131,14 +156,80 @@ public partial class MainViewModel
         }
     }
 
+    [RelayCommand]
+    private async Task ChooseSaveEditorProfileHomeAsync()
+    {
+        if (_saveEditorLocator is null)
+            return;
+
+        var selectedGame = SaveEditorSelectedGame;
+        var selected = _folderPicker.PickFolder(
+            $"Profilverzeichnis für {GameDefinition.For(selectedGame).DisplayName} wählen",
+            GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome());
+        if (selected is null)
+            return;
+
+        string home;
+        try
+        {
+            home = ScsProfileHomeLocator.NormalizeSelectedHome(selected);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            SaveEditorStatusText = "Der ausgewählte Profilordner ist ungültig.";
+            return;
+        }
+
+        if (!Directory.Exists(home))
+        {
+            SaveEditorStatusText = "Der ausgewählte Profilordner existiert nicht.";
+            return;
+        }
+
+        try
+        {
+            var profiles = await _saveEditorLocator.FindProfilesAsync(selectedGame, home);
+            if (profiles.Count == 0)
+            {
+                SaveEditorStatusText =
+                    "In diesem Verzeichnis wurden keine Profile gefunden. " +
+                    "Bitte den Ordner „Euro Truck Simulator 2“ bzw. „American Truck Simulator“ auswählen, " +
+                    "der „profiles“ oder „steam_profiles“ enthält.";
+                return;
+            }
+
+            if (selectedGame == GameType.Ets2)
+                _settings.Ets2ProfileHomePath = home;
+            else
+                _settings.AtsProfileHomePath = home;
+
+            await _settingsStore.SaveAsync(_settings);
+            await _logger.WriteAsync("INFO", $"Save editor profile home selected: {selectedGame}; Home={home}");
+            await RefreshSaveEditorAsync();
+        }
+        catch (Exception ex)
+        {
+            SaveEditorStatusText = "Der Profilordner konnte nicht übernommen werden. Details wurden protokolliert.";
+            await _logger.WriteAsync("ERROR", "Save editor profile home selection failed.", ex);
+        }
+    }
+
+    private string? GetConfiguredSaveEditorHome() =>
+        SaveEditorSelectedGame == GameType.Ets2
+            ? _settings.Ets2ProfileHomePath
+            : _settings.AtsProfileHomePath;
+
+    private string GetDefaultSaveEditorHome() =>
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            GameDefinition.For(SaveEditorSelectedGame).HomeDirectoryName);
+
     partial void OnSaveEditorSelectedGameChanged(GameType value)
     {
         SaveEditorProfiles.Clear();
         SaveEditorSelectedProfile = null;
         ClearSaveEditorSaveState();
-        SaveEditorGameHome = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            GameDefinition.For(value).HomeDirectoryName);
+        SaveEditorGameHome = GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome();
         SaveEditorStatusText =
             $"{GameDefinition.For(value).DisplayName}: auf „Profile laden“ klicken.";
     }
