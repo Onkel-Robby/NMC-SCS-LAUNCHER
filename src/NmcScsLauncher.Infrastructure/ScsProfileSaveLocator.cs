@@ -18,6 +18,36 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
         _steamLibraries = steamLibraries ?? throw new ArgumentNullException(nameof(steamLibraries));
     }
 
+    /// <summary>
+    /// Steam userdata profiles are read-only, even when selected through a manual home path.
+    /// Match the bounded userdata/account/app/remote/profiles layout, not arbitrary folder names.
+    /// </summary>
+    public static bool IsSteamCloudRemoteProfileDirectory(GameType gameType, string profileDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(profileDirectory))
+            return false;
+
+        try
+        {
+            var profile = new DirectoryInfo(Path.GetFullPath(profileDirectory));
+            var profiles = profile.Parent;
+            var remote = profiles?.Parent;
+            var app = remote?.Parent;
+            var account = app?.Parent;
+            var userdata = account?.Parent;
+            return string.Equals(profiles?.Name, "profiles", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(remote?.Name, "remote", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(app?.Name, GameDefinition.For(gameType).SteamAppId.ToString(),
+                    StringComparison.OrdinalIgnoreCase)
+                && account is not null && IsNumericDirectoryName(account.FullName)
+                && string.Equals(userdata?.Name, "userdata", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return false;
+        }
+    }
+
     public Task<IReadOnlyList<ScsProfileReference>> FindProfilesAsync(
         GameType gameType,
         string gameHomeDirectory,
@@ -198,13 +228,22 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
             if (!File.Exists(profileSii))
                 continue;
 
+            // A manually selected Steam userdata/remote home must not bypass the write lock.
+            var actualKind = IsSteamCloudRemoteProfileDirectory(gameType, info.FullName)
+                ? ScsProfileStorageKind.SteamCloudRemote
+                : storageKind;
+            var displayName = DecodeProfileDirectoryName(info.Name) ?? info.Name;
+            if (actualKind == ScsProfileStorageKind.SteamCloudRemote &&
+                storageKind != ScsProfileStorageKind.SteamCloudRemote)
+                displayName += " (Steam Cloud)";
+
             target.Add(new ScsProfileReference(
                 gameType,
-                storageKind,
+                actualKind,
                 homeDirectory,
                 info.FullName,
                 info.Name,
-                DecodeProfileDirectoryName(info.Name) ?? info.Name,
+                displayName,
                 profileSii));
         }
     }

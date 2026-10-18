@@ -711,7 +711,11 @@ public partial class MainViewModel
 
     private bool RejectRemoteSteamCloudWrite()
     {
-        if (SaveEditorSelectedProfile?.StorageKind != ScsProfileStorageKind.SteamCloudRemote)
+        var profile = SaveEditorSelectedProfile;
+        if (profile is null ||
+            (profile.StorageKind != ScsProfileStorageKind.SteamCloudRemote &&
+             !ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+                 profile.GameType, profile.ProfileDirectory)))
             return false;
 
         SaveEditorStatusText =

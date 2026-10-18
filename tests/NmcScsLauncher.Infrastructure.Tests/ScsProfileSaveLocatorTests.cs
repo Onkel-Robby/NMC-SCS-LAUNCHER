@@ -100,6 +100,27 @@ public sealed class ScsProfileSaveLocatorTests : IDisposable
     }
 
     [Fact]
+    public async Task ManuallySelectedSteamUserdataHomeCannotMasqueradeAsLocalProfile()
+    {
+        var remoteHome = Path.Combine(_root, "Steam", "userdata", "123456", "227300", "remote");
+        var profileDirectory = Path.Combine(remoteHome, "profiles", "AABBCCDD");
+        Directory.CreateDirectory(profileDirectory);
+        await File.WriteAllTextAsync(Path.Combine(profileDirectory, "profile.sii"), "SiiNunit");
+
+        var locator = new ScsProfileSaveLocator();
+        var profile = Assert.Single(await locator.FindProfilesAsync(GameType.Ets2, remoteHome));
+
+        Assert.Equal(ScsProfileStorageKind.SteamCloudRemote, profile.StorageKind);
+        Assert.Contains("(Steam Cloud)", profile.DisplayName);
+        Assert.True(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ets2, profile.ProfileDirectory));
+        Assert.False(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ats, profile.ProfileDirectory));
+        Assert.False(ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(
+            GameType.Ets2, Path.Combine(_root, "profiles", "AABBCCDD")));
+    }
+
+    [Fact]
     public async Task CloudProfileWithoutProfileSiiIsIgnored()
     {
         Directory.CreateDirectory(_root);
