@@ -13,6 +13,7 @@ Der neue **NMC Installer** ersetzt langfristig die sichtbare Inno-Setup-Oberflä
 - Optionale Desktop-Verknüpfung.
 - Startmenü-Verknüpfung.
 - Install, Repair und Uninstall.
+- Bestehende Installationen erkennen: „Reparieren“ für das aktuelle MSI; „Aktualisieren“ für einen anderen bereits installierten, über den MSI-Registry-Marker nachgewiesenen Build. Der Installationspfad bleibt dabei gesperrt und wird übernommen; die Ersetzung läuft weiterhin über Burn/MSI MajorUpgrade.
 - Silent-/Quiet-Modus für CI und automatisierte Bereitstellung.
 
 ## Branding
