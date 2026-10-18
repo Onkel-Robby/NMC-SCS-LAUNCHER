@@ -64,8 +64,9 @@ public sealed class ScsSaveEditServiceTests : IDisposable
     [Fact]
     public async Task Apply_AllowsGameSiiWhileGameIsRunningWithMatchingTimestamp()
     {
-        Directory.CreateDirectory(_root);
-        var target = Path.Combine(_root, "game.sii");
+        var saveDirectory = Path.Combine(_root, "save", "quicksave");
+        Directory.CreateDirectory(saveDirectory);
+        var target = Path.Combine(saveDirectory, "game.sii");
         await File.WriteAllTextAsync(target, "SiiNunit\n{\n money_account: 1\n}\n");
 
         var expectedLastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
@@ -88,8 +89,9 @@ public sealed class ScsSaveEditServiceTests : IDisposable
     [Fact]
     public async Task Apply_RejectsLiveWriteWhenSaveChangedSinceSelection()
     {
-        Directory.CreateDirectory(_root);
-        var target = Path.Combine(_root, "game.sii");
+        var saveDirectory = Path.Combine(_root, "save", "14");
+        Directory.CreateDirectory(saveDirectory);
+        var target = Path.Combine(saveDirectory, "game.sii");
         await File.WriteAllTextAsync(target, "SiiNunit\n{\n money_account: 1\n}\n");
 
         var expectedLastWrite = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
@@ -110,6 +112,59 @@ public sealed class ScsSaveEditServiceTests : IDisposable
 
         Assert.Contains("seit dem Einlesen verändert", exception.Message);
         Assert.Contains("money_account: 1", await File.ReadAllTextAsync(target));
+    }
+
+    [Theory]
+    [InlineData("autosave")]
+    [InlineData("autosave_drive")]
+    [InlineData("custom-save")]
+    public async Task Apply_RejectsLiveWriteForNonManualNonQuickSave(string saveDirectoryName)
+    {
+        var saveDirectory = Path.Combine(_root, "save", saveDirectoryName);
+        Directory.CreateDirectory(saveDirectory);
+        var target = Path.Combine(saveDirectory, "game.sii");
+        const string original = "SiiNunit\n{\n money_account: 1\n}\n";
+        await File.WriteAllTextAsync(target, original);
+
+        var service = new ScsSaveEditService(
+            new ScsPlainTextSaveCodec(),
+            new AlwaysRunningGuard(),
+            Path.Combine(_root, "backups"));
+        var expectedTime = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
+
+        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            service.ApplyAsync(new ScsSaveEditRequest(
+                target, "Money test", "SiiNunit\n{\n money_account: 2\n}\n",
+                ScsSaveWriteMode.AllowWhileGameRunning, expectedTime)));
+
+        Assert.Contains("Dieser Save-Typ", exception.Message);
+        Assert.Equal(original, await File.ReadAllTextAsync(target));
+    }
+
+    [Fact]
+    public async Task RestoreBackup_RejectsLiveWriteToAutoSave()
+    {
+        var saveDirectory = Path.Combine(_root, "save", "autosave");
+        Directory.CreateDirectory(saveDirectory);
+        var target = Path.Combine(saveDirectory, "game.sii");
+        const string original = "SiiNunit\n{\n money_account: 1\n}\n";
+        await File.WriteAllTextAsync(target, original);
+
+        var backupRoot = Path.Combine(_root, "backups");
+        Directory.CreateDirectory(backupRoot);
+        var backupPath = Path.Combine(backupRoot, "game.sii");
+        await File.WriteAllTextAsync(backupPath, "SiiNunit\n{\n money_account: 2\n}\n");
+
+        var service = new ScsSaveEditService(
+            new ScsPlainTextSaveCodec(), new AlwaysRunningGuard(), backupRoot);
+        var expectedTime = new DateTimeOffset(File.GetLastWriteTimeUtc(target));
+
+        var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
+            service.RestoreBackupAsync(
+                backupPath, target, ScsSaveWriteMode.AllowWhileGameRunning, expectedTime));
+
+        Assert.Contains("Dieser Save-Typ", exception.Message);
+        Assert.Equal(original, await File.ReadAllTextAsync(target));
     }
 
     [Fact]

@@ -59,7 +59,7 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
             if (!File.Exists(gameSii))
                 continue;
 
-            var kind = GetSaveKind(info.Name);
+            var kind = ScsSaveKindClassifier.Classify(info.Name);
             saves.Add(new ScsSaveReference(
                 profile.GameType,
                 profileDirectory,
@@ -134,18 +134,6 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
         }
     }
 
-    private static ScsSaveKind GetSaveKind(string directoryName)
-    {
-        if (directoryName.StartsWith("autosave", StringComparison.OrdinalIgnoreCase))
-            return ScsSaveKind.AutoSave;
-        if (directoryName.StartsWith("quicksave", StringComparison.OrdinalIgnoreCase))
-            return ScsSaveKind.QuickSave;
-        if (directoryName.All(char.IsDigit))
-            return ScsSaveKind.Manual;
-
-        return ScsSaveKind.Unknown;
-    }
-
     private static string GetSaveDisplayName(string directoryName, ScsSaveKind kind) => kind switch
     {
         ScsSaveKind.AutoSave => directoryName.Equals("autosave", StringComparison.OrdinalIgnoreCase)
@@ -163,4 +151,22 @@ public sealed class ScsProfileSaveLocator : IScsProfileSaveLocator
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)),
             StringComparison.OrdinalIgnoreCase);
+}
+
+internal static class ScsSaveKindClassifier
+{
+    // The same directory rule must protect both save discovery and live writes.
+    public static ScsSaveKind Classify(string directoryName)
+    {
+        if (string.IsNullOrEmpty(directoryName))
+            return ScsSaveKind.Unknown;
+        if (directoryName.StartsWith("autosave", StringComparison.OrdinalIgnoreCase))
+            return ScsSaveKind.AutoSave;
+        if (directoryName.StartsWith("quicksave", StringComparison.OrdinalIgnoreCase))
+            return ScsSaveKind.QuickSave;
+        if (directoryName.All(char.IsDigit))
+            return ScsSaveKind.Manual;
+
+        return ScsSaveKind.Unknown;
+    }
 }

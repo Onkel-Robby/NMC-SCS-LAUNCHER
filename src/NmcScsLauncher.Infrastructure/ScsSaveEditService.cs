@@ -184,6 +184,15 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         if (writeMode == ScsSaveWriteMode.AllowWhileGameRunning &&
             fileName.Equals("game.sii", StringComparison.OrdinalIgnoreCase))
         {
+            var saveDirectoryName = Path.GetFileName(Path.GetDirectoryName(targetPath));
+            if (ScsSaveKindClassifier.Classify(saveDirectoryName)
+                is not (ScsSaveKind.Manual or ScsSaveKind.QuickSave))
+            {
+                throw new ScsSaveEditException(
+                    "Dieser Save-Typ wird bei laufendem ETS2/ATS nicht verändert. " +
+                    "Quicksaves und manuelle Saves können direkt bearbeitet werden.");
+            }
+
             if (expectedLastWriteTimeUtc is null)
             {
                 throw new ScsSaveEditException(
