@@ -353,9 +353,56 @@
                                 </StackPanel>
                             </Border>
                             <local:ModsetBackupPanel />
-                            <DataGrid ItemsSource="{Binding Modsets}" SelectedItem="{Binding SelectedModset}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="210" MaxHeight="300">
-                                <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180"/><DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="90"/><DataGridTextColumn Header="Mod-Ordner" Binding="{Binding ModFolderDisplayPath}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}"/><DataGridTextColumn Header="Letzter Start" Binding="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="140"/><DataGridCheckBoxColumn Header="Verwaltet" Binding="{Binding IsManagedDirectory}" Width="80"/></DataGrid.Columns>
-                            </DataGrid>
+                            <Border Background="#111E2C" BorderBrush="#30465C" BorderThickness="1" CornerRadius="10" Padding="1">
+                                <DataGrid ItemsSource="{Binding Modsets}" SelectedItem="{Binding SelectedModset}"
+                                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                          HeadersVisibility="Column" MinHeight="144" MaxHeight="320"
+                                          Style="{StaticResource NmcModernTableStyle}" RowHeight="48">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Modset" Binding="{Binding Name}" SortMemberPath="Name"
+                                                            Width="180" ElementStyle="{StaticResource NmcTableNameTextStyle}" />
+                                        <DataGridTemplateColumn Header="Spiel" SortMemberPath="Game" Width="98">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#203B53" BorderBrush="#375D7B" BorderThickness="1"
+                                                        CornerRadius="6" Padding="8,4" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Game}" Foreground="#A9D8FF" FontSize="12" FontWeight="SemiBold" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Mod-Ordner" Binding="{Binding ModFolderDisplayPath}"
+                                                            SortMemberPath="ModFolderDisplayPath" Width="*" MinWidth="210"
+                                                            ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                        <DataGridTextColumn Header="Letzter Start"
+                                                            Binding="{Binding LastStartedAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                                            SortMemberPath="LastStartedAt" Width="165"
+                                                            ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                        <DataGridTemplateColumn Header="Status" SortMemberPath="IsManagedDirectory" Width="145">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#193C35" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left">
+                                                        <TextBlock FontSize="12" FontWeight="SemiBold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                                                    <Setter Property="Text" Value="Verwaltet" />
+                                                                    <Setter Property="Foreground" Value="#79E0C4" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsManagedDirectory}" Value="False">
+                                                                            <Setter Property="Text" Value="Nicht verwaltet" />
+                                                                            <Setter Property="Foreground" Value="#B7C7D9" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
 
                             <Border Margin="0,16,0,0" Padding="18" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12">
                                 <StackPanel>
@@ -402,22 +449,39 @@
                                         </StackPanel>
                                     </Grid>
 
-                                    <DataGrid ItemsSource="{Binding LocalModVisibleItems}"
-                                              SelectedItem="{Binding SelectedLocalMod}"
-                                              AutoGenerateColumns="False"
-                                              IsReadOnly="True"
-                                              CanUserAddRows="False"
-                                              HeadersVisibility="Column"
-                                              MinHeight="260"
-                                              MaxHeight="480">
-                                        <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Mod-Name / Datei" Binding="{Binding Name}" Width="300" ElementStyle="{StaticResource GridPathTextStyle}" />
-                                            <DataGridTextColumn Header="Typ" Binding="{Binding TypeText}" Width="85" />
-                                            <DataGridTextColumn Header="Größe" Binding="{Binding SizeText}" Width="105" />
-                                            <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
-                                            <DataGridTextColumn Header="Pfad" Binding="{Binding Path}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}" />
-                                        </DataGrid.Columns>
-                                    </DataGrid>
+                                    <Border Background="#111E2C" BorderBrush="#30465C" BorderThickness="1" CornerRadius="10" Padding="1">
+                                        <DataGrid ItemsSource="{Binding LocalModVisibleItems}"
+                                                  SelectedItem="{Binding SelectedLocalMod}"
+                                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                                  HeadersVisibility="Column" MinHeight="280" MaxHeight="520"
+                                                  Style="{StaticResource NmcModernTableStyle}" RowHeight="46">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Mod-Datei" Binding="{Binding Name}" SortMemberPath="Name"
+                                                                    Width="2*" MinWidth="230" ElementStyle="{StaticResource NmcTableNameTextStyle}" />
+                                                <DataGridTemplateColumn Header="Typ" SortMemberPath="TypeText" Width="90">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Border Background="#26384C" CornerRadius="6" Padding="8,4"
+                                                                    HorizontalAlignment="Left">
+                                                                <TextBlock Text="{Binding TypeText}" Foreground="#C4DBF0"
+                                                                           FontSize="12" FontWeight="SemiBold" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                                <DataGridTextColumn Header="Größe" Binding="{Binding SizeText}"
+                                                                    SortMemberPath="SizeText" Width="110"
+                                                                    ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                                <DataGridTextColumn Header="Geändert"
+                                                                    Binding="{Binding LastWriteTimeUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                                                    SortMemberPath="LastWriteTimeUtc" Width="165"
+                                                                    ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                                <DataGridTextColumn Header="Speicherort" Binding="{Binding Path}" SortMemberPath="Path"
+                                                                    Width="2.4*" MinWidth="220"
+                                                                    ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Border>
 
                                     <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                         <Button Content="Im Explorer öffnen" Command="{Binding OpenSelectedLocalModCommand}" />
@@ -480,15 +544,46 @@
                                 </StackPanel>
                             </Border>
 
-                            <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column" MinHeight="330" MaxHeight="540">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Mod-Name" Binding="{Binding DisplayName}" Width="330" ElementStyle="{StaticResource GridPathTextStyle}" />
-                                    <DataGridTextColumn Header="PublishedFileId" Binding="{Binding PublishedFileId}" Width="135" />
-                                    <DataGridTextColumn Header="Spiel" Binding="{Binding Game}" Width="80" />
-                                    <DataGridTextColumn Header="Zuletzt geändert" Binding="{Binding DisplayLastUpdatedUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}" Width="150" />
-                                    <DataGridTextColumn Header="Lokaler Workshop-Ordner" Binding="{Binding ContentPath}" Width="*" ElementStyle="{StaticResource GridPathTextStyle}" />
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <Border Background="#111E2C" BorderBrush="#30465C" BorderThickness="1" CornerRadius="10" Padding="1">
+                                <DataGrid ItemsSource="{Binding WorkshopVisibleItems}" SelectedItem="{Binding SelectedWorkshopItem}"
+                                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                          HeadersVisibility="Column" MinHeight="350" MaxHeight="600"
+                                          Style="{StaticResource NmcModernTableStyle}" RowHeight="58">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Workshop-Mod" SortMemberPath="DisplayName"
+                                                                Width="2.4*" MinWidth="260">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel VerticalAlignment="Center" MaxWidth="600">
+                                                        <TextBlock Text="{Binding DisplayName}"
+                                                                   Style="{StaticResource NmcTableNameTextStyle}" />
+                                                        <TextBlock Text="{Binding PublishedFileId, StringFormat='Workshop-ID: {0}'}"
+                                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                                   FontSize="11" Margin="0,3,0,0" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Spiel" SortMemberPath="Game" Width="98">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#203B53" BorderBrush="#375D7B" BorderThickness="1"
+                                                        CornerRadius="6" Padding="8,4" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Game}" Foreground="#A9D8FF" FontSize="12" FontWeight="SemiBold" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Aktualisiert"
+                                                            Binding="{Binding DisplayLastUpdatedUtc, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                                            SortMemberPath="DisplayLastUpdatedUtc" Width="175"
+                                                            ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                        <DataGridTextColumn Header="Workshop-Ordner" Binding="{Binding ContentPath}"
+                                                            SortMemberPath="ContentPath" Width="2.5*" MinWidth="235"
+                                                            ElementStyle="{StaticResource NmcTableMetaTextStyle}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Border>
 
                             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                                 <Button Content="Lokalen Ordner öffnen" Command="{Binding OpenSelectedWorkshopFolderCommand}" Margin="0,0,8,0" />
