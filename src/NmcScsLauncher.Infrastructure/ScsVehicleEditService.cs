@@ -1271,11 +1271,17 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             var unit = document.GetRequiredUniqueUnit(id);
             EnsureUnitType(unit, expectedUnitType, arrayPrefix);
 
+            var isTruck = string.Equals(
+                expectedUnitType, "vehicle", StringComparison.Ordinal);
+            var displayName = ScsVehicleDisplayNameResolver.Resolve(
+                document, unit, isTruck, item.Index);
+
             result.Add(new ScsVehicleInventoryItem(
                 id,
                 item.Index,
                 activeId is not null &&
-                string.Equals(id, activeId, StringComparison.Ordinal)));
+                string.Equals(id, activeId, StringComparison.Ordinal),
+                displayName));
         }
 
         return result;
