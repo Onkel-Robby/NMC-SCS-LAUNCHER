@@ -6,6 +6,11 @@ public sealed class LauncherSettings
 
     public string? AtsInstallPath { get; set; }
 
+    // Optional SCS profile-home overrides, independent of game installation folders.
+    public string? Ets2ProfileHomePath { get; set; }
+
+    public string? AtsProfileHomePath { get; set; }
+
     public string? DefaultModsetRoot { get; set; }
 
     public Guid? LastSelectedModsetId { get; set; }
