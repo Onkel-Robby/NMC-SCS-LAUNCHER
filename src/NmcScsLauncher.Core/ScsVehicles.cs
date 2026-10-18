@@ -9,7 +9,8 @@ public sealed record ScsActiveVehicleState(
 public sealed record ScsVehicleInventoryItem(
     string Id,
     int Slot,
-    bool IsActive);
+    bool IsActive,
+    string? DisplayName = null);
 
 public sealed record ScsVehicleInventory(
     string ActiveTruckId,
