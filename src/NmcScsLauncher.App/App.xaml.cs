@@ -33,6 +33,7 @@ public partial class App : Application
         services.AddSingleton<IScsProfileSaveLocator, ScsProfileSaveLocator>();
         services.AddSingleton<IScsProfileEditService, ScsProfileEditService>();
         services.AddSingleton<IScsVehicleEditService, ScsVehicleEditService>();
+        services.AddSingleton<IScsPowertrainDiscoveryService, ScsPowertrainDiscoveryService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -87,6 +88,8 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IScsProfileEditService>(),
             _serviceProvider.GetRequiredService<IScsVehicleEditService>(),
             _serviceProvider.GetRequiredService<IScsSaveEditService>());
+        viewModel.ConfigurePowertrainDiscoveryService(
+            _serviceProvider.GetRequiredService<IScsPowertrainDiscoveryService>());
 
         try
         {

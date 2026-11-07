@@ -13,6 +13,12 @@ internal sealed class SaveEditorTestHarness
     public Func<GameType, Task<IReadOnlyList<ScsProfileReference>>> FindCloudProfiles { get; set; } =
         _ => Task.FromResult<IReadOnlyList<ScsProfileReference>>([]);
     public Func<string, object?[], object?>? VehicleOperation { get; set; }
+    public Func<ScsSaveReference, Task<ScsActiveTruckPowertrain>> Powertrain { get; set; } =
+        _ => Task.FromException<ScsActiveTruckPowertrain>(new ScsSaveEditException("No powertrain in fixture"));
+    public Func<ScsSaveReference, Task<ScsActiveTruckPowertrainCatalog>> PowertrainCatalog { get; set; } =
+        _ => Task.FromException<ScsActiveTruckPowertrainCatalog>(new ScsSaveEditException("No powertrain catalog in fixture"));
+    public Func<ScsPowertrainDiscoveryRequest, CancellationToken, Task<ScsPowertrainDiscoveryResult>> DiscoverPowertrain { get; set; } =
+        (_, _) => Task.FromResult(new ScsPowertrainDiscoveryResult([], []));
     public Func<string, string, bool> Confirm { get; set; } = (_, _) => true;
     public MainViewModel ViewModel { get; }
 
@@ -50,12 +56,16 @@ internal sealed class SaveEditorTestHarness
                         save.DisplayName, null, [new(save.DisplayName, 0, true, save.DisplayName)], [])),
                     nameof(IScsVehicleEditService.GetActiveTruckMileageAsync) => Task.FromResult(12m),
                     nameof(IScsVehicleEditService.GetActiveTruckPowertrainAsync) =>
-                        Task.FromException<ScsActiveTruckPowertrain>(new ScsSaveEditException("No powertrain in fixture")),
+                        Powertrain(save),
+                    nameof(IScsVehicleEditService.GetActiveTruckPowertrainCatalogAsync) => PowertrainCatalog(save),
                     _ => VehicleOperation?.Invoke(method.Name, args)
                         ?? throw new InvalidOperationException(method.Name)
                 };
             }),
             Proxy<IScsSaveEditService>((method, _) => throw new InvalidOperationException(method.Name)));
+        ViewModel.ConfigurePowertrainDiscoveryService(
+            Proxy<IScsPowertrainDiscoveryService>((_, args) =>
+                DiscoverPowertrain((ScsPowertrainDiscoveryRequest)args[0]!, (CancellationToken)args[1]!)));
     }
 
     public static ScsProfileReference Profile(string name, GameType game = GameType.Ets2) =>

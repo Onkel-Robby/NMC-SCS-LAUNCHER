@@ -51,7 +51,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 ## Nach 1.0.0
 - [x] Kennzeichen-Länderauswahl aus PR #86: 36 ETS2-Länder / 21 ATS-Bundesstaaten plus Custom-RGB und manuelle Map-Mod-Codes; bestehende Werte getrennt für aktiven Truck/Trailer laden, Entwürfe bei Kontextwechseln leeren und veraltete Leseantworten verwerfen; Regressionstests für Parser, Schreib-/Lese-Rundläufe, ViewModel-Zustände und WPF-Bindings
-- [~] Windows-/Ingame-Abnahme der vervollständigten Kennzeichen-Auswahl für ETS2 und ATS nach [`SAVE_EDITOR_PLATES_TEST.md`](SAVE_EDITOR_PLATES_TEST.md); keine neuen Ingame-Ergebnisse durch automatisierte Tests behauptet
+- [x] Nutzerbestätigung vom 07.11.2026: Kennzeichen-Auswahl und vereinheitlichte Save-Editor-Oberfläche nach PR #87/#88 in ETS2 und ATS erfolgreich getestet. Externe Rückmeldung, kein vom Entwicklungsagenten durchgeführter Ingame-Test; keine Einzelprotokolle für sämtliche Sonderfälle.
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
 - [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair vor dem LicenseHub-Update, Desktop-Verknüpfung, LicenseHub-Update und Uninstall mit erhaltenen Benutzerdaten bestätigt
@@ -79,7 +79,9 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Truck-Editor: Kennzeichen des aktiven Trucks mit validiertem SCS-Format ändern
 - [x] Truck-Editor-Backend: aktive Engine-/Transmission-Accessory eindeutig über `accessories[n]` und `data_path` auflösen und validierten Definition-Pfad ändern
 - [x] sicherer Powertrain-Auswahlkatalog: Motoren/Getriebe aus bereits vorhandenen eigenen Trucks desselben Modells im aktuellen Save ableiten und als UI-Auswahl anbieten
-- [ ] **Später:** erweiterter Motor-/Getriebe-Katalog aus installierten ETS2-/ATS-Game- und Mod-Archiven; erst nach verifiziertem SCS-Archivparser, Kompatibilitätsprüfung und Freigabe. Die bisherige sichere Auswahl aus bereits im Save vorhandenen Komponenten bleibt unverändert.
+- [x] Auftrag 3, Phasen B/C: separater Motor-/Getriebe-Lesekatalog aus HashFS-v1/v2-, ZIP- und Ordnerquellen, Spiel-/DLC-/lokale Mod-/Workshop-Herkunft, Suche, aktuelle Komponente und konservativer Prüfstatus. Die Auswahl aus dem Save bleibt separat. Grenzen und Tests: [`POWERTRAIN_CATALOG.md`](POWERTRAIN_CATALOG.md).
+- [ ] Auftrag 3, Phase D: externe Komponenten erst zum Schreiben freigeben, wenn aktiver Quellenverbund, DLC-Verfügbarkeit, Mod-Reihenfolge und vollständige Zubehörregeln nachweislich geprüft und direkt vor dem Schreiben erneut validiert werden können. Modellpfad allein reicht nicht.
+- [~] Feldabnahme des neuen Lesekatalogs in beiden Spielen nach [`POWERTRAIN_CATALOG.md`](POWERTRAIN_CATALOG.md); Lesetests installierter Dateien ersetzen keinen Ingame-Test.
 - [~] realer ETS2-/ATS-Feldtest für Engine-/Transmission-`data_path` auf aktuellen Saves
 - [x] Trailer-Editor-Grundlage: aktiven Trailer samt Slave-Kette eindeutig auflösen und reparieren
 - [x] Trailer-Editor: sicheren Wechsel auf einen vorhandenen eigenen Trailer mit Konsistenzprüfung der player_vehicles-Referenzen

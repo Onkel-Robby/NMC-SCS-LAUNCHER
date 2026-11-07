@@ -184,7 +184,8 @@ jobs:
             "coreclr.dll",
             "hostfxr.dll",
             "third-party\decrypt-truck\decrypt_truck_windows.exe",
-            "third-party\decrypt-truck\LICENSE.txt"
+            "third-party\decrypt-truck\LICENSE.txt",
+            "THIRD_PARTY_NOTICES.md"
           )) {
             if (-not (Test-Path (Join-Path $target $required))) {
               throw "NMC custom installer payload is missing $required."
