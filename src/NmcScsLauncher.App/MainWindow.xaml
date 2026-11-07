@@ -791,7 +791,7 @@
     <Grid Grid.Column="2"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
     <StackPanel>
         <TextBlock Text="Motor &amp; Getriebe" FontSize="19" FontWeight="SemiBold" />
-        <TextBlock Text="Die verfügbaren Komponenten stammen ausschließlich von bereits vorhandenen Trucks desselben Modells." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
+        <TextBlock Text="Die schreibbare Auswahl stammt von vorhandenen Trucks desselben Modells. Weitere Komponenten lassen sich im Reiter „Komponentenkatalog“ ansehen." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
         <TextBlock Text="Motor · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
         <Grid Margin="0,4,0,10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -825,6 +825,9 @@
     </StackPanel>
 </Border></Grid>
 </Grid></TabItem>
+    <TabItem Header="Komponentenkatalog">
+        <views:PowertrainCatalog />
+    </TabItem>
     <TabItem Header="Trailer"><Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">

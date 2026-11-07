@@ -81,6 +81,7 @@ jobs:
           if (-not (Test-Path $updater)) { throw "Updater executable is missing." }
           if (-not (Test-Path $decoder)) { throw "Pinned SCS save decoder is missing." }
           if (-not (Test-Path $decoderLicense)) { throw "SCS save decoder license is missing." }
+          if (-not (Test-Path "artifacts/publish/THIRD_PARTY_NOTICES.md")) { throw "CityHash MIT notice is missing." }
 
           $decoderSha256 = (Get-FileHash -Path $decoder -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($decoderSha256 -ne "7d8521e482646f11ac986d97063dbe0cc8c7b98716a6fe02cf7b621c19a64e2d") {
@@ -122,6 +123,7 @@ jobs:
             if ($names -notcontains "NmcScsLauncher.Updater.exe") { throw "Release ZIP is missing NmcScsLauncher.Updater.exe at archive root." }
             if ($names -notcontains "third-party/decrypt-truck/decrypt_truck_windows.exe") { throw "Release ZIP is missing the pinned SCS save decoder." }
             if ($names -notcontains "third-party/decrypt-truck/LICENSE.txt") { throw "Release ZIP is missing the decoder license." }
+            if ($names -notcontains "THIRD_PARTY_NOTICES.md") { throw "Release ZIP is missing third-party notices." }
           }
           finally {
             $archive.Dispose()
@@ -183,6 +185,7 @@ jobs:
             "hostfxr.dll",
             "third-party\decrypt-truck\decrypt_truck_windows.exe",
             "third-party\decrypt-truck\LICENSE.txt",
+            "THIRD_PARTY_NOTICES.md",
             "unins000.exe"
           )) {
             if (-not (Test-Path (Join-Path $target $required))) {

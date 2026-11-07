@@ -1,0 +1,81 @@
+<UserControl x:Class="NmcScsLauncher.App.Views.PowertrainCatalog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1" CornerRadius="12" Padding="20" Margin="0,4,0,10">
+        <StackPanel>
+            <TextBlock Text="Motor- und Getriebekatalog" FontSize="19" FontWeight="SemiBold" />
+            <TextBlock Text="Komponenten aus Spielstand, Spieldateien, DLCs, lokalen Profil- und Launcher-Mod-Ordnern sowie Workshop-Dateien."
+                       TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,5,0,8" />
+            <TextBlock Text="Die Übersicht ist schreibgeschützt. Vorhandene Dateien belegen keine Aktivierung. Neue Komponenten bleiben bis zur Prüfung aller Fahrzeug- und Mod-Regeln gesperrt. Im Reiter „Truck“ bleibt die Auswahl aus dem Save verfügbar."
+                       TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,16" />
+            <WrapPanel Margin="0,0,0,12">
+                <Button Content="Komponenten suchen" Command="{Binding DiscoverSaveEditorPowertrainCommand}" Margin="0,0,8,4" />
+                <Button Content="Abbrechen" Command="{Binding CancelSaveEditorPowertrainDiscoveryCommand}" Margin="0,0,16,4" />
+                <TextBlock Text="Aktives Truck-Modell: " VerticalAlignment="Center" Margin="0,0,0,4" Foreground="{DynamicResource SecondaryTextBrush}" />
+                <TextBlock Text="{Binding SaveEditorPowertrainModel}" VerticalAlignment="Center" Margin="0,0,0,4" />
+            </WrapPanel>
+            <TextBlock Text="{Binding SaveEditorPowertrainStatusText}" TextWrapping="Wrap" Margin="0,0,0,12" />
+            <TextBlock Text="Suche nach Name, Modell, Quelle oder Definitionspfad" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+            <TextBox x:Name="SearchTextBox" Text="{Binding SaveEditorPowertrainSearch, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,4,0,10" ToolTip="Durchsucht die bereits gelesenen Komponenten." />
+            <WrapPanel Margin="0,0,0,12">
+                <CheckBox Content="Nur aktuelles Truck-Modell" IsChecked="{Binding SaveEditorPowertrainOnlyCurrentModel}" Margin="0,0,20,4" />
+                <TextBlock Text="{Binding SaveEditorPowertrainResultCount}" Foreground="{DynamicResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="0,0,0,4" />
+            </WrapPanel>
+            <DataGrid x:Name="ComponentGrid" ItemsSource="{Binding SaveEditorDiscoveredPowertrains}"
+                      SelectedItem="{Binding SaveEditorSelectedDiscoveredPowertrain}" IsReadOnly="True"
+                      AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                      SelectionMode="Single" SelectionUnit="FullRow" Height="270" HeadersVisibility="Column">
+                <DataGrid.Resources>
+                    <Style x:Key="CatalogCellText" TargetType="TextBlock" BasedOn="{StaticResource GridPathTextStyle}">
+                        <Setter Property="Margin" Value="10,0,8,0" />
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Komponente" Binding="{Binding Name}" Width="2*" MinWidth="130" ElementStyle="{StaticResource CatalogCellText}" />
+                    <DataGridTextColumn Header="Art" Binding="{Binding KindText}" Width="75" ElementStyle="{StaticResource CatalogCellText}" />
+                    <DataGridTextColumn Header="Truck-Modell" Binding="{Binding TruckModel}" Width="*" MinWidth="110" ElementStyle="{StaticResource CatalogCellText}" />
+                    <DataGridTextColumn Header="Herkunft" Binding="{Binding SourceText}" Width="*" MinWidth="95" ElementStyle="{StaticResource CatalogCellText}" />
+                    <DataGridTextColumn Header="Prüfstatus" Binding="{Binding CompatibilityText}" Width="155" ElementStyle="{StaticResource CatalogCellText}" />
+                    <DataGridCheckBoxColumn Header="Verbaut" Binding="{Binding IsCurrent, Mode=OneWay}" Width="70" />
+                </DataGrid.Columns>
+            </DataGrid>
+            <StackPanel x:Name="ComponentDetails" DataContext="{Binding SaveEditorSelectedDiscoveredPowertrain}" Margin="0,14,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding CurrentText}" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,10" />
+                <TextBlock Text="SCS-Definitionspfad" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                <TextBox Text="{Binding DataPath, Mode=OneWay}" IsReadOnly="True" Margin="0,4,0,10" />
+                <TextBlock Text="{Binding CompatibilityText}" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}" />
+                <TextBlock Text="{Binding CompatibilityReason}" TextWrapping="Wrap" Margin="0,4,0,10" />
+                <TextBlock Text="Quelldateien" FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" />
+                <TextBox Text="{Binding SourceDetails, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         VerticalContentAlignment="Top" MaxHeight="130" VerticalScrollBarVisibility="Auto" Margin="0,4,0,0" />
+            </StackPanel>
+            <TextBox Text="{Binding SaveEditorPowertrainDiagnostics, Mode=OneWay}" TextWrapping="Wrap"
+                     IsReadOnly="True" AcceptsReturn="True" MaxHeight="160" VerticalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top" Margin="0,12,0,0">
+                <TextBox.Style>
+                    <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SaveEditorPowertrainDiagnostics}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+        </StackPanel>
+    </Border>
+</UserControl>

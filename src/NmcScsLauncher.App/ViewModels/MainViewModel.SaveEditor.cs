@@ -287,7 +287,13 @@ public partial class MainViewModel
         NotifySaveEditorPlateAvailability();
     }
 
-    partial void OnIsBusyChanged(bool value) => NotifySaveEditorPlateAvailability();
+    partial void OnIsBusyChanged(bool value)
+    {
+        NotifySaveEditorPlateAvailability();
+        NotifySaveEditorPowertrainAvailability();
+        if (value && SaveEditorIsDiscoveringPowertrain)
+            CancelSaveEditorPowertrainDiscovery();
+    }
 
     private void NotifySaveEditorPlateAvailability()
     {
@@ -539,41 +545,11 @@ public partial class MainViewModel
             oppositeEditor.RestoreDraft(oppositeDraft);
     }
 
-    [RelayCommand]
-    private async Task SetSaveEditorEngineAsync()
-    {
-        var selected = SaveEditorSelectedEngine;
-        if (selected is null)
-        {
-            SaveEditorStatusText = "Kein sicherer Motor aus dem aktuellen Save-Katalog ausgewählt.";
-            return;
-        }
+    [RelayCommand(CanExecute = nameof(CanSetSaveEditorEngine))]
+    private Task SetSaveEditorEngineAsync() => SetSaveEditorPowertrainAsync(transmission: false);
 
-        await ExecuteSelectedVehicleEditAsync(
-            "Motor ändern",
-            $"Motor auf '{selected.DataPath}' setzen?",
-            () => _saveEditorVehicleEditService!.SetActiveTruckEngineAsync(
-                SaveEditorSelectedSave!,
-                selected.DataPath));
-    }
-
-    [RelayCommand]
-    private async Task SetSaveEditorTransmissionAsync()
-    {
-        var selected = SaveEditorSelectedTransmission;
-        if (selected is null)
-        {
-            SaveEditorStatusText = "Kein sicheres Getriebe aus dem aktuellen Save-Katalog ausgewählt.";
-            return;
-        }
-
-        await ExecuteSelectedVehicleEditAsync(
-            "Getriebe ändern",
-            $"Getriebe auf '{selected.DataPath}' setzen?",
-            () => _saveEditorVehicleEditService!.SetActiveTruckTransmissionAsync(
-                SaveEditorSelectedSave!,
-                selected.DataPath));
-    }
+    [RelayCommand(CanExecute = nameof(CanSetSaveEditorTransmission))]
+    private Task SetSaveEditorTransmissionAsync() => SetSaveEditorPowertrainAsync(transmission: true);
 
     [RelayCommand]
     private async Task RestoreSaveEditorLastBackupAsync()
@@ -786,6 +762,8 @@ public partial class MainViewModel
                 var catalog = await vehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
                 if (!IsCurrent()) return;
 
+                SetSaveEditorPowertrainCatalog(catalog);
+
                 SaveEditorEnginePath = powertrain.EngineDataPath;
                 SaveEditorTransmissionPath = powertrain.TransmissionDataPath;
 
@@ -882,7 +860,7 @@ public partial class MainViewModel
 
         if (selectionIsCurrent is not null && !selectionIsCurrent())
         {
-            SaveEditorStatusText = "Die Auswahl wurde während der Bestätigung geändert. Kennzeichen bitte erneut prüfen.";
+            SaveEditorStatusText = "Die Auswahl wurde während der Bestätigung geändert. Auswahl bitte erneut prüfen.";
             return;
         }
 
@@ -1026,6 +1004,7 @@ public partial class MainViewModel
     private void ClearSaveEditorVehicleState()
     {
         ++_saveEditorInspectionGeneration;
+        ClearSaveEditorPowertrainDiscovery();
         SaveEditorIsInspecting = false;
         _saveEditorActiveTruckId = null;
         _saveEditorActiveTrailerId = null;

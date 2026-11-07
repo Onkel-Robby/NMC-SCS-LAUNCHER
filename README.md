@@ -26,6 +26,7 @@ Aktuelle Version: **1.0.0**
 - Externer self-contained Updater mit Rollback bei fehlgeschlagenem Austausch oder Neustart.
 - Integrierter Save-Editor für ETS2 und ATS: Profil/Karriere, Geld/XP/Skills, eigene Trucks und Trailer, Reparatur, Kraftstoff, Kilometer, Frachtgewicht, Kennzeichen und vorhandene Motor-/Getriebe-Auswahl; Änderungen mit automatischem Backup und Validierung.
 - Kennzeichen-Auswahl aus PR #86 mit 36 ETS2-Ländern und 21 ATS-Bundesstaaten sowie Custom-RGB und manuellen Map-Mod-Codes. Vorhandene Kennzeichen werden für aktiven Truck und Trailer getrennt geladen; unbekannte Codes bleiben erhalten. Die Definition muss im jeweiligen Spiel/DLC/Map-Mod vorhanden sein.
+- Erweiterter Motor-/Getriebe-Lesekatalog: Spielarchive, vorhandene DLC-Dateien, lokale Profil-/Modset-Ordner und heruntergeladene Workshop-Pakete durchsuchen; Herkunft, Modell, aktuelle Komponente und Prüfstatus anzeigen. Zusätzliche Funde bleiben schreibgeschützt. [Umfang und Feldtest](docs/POWERTRAIN_CATALOG.md).
 - Steam-Cloud-Saves direkt unter `Steam/userdata` bleiben schreibgeschützt. [Kennzeichen-Testanleitung für ETS2/ATS](docs/SAVE_EDITOR_PLATES_TEST.md).
 
 ## Systemanforderungen
@@ -104,7 +105,7 @@ Dazu gehören insbesondere Einstellungen, Logs, Modset-Metadaten, interne Runtim
 
 ## Sicherheitsgrenzen
 
-- Keine direkte Bearbeitung von `.scs`, `profile.sii`, `game.sii` oder Savegames.
+- Spielarchive und Mods werden ausschließlich gelesen. Änderungen an `profile.sii` und `game.sii` erfolgen nur nach ausdrücklicher Benutzeraktion über die abgesicherte Save-Editor-Pipeline.
 - Steam Cloud wird nicht stillschweigend manipuliert.
 - Workshop-Inhalte werden nur lokal gelesen; Abonnements werden nicht automatisch geändert.
 - Backup/Restore folgt keinen Junctions oder symbolischen Links.
@@ -139,7 +140,8 @@ src/
 
 tests/
 ├─ NmcScsLauncher.Core.Tests
-└─ NmcScsLauncher.Infrastructure.Tests
+├─ NmcScsLauncher.Infrastructure.Tests
+└─ NmcScsLauncher.App.Tests
 ```
 
 Weitere Details: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
