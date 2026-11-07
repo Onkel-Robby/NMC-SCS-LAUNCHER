@@ -5,6 +5,18 @@ namespace NmcScsLauncher.Core.Tests;
 
 public sealed class ScsPlateRegionCatalogTests
 {
+    [Theory]
+    [InlineData(GameType.Ets2, 36)]
+    [InlineData(GameType.Ats, 21)]
+    public void CatalogHasAllNativeRegionsAndTwoExplicitSpecialChoices(GameType game, int count)
+    {
+        var regions = ScsPlateRegionCatalog.For(game);
+        Assert.Equal(count + 2, regions.Count);
+        Assert.Equal(count, regions.Count(region => region.Code is not "custom" and not ScsPlateRegionCatalog.OtherCode));
+        Assert.All(regions.Where(region => region.Code != ScsPlateRegionCatalog.OtherCode),
+            region => Assert.Matches("^[a-z][a-z0-9_]{1,31}$", region.Code));
+    }
+
     [Fact]
     public void Ets2ListsCountriesAndDefaultsToGermany()
     {

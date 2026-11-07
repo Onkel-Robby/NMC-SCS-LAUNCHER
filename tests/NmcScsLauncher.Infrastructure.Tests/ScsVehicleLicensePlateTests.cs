@@ -11,6 +11,72 @@ public sealed class ScsVehicleLicensePlateTests : IDisposable
         "NmcScsLauncher-LicensePlateTests",
         Guid.NewGuid().ToString("N"));
 
+    [Theory]
+    [InlineData(GameType.Ets2)]
+    [InlineData(GameType.Ats)]
+    public async Task InspectReadsActivePlateScalarsWithoutWriting(GameType game)
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        save = save with { GameType = game };
+        var before = await File.ReadAllBytesAsync(save.GameSiiPath);
+        var state = await new ScsVehicleEditService(codec, saveEdit).InspectActiveVehiclesAsync(save);
+
+        Assert.Equal("\"OLDTRUCK|germany\"", state.TruckLicensePlate);
+        Assert.Equal("\"OLDTRAILER1|germany\"", state.TrailerLicensePlate);
+        Assert.Equal(before, await File.ReadAllBytesAsync(save.GameSiiPath));
+        Assert.False(Directory.Exists(Path.Combine(_root, "backups")));
+    }
+
+    [Fact]
+    public async Task InspectUsesFirstPlateBearingTrailerWhenHeadHasNoPlate()
+    {
+        var content = CreateSave().Replace(" license_plate: \"OLDTRAILER1|germany\"", string.Empty);
+        var (save, codec, saveEdit) = await CreateAsync(content);
+        var state = await new ScsVehicleEditService(codec, saveEdit).InspectActiveVehiclesAsync(save);
+        Assert.Equal("\"OLDTRAILER2|germany\"", state.TrailerLicensePlate);
+    }
+
+    [Fact]
+    public async Task InspectDoesNotInventPlatesForMissingFieldsOrTrailer()
+    {
+        var content = CreateSave()
+            .Replace(" license_plate: \"OLDTRUCK|germany\"", string.Empty)
+            .Replace(" trailer: _nameless.trailer.1", " trailer: null");
+        var (save, codec, saveEdit) = await CreateAsync(content);
+        var state = await new ScsVehicleEditService(codec, saveEdit).InspectActiveVehiclesAsync(save);
+        Assert.Null(state.TruckLicensePlate);
+        Assert.Null(state.TrailerLicensePlate);
+    }
+
+    [Theory]
+    [InlineData(GameType.Ets2, "germany", "SI AA 998")]
+    [InlineData(GameType.Ets2, "uk", "YN16 MSO")]
+    [InlineData(GameType.Ats, "texas", "NMC-42")]
+    [InlineData(GameType.Ets2, "custom", "NMC-42")]
+    [InlineData(GameType.Ats, "custom", "NMC-42")]
+    [InlineData(GameType.Ets2, "promods_region", "NMC-42")]
+    [InlineData(GameType.Ats, "mod_state", "NMC-42")]
+    public async Task WrittenPlatesReloadWithTheirOriginalSelection(GameType game, string country, string text)
+    {
+        var (save, codec, saveEdit) = await CreateAsync(CreateSave());
+        save = save with { GameType = game };
+        var editor = new ScsVehicleEditService(codec, saveEdit);
+        await editor.SetActiveTruckLicensePlateAsync(save, text, country, "12abef", "345678");
+        await editor.SetActiveTrailerLicensePlateAsync(save, text, country, "12abef", "345678");
+        var state = await editor.InspectActiveVehiclesAsync(save);
+        foreach (var scalar in new[] { state.TruckLicensePlate, state.TrailerLicensePlate })
+        {
+            var plate = Assert.IsType<ScsLicensePlateValue>(ScsLicensePlateValue.Parse(scalar));
+            Assert.Equal(text, plate.Text);
+            Assert.Equal(country, plate.CountryCode);
+            if (country == "custom")
+            {
+                Assert.Equal("12abef", plate.BackgroundRgb);
+                Assert.Equal("345678", plate.TextRgb);
+            }
+        }
+    }
+
     [Fact]
     public async Task SetTruckLicensePlateUpdatesOnlyActiveTruck()
     {

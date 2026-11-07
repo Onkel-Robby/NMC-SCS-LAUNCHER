@@ -73,15 +73,24 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
             fuel = parsedFuel;
         }
 
-        var trailerUnits = refs.TrailerId is null
-            ? 0
-            : ResolveTrailerChain(document, refs.TrailerId).Count;
+        var trailerUnits = 0;
+        string? trailerPlate = null;
+        if (refs.TrailerId is not null)
+        {
+            var chain = ResolveTrailerChain(document, refs.TrailerId);
+            trailerUnits = chain.Count;
+            trailerPlate = chain.Select(id => document.TryGetOptionalUnitScalar(
+                    document.GetRequiredUniqueUnit(id), "license_plate"))
+                .FirstOrDefault(value => value is not null);
+        }
 
         return new ScsActiveVehicleState(
             refs.TruckId,
             refs.TrailerId,
             trailerUnits,
-            fuel);
+            fuel,
+            document.TryGetOptionalUnitScalar(truckUnit, "license_plate"),
+            trailerPlate);
     }
 
     public async Task<ScsVehicleInventory> GetVehicleInventoryAsync(

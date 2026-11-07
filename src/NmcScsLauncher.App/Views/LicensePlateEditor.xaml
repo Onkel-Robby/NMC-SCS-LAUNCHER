@@ -1,0 +1,88 @@
+<UserControl x:Class="NmcScsLauncher.App.Views.LicensePlateEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="Kennzeichen" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+        <TextBox x:Name="PlateTextBox" Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 Margin="0,4,0,14" Padding="8,6" />
+        <TextBlock Text="Land / Bundesstaat" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+        <ComboBox x:Name="RegionComboBox" ItemsSource="{Binding Regions}"
+                  SelectedItem="{Binding SelectedRegion, Mode=TwoWay}"
+                  DisplayMemberPath="DisplayName" TextSearch.TextPath="Name" IsTextSearchEnabled="True"
+                  Height="38" Padding="8,5" Margin="0,4,0,14"
+                  ToolTip="Land oder US-Bundesstaat auswählen. Der SCS-Code wird automatisch übernommen." />
+        <StackPanel x:Name="OtherCountryPanel" Margin="0,0,0,14">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding UsesOtherCountry}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <TextBlock Text="Zusätzlicher Länder-/Bundesstaatencode (Map-Mod)"
+                       Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
+            <TextBox x:Name="OtherCountryTextBox"
+                     Text="{Binding OtherCountryCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Margin="0,4,0,0" Padding="8,6"
+                     ToolTip="Für nicht aufgelistete Karten-Mods: den originalen SCS-Regionscode eingeben." />
+        </StackPanel>
+        <Grid x:Name="ColorsPanel" IsEnabled="{Binding UsesCustomColors}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Hintergrundfarbe (RGB)" Foreground="{DynamicResource SecondaryTextBrush}"
+                           FontSize="12" TextWrapping="Wrap" />
+                <TextBox x:Name="BackgroundRgbTextBox"
+                         Text="{Binding BackgroundRgb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Margin="0,4,0,0" Padding="8,6" ToolTip="RGB-Hexwert für Custom-Kennzeichen" />
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Textfarbe (RGB)" Foreground="{DynamicResource SecondaryTextBrush}"
+                           FontSize="12" TextWrapping="Wrap" />
+                <TextBox x:Name="TextRgbTextBox"
+                         Text="{Binding TextRgb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Margin="0,4,0,0" Padding="8,6" ToolTip="RGB-Hexwert für Custom-Kennzeichen" />
+            </StackPanel>
+        </Grid>
+        <TextBlock Text="Die RGB-Felder gelten nur für Custom-Kennzeichen."
+                   Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,12,0,0" />
+        <TextBlock x:Name="LoadWarningText" Text="{Binding LoadWarning}"
+                   Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,12,0,0">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding LoadWarning}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+        <StackPanel x:Name="SavedValuePanel" Margin="0,12,0,0">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding LoadWarning}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding SavedValue}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <TextBlock Text="Gelesenes Kennzeichen" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
+            <TextBox x:Name="SavedValueTextBox" Text="{Binding SavedValue, Mode=OneWay}"
+                     IsReadOnly="True" TextWrapping="Wrap" MaxHeight="120" VerticalScrollBarVisibility="Auto"
+                     Margin="0,4,0,0" Padding="8,6" />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

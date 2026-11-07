@@ -4,7 +4,9 @@ public sealed record ScsActiveVehicleState(
     string TruckId,
     string? TrailerId,
     int TrailerUnits,
-    decimal? FuelRelative);
+    decimal? FuelRelative,
+    string? TruckLicensePlate = null,
+    string? TrailerLicensePlate = null);
 
 public sealed record ScsVehicleInventoryItem(
     string Id,

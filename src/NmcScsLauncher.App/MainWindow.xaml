@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:NmcScsLauncher.App"
+        xmlns:views="clr-namespace:NmcScsLauncher.App.Views"
         Title="NMC SCS LAUNCHER"
         Width="1320" Height="840" MinWidth="1080" MinHeight="700"
         WindowStartupLocation="CenterScreen"
@@ -864,81 +865,27 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Border Grid.Column="0" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
+                    BorderThickness="1" CornerRadius="12" Padding="20" IsEnabled="{Binding SaveEditorCanEditPlates}">
                 <StackPanel>
-                    <TextBlock Text="Kennzeichen-Darstellung" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="Land und optionale Farben für Custom-Kennzeichen."
-                               Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
-                    <TextBlock Text="Land / Bundesstaat" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
-                    <ComboBox ItemsSource="{Binding SaveEditorPlateRegions}"
-                              SelectedItem="{Binding SaveEditorSelectedPlateRegion, Mode=TwoWay}"
-                              DisplayMemberPath="DisplayName" TextSearch.TextPath="Name"
-                              IsTextSearchEnabled="True" Height="38" Padding="8,5" Margin="0,4,0,14"
-                              ToolTip="Land oder US-Bundesstaat auswählen. Der SCS-Code wird automatisch übernommen." />
-                    <StackPanel Margin="0,0,0,14">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SaveEditorUsesOtherPlateCountry}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-                        <TextBlock Text="Zusätzlicher Länder-/Bundesstaatencode (Map-Mod)"
-                                   Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
-                        <TextBox Text="{Binding SaveEditorOtherPlateCountryCode, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,4,0,0" Padding="8,6"
-                                 ToolTip="Nur für nicht aufgelistete Karten-Mods: den originalen SCS-Regionscode eingeben." />
-                    </StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Hintergrundfarbe (RGB)" Foreground="{StaticResource SecondaryTextBrush}"
-                                       TextWrapping="Wrap" FontSize="12" />
-                            <TextBox Text="{Binding SaveEditorPlateBackgroundRgb, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,4,0,0" Padding="8,6" ToolTip="RGB-Hexwert für Custom-Kennzeichen" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Textfarbe (RGB)" Foreground="{StaticResource SecondaryTextBrush}"
-                                       TextWrapping="Wrap" FontSize="12" />
-                            <TextBox Text="{Binding SaveEditorPlateTextRgb, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,4,0,0" Padding="8,6" ToolTip="RGB-Hexwert für Custom-Kennzeichen" />
-                        </StackPanel>
-                    </Grid>
-                    <TextBlock Text="Die RGB-Felder gelten nur für Custom-Kennzeichen."
-                               Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,14,0,0" />
+                    <TextBlock Text="Truck-Kennzeichen" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SaveEditorActiveTruckText}" Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap" Margin="0,5,0,16" />
+                    <views:LicensePlateEditor DataContext="{Binding SaveEditorTruckPlate}" />
+                    <Button Content="Truck-Kennzeichen setzen" Command="{Binding SetSaveEditorTruckPlateCommand}"
+                            HorizontalAlignment="Left" Margin="0,16,0,0" />
                 </StackPanel>
             </Border>
             <Border Grid.Column="2" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="12" Padding="20">
+                    BorderThickness="1" CornerRadius="12" Padding="20" IsEnabled="{Binding SaveEditorCanEditPlates}">
                 <StackPanel>
-                    <TextBlock Text="Truck- &amp; Trailerkennzeichen" FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="Kennzeichen werden einzeln über die vorhandenen Bearbeitungsbefehle gesetzt."
-                               Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
-                    <TextBlock Text="Truck-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
-                    <Grid Margin="0,4,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding SaveEditorTruckPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
-                        <Button Grid.Column="1" Content="Truck setzen" Command="{Binding SetSaveEditorTruckPlateCommand}" Margin="8,0,0,0" />
-                    </Grid>
-                    <TextBlock Text="Trailer-Kennzeichen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
-                    <Grid Margin="0,4,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding SaveEditorTrailerPlateText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
-                        <Button Grid.Column="1" Content="Trailer setzen" Command="{Binding SetSaveEditorTrailerPlateCommand}" Margin="8,0,0,0" />
-                    </Grid>
+                    <TextBlock Text="Trailer-Kennzeichen" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SaveEditorActiveTrailerText}" Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap" Margin="0,5,0,16" />
+                    <views:LicensePlateEditor DataContext="{Binding SaveEditorTrailerPlate}" />
+                    <TextBlock Text="Gilt für die aktive Trailer-Kette." Foreground="{StaticResource SecondaryTextBrush}"
+                               TextWrapping="Wrap" Margin="0,12,0,0" />
+                    <Button Content="Trailer-Kennzeichen setzen" Command="{Binding SetSaveEditorTrailerPlateCommand}"
+                            HorizontalAlignment="Left" Margin="0,16,0,0" />
                 </StackPanel>
             </Border>
         </Grid>
