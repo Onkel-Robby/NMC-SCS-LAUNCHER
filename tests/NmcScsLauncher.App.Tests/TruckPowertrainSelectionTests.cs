@@ -10,7 +10,7 @@ using Xunit;
 
 namespace NmcScsLauncher.App.Tests;
 
-public sealed class TruckPowertrainSelectionTests
+public sealed partial class TruckPowertrainSelectionTests
 {
     private const string Model = "/def/vehicle/truck/test/";
 
@@ -230,6 +230,7 @@ public sealed class TruckPowertrainSelectionTests
     }
     private sealed class Preview : IScsTruckPowertrainPreview
     {
+        public bool PairAllowed { get; set; } = true;
         public Preview(ScsEffectiveContentRequest request, string currentName = "Current engine")
         {
             Snapshot = new(request.Profile.GameType, request.Save.GameSiiPath, new string('A', 64), request.Save.DisplayName, Model, "data", "engine", "transmission", Model + "engine/current.sii", Model + "transmission/current.sii", []);
@@ -245,7 +246,7 @@ public sealed class TruckPowertrainSelectionTests
         public IReadOnlyList<string> Diagnostics => [];
         public ScsTruckPowertrainAssessment AssessPair(string engineDataPath, string transmissionDataPath)
         {
-            var verified = engineDataPath.Contains("boost") == transmissionDataPath.Contains("sport");
+            var verified = PairAllowed && engineDataPath.Contains("boost") == transmissionDataPath.Contains("sport");
             return new(engineDataPath, transmissionDataPath, verified, verified ? [] : ["Partner muss ebenfalls gewechselt werden."]);
         }
     }

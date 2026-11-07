@@ -169,9 +169,23 @@ public static class ScsTruckPowertrainRules
                     reasons.Add($"{path}: Falscher Antriebstyp.");
                 selected.Add(definition);
             }
-            if (!_definitions.TryGetValue(Snapshot.CurrentEnginePath, out var currentEngine) || currentEngine.EngineType != "diesel" ||
-                !_definitions.TryGetValue(engineDataPath, out var engine) || engine.EngineType != "diesel")
+            _definitions.TryGetValue(Snapshot.CurrentEnginePath, out var currentEngine);
+            _definitions.TryGetValue(engineDataPath, out var engine);
+            _definitions.TryGetValue(Snapshot.CurrentTransmissionPath, out var currentTransmission);
+            _definitions.TryGetValue(transmissionDataPath, out var transmission);
+            if (currentEngine?.EngineType != "diesel" || engine?.EngineType != "diesel")
                 reasons.Add("Nur ein bestätigter Diesel-zu-Diesel-Wechsel wird unterstützt; andere Motortypen benötigen zusätzliche Zustandsänderungen.");
+            if (currentTransmission?.Unit.Type != ExpectedType(ScsPowertrainKind.Transmission))
+                reasons.Add("Die Bedienzustände des bisherigen Getriebes sind ohne bestätigte aktuelle Definition nicht prüfbar.");
+            if (currentEngine is not null && engine is not null && currentTransmission is not null && transmission is not null)
+            {
+                try
+                {
+                    CompareControls(EngineControls(currentEngine.Unit), EngineControls(engine.Unit), reasons);
+                    CompareControls(TransmissionControls(currentTransmission.Unit), TransmissionControls(transmission.Unit), reasons);
+                }
+                catch (InvalidDataException exception) { reasons.Add("Bedienzustände nicht bestätigt: " + exception.Message); }
+            }
             foreach (var group in selected.GroupBy(d => d.Unit.Id, StringComparer.Ordinal))
                 if (group.Select(d => d.Path).Distinct(StringComparer.Ordinal).Skip(1).Any())
                     reasons.Add($"Zubehör-Unit {group.Key} ist durch unterschiedliche Definitionen mehrdeutig.");
@@ -266,6 +280,8 @@ public static class ScsTruckPowertrainRules
                     var trimmed = line.Trim();
                     if (trimmed.StartsWith("@include", StringComparison.Ordinal))
                     {
+                        if (!line.StartsWith("@include", StringComparison.Ordinal))
+                            throw new InvalidDataException("SCS-Include-Direktiven müssen ohne Einrückung in Spalte 0 beginnen.");
                         var match = Regex.Match(trimmed, "^@include[ \\t]+\"([^\"\\\\]+)\"[ \\t]*$", RegexOptions.CultureInvariant);
                         if (!match.Success) throw new InvalidDataException("Nicht unterstützte Include-Syntax.");
                         result.AppendLine(Expand(Normalize(match.Groups[1].Value, path), stack, sources, depth + 1));
@@ -366,6 +382,47 @@ public static class ScsTruckPowertrainRules
         if (separator < 0) return null;
         var suffix = pattern[(separator + 1)..];
         return Regex.IsMatch(suffix, "^[A-Za-z0-9_]{1,12}$", RegexOptions.CultureInvariant) ? suffix : null;
+    }
+
+    // Opaque saved actor bits are preserved verbatim. These documented control domains must stay identical;
+    // this is not a claim to decode or migrate the game's internal bit layout.
+    private static Dictionary<string, string> EngineControls(ScsDefinitionUnit unit)
+    {
+        var brake = ScsTruckDefinitionSchema.Number(unit.GetToken("engine_brake") ?? "1");
+        if (brake < 0) throw new InvalidDataException("Negativer Motorbremswert wird nicht unterstützt.");
+        return new(StringComparer.Ordinal)
+        {
+            ["Motorbremsstufen"] = unit.GetToken("engine_brake_positions") ?? "3",
+            ["Motorbremse aktiv"] = (brake > 0).ToString(),
+            ["Motorbremse: Rückschalten"] = unit.GetToken("engine_brake_downshift") ?? "true",
+            ["Motorbremse: kombinierte Belegung"] = BrakeMapping(unit)
+        };
+    }
+    private static Dictionary<string, string> TransmissionControls(ScsDefinitionUnit unit)
+    {
+        var transmissionClass = unit.GetToken("transmission_class") ?? "heavy";
+        if (transmissionClass is not ("heavy" or "standard")) throw new InvalidDataException("Unbekannte Getriebesteuerungsklasse.");
+        return new(StringComparer.Ordinal)
+        {
+            ["Anzahl Vorwärtsgänge"] = unit.GetTokens("ratios_forward").Count.ToString(CultureInfo.InvariantCulture),
+            ["Anzahl Rückwärtsgänge"] = unit.GetTokens("ratios_reverse").Count.ToString(CultureInfo.InvariantCulture),
+            ["Anzahl Vorwärts-Kriechgänge"] = unit.GetToken("crawls") ?? "0",
+            ["Anzahl Rückwärts-Kriechgänge"] = unit.GetToken("reverse_crawls") ?? "0",
+            ["Retarderstufen"] = unit.GetToken("retarder") ?? "0",
+            ["Retarder: kombinierte Belegung"] = BrakeMapping(unit),
+            ["Getriebesteuerungsklasse"] = transmissionClass,
+            ["Drehmomentwandler aktiv"] = (ScsTruckDefinitionSchema.Number(unit.GetToken("stall_torque_ratio") ?? "-1") > 0).ToString(),
+            ["Wandler: Überbrückungsgang"] = unit.GetToken("torque_converter_lock_gear") ?? "2",
+            ["Wandler: Kriechfunktion"] = unit.GetToken("torque_converter_crawl") ?? "false"
+        };
+    }
+    private static string BrakeMapping(ScsDefinitionUnit unit) => string.Join(";", unit.GetValues("auxiliary_brakes").Select(value =>
+        string.Join(",", value.Elements.Select(element => ScsTruckDefinitionSchema.Number(element.Text).ToString("R", CultureInfo.InvariantCulture)))));
+    private static void CompareControls(IReadOnlyDictionary<string, string> current, IReadOnlyDictionary<string, string> proposed, List<string> reasons)
+    {
+        foreach (var entry in current)
+            if (!string.Equals(entry.Value, proposed[entry.Key], StringComparison.Ordinal))
+                reasons.Add($"{entry.Key} würde sich ändern. Die unveränderte Übernahme der gespeicherten Bedienzustände ist dafür nicht bestätigt.");
     }
 
     private static string ExpectedType(ScsPowertrainKind kind) => kind == ScsPowertrainKind.Engine ? "accessory_engine_data" : "accessory_transmission_data";

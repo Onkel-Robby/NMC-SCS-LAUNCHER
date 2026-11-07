@@ -37,7 +37,9 @@ public partial class App : Application
         services.AddSingleton<IScsActiveContentResolver, ScsActiveContentResolver>();
         services.AddSingleton<IScsEffectiveContentService, ScsEffectiveContentService>();
         services.AddSingleton<ScsTruckPowertrainSnapshotReader>();
-        services.AddSingleton<IScsTruckPowertrainService, ScsTruckPowertrainService>();
+        services.AddSingleton<ScsTruckPowertrainService>();
+        services.AddSingleton<IScsTruckPowertrainService>(provider => provider.GetRequiredService<ScsTruckPowertrainService>());
+        services.AddSingleton<IScsTruckPowertrainInstaller, ScsTruckPowertrainInstaller>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -96,6 +98,9 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IScsPowertrainDiscoveryService>());
         viewModel.ConfigureTruckPowertrainService(
             _serviceProvider.GetRequiredService<IScsTruckPowertrainService>());
+        viewModel.ConfigureTruckPowertrainInstaller(
+            _serviceProvider.GetRequiredService<IScsTruckPowertrainInstaller>(),
+            _serviceProvider.GetRequiredService<IScsGameProcessGuard>());
 
         try
         {

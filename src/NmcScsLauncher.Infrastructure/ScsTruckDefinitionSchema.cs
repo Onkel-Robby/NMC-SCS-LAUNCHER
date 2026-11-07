@@ -15,6 +15,10 @@ internal static class ScsTruckDefinitionSchema
     {
         foreach (var unit in document.Units)
         {
+            var identifier = unit.Id.StartsWith('.') ? unit.Id[1..] : unit.Id;
+            if (identifier.Split('.').Any(part => part.Length is < 1 or > 12 ||
+                part.Any(character => !(character is >= 'a' and <= 'z' or >= '0' and <= '9' or '_'))))
+                throw new InvalidDataException("Definitions-Unit-Namen müssen aus kleingeschriebenen SCS-Tokens mit höchstens 12 Zeichen bestehen.");
             if (!Schemas.Value.TryGetValue(unit.Type, out var schema))
                 throw new InvalidDataException($"Nicht unterstützter Definitionstyp '{unit.Type}'.");
             foreach (var attribute in unit.AttributeNames)
@@ -41,6 +45,10 @@ internal static class ScsTruckDefinitionSchema
         ValidateOwners(document, accessory, new HashSet<string>(StringComparer.Ordinal));
         if (accessory.Type == "accessory_engine_data")
         {
+            if (accessory.HasAttribute("type") && version.Minor < 50)
+                throw new InvalidDataException("Das Attribut 'type' benötigt mindestens Spielversion 1.50.");
+            if (accessory.HasAttribute("auxiliary_brakes") && version.Minor < 40)
+                throw new InvalidDataException("Kombinierte Motorbremsen benötigen mindestens Spielversion 1.40.");
             if (!accessory.Id.EndsWith(".engine", StringComparison.Ordinal)) throw new InvalidDataException("Die Motor-Unit besitzt nicht den erforderlichen Suffix .engine.");
             if (Number(accessory.GetToken("torque") ?? "0") <= 0) throw new InvalidDataException("Ein positiver Motor-Drehmomentwert fehlt.");
             if ((accessory.GetToken("type") ?? "diesel") != "diesel")
@@ -52,6 +60,12 @@ internal static class ScsTruckDefinitionSchema
                 throw new InvalidDataException("rpm_idle liegt außerhalb des dokumentierten Bereichs 500–850.");
             if (accessory.GetToken("volume") is { } volume && Number(volume) < 0.8)
                 throw new InvalidDataException("Das angegebene Motorvolumen unterschreitet das dokumentierte Minimum 0,8 Liter.");
+            var coldStart = Number(accessory.GetToken("cold_start_rpm") ?? "-1");
+            if (coldStart >= 0 && coldStart < Number(accessory.GetToken("rpm_idle") ?? "550"))
+                throw new InvalidDataException("Die Kaltstart-Drehzahl unterschreitet die Leerlaufdrehzahl.");
+            if (Number(accessory.GetToken("rpm_limit_hysteresis") ?? "0") < 0 ||
+                Number(accessory.GetToken("rpm_limit_neutral_hysteresis") ?? "0") < 0)
+                throw new InvalidDataException("Die Hysterese der Drehzahlbegrenzung darf nicht negativ sein.");
             foreach (var name in new[] { "torque_curve", "secondary_torque_curve" })
             {
                 var last = -1d;
@@ -71,6 +85,9 @@ internal static class ScsTruckDefinitionSchema
             if (forwards.Length is < 1 or > 64 || reverse.Length is < 1 or > 16 || forwards.Any(v => v <= 0) || reverse.Any(v => v >= 0) ||
                 Number(accessory.GetToken("differential_ratio") ?? "1") <= 0)
                 throw new InvalidDataException("Getriebeübersetzungen fehlen oder haben ungültige Vorzeichen/Werte.");
+            if (forwards.Zip(forwards.Skip(1), (previous, next) => previous <= next).Any(invalid => invalid) ||
+                reverse.Zip(reverse.Skip(1), (previous, next) => Math.Abs(previous) <= Math.Abs(next)).Any(invalid => invalid))
+                throw new InvalidDataException("Getriebeübersetzungen müssen in absteigender Untersetzung angeordnet sein.");
             if (Integer(accessory.GetToken("crawls") ?? "0") > forwards.Length || Integer(accessory.GetToken("reverse_crawls") ?? "0") > reverse.Length)
                 throw new InvalidDataException("Die Anzahl der Kriechgänge überschreitet die vorhandenen Gänge.");
             ValidateBrakeCount(accessory, "retarder", 0);

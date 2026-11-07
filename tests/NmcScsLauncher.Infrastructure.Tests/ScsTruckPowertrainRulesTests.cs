@@ -3,7 +3,7 @@ using Xunit;
 
 namespace NmcScsLauncher.Infrastructure.Tests;
 
-public sealed class ScsTruckPowertrainRulesTests
+public sealed partial class ScsTruckPowertrainRulesTests
 {
     private const string Root = "/def/vehicle/truck/test";
     private const string Engine = Root + "/engine/old.sii";
@@ -129,9 +129,9 @@ public sealed class ScsTruckPowertrainRulesTests
     public void OwnerPointerRequiresMatchingTypedUnit()
     {
         using var source = Source();
-        source.Set(NewGearbox, "accessory_transmission_data", "new.test.transmission", "ratios_forward[]: 3 ratios_reverse[]: -4 transmission_names: .names");
+        source.Set(NewGearbox, "accessory_transmission_data", "new.test.transmission", "ratios_forward[]: 3 ratios_forward[]: 1 ratios_reverse[]: -4 transmission_names: .names");
         Assert.False(Build(source).AssessPair(NewEngine, NewGearbox).IsVerified);
-        source.Files[NewGearbox] = source.Files[NewGearbox][..^1] + " transmission_names : .names { forward[]: \"1\" reverse[]: \"R\" } }";
+        source.Files[NewGearbox] = source.Files[NewGearbox][..^1] + " transmission_names : .names { forward[]: \"1\" forward[]: \"2\" reverse[]: \"R\" } }";
         Assert.True(Build(source).AssessPair(NewEngine, NewGearbox).IsVerified);
     }
 
@@ -263,11 +263,11 @@ public sealed class ScsTruckPowertrainRulesTests
     }
 
     [Fact]
-    public void BrokenOldTransmissionCanBeReplacedWithACompleteVerifiedOne()
+    public void BrokenOldTransmissionPreventsControlStateVerification()
     {
         using var source = Source();
         source.Files.Remove(Gearbox);
-        Assert.True(Build(source).AssessPair(NewEngine, NewGearbox).IsVerified);
+        Assert.False(Build(source).AssessPair(NewEngine, NewGearbox).IsVerified);
         Assert.False(Build(source).AssessPair(NewEngine, Gearbox).IsVerified);
     }
 
@@ -394,7 +394,7 @@ public sealed class ScsTruckPowertrainRulesTests
         result.Set(Root + "/data.sii", "accessory_truck_data", "test.data", "require[]: engine require[]: transmission");
         result.Set(Engine, "accessory_engine_data", "old.test.engine", "torque: 2000");
         result.Set(NewEngine, "accessory_engine_data", "new.test.engine", "name: \"New engine\" torque: 2400");
-        result.Set(Gearbox, "accessory_transmission_data", "old.test.transmission", "ratios_forward[]: 2 ratios_reverse[]: -3");
+        result.Set(Gearbox, "accessory_transmission_data", "old.test.transmission", "ratios_forward[]: 2 ratios_forward[]: 1 ratios_reverse[]: -3");
         result.Set(NewGearbox, "accessory_transmission_data", "new.test.transmission", "ratios_forward[]: 3 ratios_forward[]: 1 ratios_reverse[]: -4 differential_ratio: 2.85");
         result.Set(Cabin, "accessory_cabin_data", "standard.test.cabin", "");
         return result;

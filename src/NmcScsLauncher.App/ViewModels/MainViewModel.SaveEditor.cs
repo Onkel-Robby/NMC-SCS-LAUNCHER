@@ -871,7 +871,8 @@ public partial class MainViewModel
         string operationName,
         Func<Task<ScsSaveEditResult>> operation,
         bool refreshProfiles = false,
-        bool exposeBackupForRestore = true)
+        bool exposeBackupForRestore = true,
+        Func<bool>? selectionIsCurrent = null)
     {
         if (IsBusy || RejectRemoteSteamCloudWrite())
             return;
@@ -909,7 +910,13 @@ public partial class MainViewModel
                 "INFO",
                 $"Save editor change completed. Operation={result.Operation}; File={result.FilePath}; Backup={result.BackupPath}; OriginalSha={result.OriginalSha256}; UpdatedSha={result.UpdatedSha256}");
 
-            if (refreshProfiles)
+            if (selectionIsCurrent?.Invoke() == false)
+            {
+                // A completed backend transaction remains successful even if its UI context has changed.
+                SaveEditorStatusText = $"{operationName} für '{result.FilePath}' erfolgreich gespeichert. " +
+                    "Das Sicherheits-Backup bleibt verfügbar. Die aktuelle Auswahl wurde nicht neu geladen.";
+            }
+            else if (refreshProfiles)
             {
                 await RefreshSaveEditorAsync();
             }

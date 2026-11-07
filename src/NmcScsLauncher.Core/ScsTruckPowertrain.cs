@@ -31,3 +31,16 @@ public interface IScsTruckPowertrainService
     Task<IScsTruckPowertrainPreview> InspectAsync(ScsEffectiveContentRequest request,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record ScsTruckPowertrainInstallRequest(
+    ScsEffectiveContentRequest Content,
+    string ExpectedSaveSha256,
+    string ExpectedTruckId,
+    string EngineDataPath,
+    string TransmissionDataPath);
+
+public interface IScsTruckPowertrainInstaller
+{
+    Task<ScsSaveEditResult> InstallAsync(ScsTruckPowertrainInstallRequest request,
+        CancellationToken cancellationToken = default);
+}

@@ -152,6 +152,25 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
     }
 
     [Fact]
+    public void MixedLineEndingsRemainReadableButCannotBeNormalizedByAnInstall()
+    {
+        var text = ValidSave().Replace("SiiNunit\n", "SiiNunit\r\n", StringComparison.Ordinal);
+        var read = new ScsTruckPowertrainReadResult(Parse(text), text);
+        var exception = Assert.Throws<ScsSaveEditException>(() => ScsTruckPowertrainSnapshotReader.BuildUpdatedContent(read,
+            "/def/vehicle/truck/test/engine/new.sii", "/def/vehicle/truck/test/transmission/new.sii"));
+        Assert.Contains("Zeilenenden", exception.Message);
+    }
+
+    [Fact]
+    public void UniformWindowsLineEndingsAndUnrelatedTextArePreserved()
+    {
+        var text = ValidSave().Replace("\n", "\r\n", StringComparison.Ordinal);
+        var read = new ScsTruckPowertrainReadResult(Parse(text), text);
+        Assert.Equal(text.Replace("engine/old.sii", "engine/new.sii", StringComparison.Ordinal),
+            ScsTruckPowertrainSnapshotReader.BuildUpdatedContent(read, "/def/vehicle/truck/test/engine/new.sii", read.Snapshot.CurrentTransmissionPath));
+    }
+
+    [Fact]
     public async Task FreshTemporaryCopyDefeatsCodecCacheWithSameSizeAndTimestamp()
     {
         var original = ValidSave();

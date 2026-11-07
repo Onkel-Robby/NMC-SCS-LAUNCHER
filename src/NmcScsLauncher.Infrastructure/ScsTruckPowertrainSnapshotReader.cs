@@ -144,6 +144,9 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
     public static string BuildUpdatedContent(ScsTruckPowertrainReadResult read, string enginePath, string transmissionPath)
     {
         ArgumentNullException.ThrowIfNull(read);
+        var withoutWindowsNewlines = read.Content.Replace("\r\n", string.Empty, StringComparison.Ordinal);
+        if (withoutWindowsNewlines.Contains('\r') || read.Content.Contains("\r\n", StringComparison.Ordinal) && withoutWindowsNewlines.Contains('\n'))
+            throw new ScsSaveEditException("Der Save enthält gemischte Zeilenenden; eine Änderung ohne weitere Textanpassungen ist nicht bestätigt.");
         var snapshot = read.Snapshot;
         var save = ReferenceFor(snapshot);
         var original = Parse(save, snapshot.SaveSha256, read.Content);
