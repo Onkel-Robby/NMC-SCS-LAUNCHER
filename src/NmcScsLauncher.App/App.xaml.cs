@@ -36,6 +36,8 @@ public partial class App : Application
         services.AddSingleton<IScsPowertrainDiscoveryService, ScsPowertrainDiscoveryService>();
         services.AddSingleton<IScsActiveContentResolver, ScsActiveContentResolver>();
         services.AddSingleton<IScsEffectiveContentService, ScsEffectiveContentService>();
+        services.AddSingleton<ScsTruckPowertrainSnapshotReader>();
+        services.AddSingleton<IScsTruckPowertrainService, ScsTruckPowertrainService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -92,6 +94,8 @@ public partial class App : Application
             _serviceProvider.GetRequiredService<IScsSaveEditService>());
         viewModel.ConfigurePowertrainDiscoveryService(
             _serviceProvider.GetRequiredService<IScsPowertrainDiscoveryService>());
+        viewModel.ConfigureTruckPowertrainService(
+            _serviceProvider.GetRequiredService<IScsTruckPowertrainService>());
 
         try
         {

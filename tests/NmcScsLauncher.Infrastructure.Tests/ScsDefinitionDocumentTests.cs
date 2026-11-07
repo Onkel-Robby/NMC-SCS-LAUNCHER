@@ -101,6 +101,17 @@ public sealed class ScsDefinitionDocumentTests
         Assert.Throws<InvalidDataException>(() => unit.GetToken("declared"));
     }
 
+    [Theory]
+    [InlineData("sounds: 2 sounds[]: \"engine|example.bank\" sounds[]: \"exhaust|example.bank\"")]
+    [InlineData("sounds[]: \"engine|example.bank\" sounds[]: \"exhaust|example.bank\" sounds: 2")]
+    public void ReadsCountedAppendArraysUsedByOriginalSoundIncludes(string attributes)
+    {
+        var unit = Single(attributes);
+        Assert.Equal(2, unit.GetDeclaredArrayCount("sounds"));
+        Assert.Equal(new[] { "engine|example.bank", "exhaust|example.bank" }, unit.GetStrings("sounds"));
+        Assert.Throws<InvalidDataException>(() => unit.GetToken("sounds"));
+    }
+
     [Fact]
     public void DoesNotCoerceScalarAndArrayValueTypes()
     {
@@ -118,7 +129,11 @@ public sealed class ScsDefinitionDocumentTests
     [Theory]
     [InlineData("a: 1 a: 2")]
     [InlineData("a[]: one a[0]: two")]
-    [InlineData("a: 1 a[]: one")]
+    [InlineData("a: 2 a[]: one")]
+    [InlineData("a: 0 a[]: one")]
+    [InlineData("a: -1 a[]: one")]
+    [InlineData("a: \"1\" a[]: one")]
+    [InlineData("a: 2 a[]: one a[1]: two")]
     [InlineData("a: 2 a[0]: one")]
     [InlineData("a: 1 a[0]: one a[1]: two")]
     [InlineData("a[0]: one a[0]: two")]

@@ -41,15 +41,15 @@ Interfaces: `IScsActiveContentResolver.ResolveAsync(ScsEffectiveContentRequest)`
 - [x] Test exact ordered profile identities, selected-save agreement, missing/duplicate packages, version selection/ambiguity and conditional layers.
 - [x] Read current game version from validated installation metadata; select the documented Workshop matching variant or unique universal fallback. Preserve unresolved DLC availability explicitly.
 - [x] Implement bounded effective lookup, unknown-overlay rejection, source-local mount roots and cross-source include access; recheck evidence and relevant bytes.
-- [ ] Release build, full suite, independent review, docs and D1 PR with Windows CI/installer result.
+- [x] Release build, full suite, independent review, docs and D1 PR with Windows CI/installer result. PR90; CI265 all539 passing; NMC installer135 upgrade/uninstall passed.
 
 ## D2 – Compatibility and Truck selection
 
 Files: new powertrain compatibility contracts/service and strict truck snapshot validation; existing MainViewModel/Truck view plus App and Infrastructure tests.
 
-- [ ] Test full accessory count/index/reference integrity and independent truck `data.sii` model proof.
-- [ ] Resolve all retained definitions; verify require/conflict/suitable/default/override rules for the final pair. Reject unsupported cascades, hookups, engine-type changes and unknown syntax.
-- [ ] Show names/locale where proven, source, current parts and reliable torque/gear facts directly in searchable Truck choices. Keep technical details optional and retain existing save-derived actions.
+- [x] Test full accessory count/index/reference integrity and independent truck `data.sii` model proof.
+- [x] Resolve all retained definitions; verify require/conflict/suitable/default/override rules for the final pair. Reject unsupported cascades, hookups, engine-type changes and unknown syntax.
+- [x] Show names/locale where proven, source, current parts and reliable torque/gear facts directly in searchable Truck choices. Keep technical details optional and retain existing save-derived actions.
 - [ ] Release build, full suite, visual review, docs and D2 PR with Windows CI/installer result.
 
 ## D3 – Verified pair installation

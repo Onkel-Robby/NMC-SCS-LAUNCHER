@@ -755,7 +755,7 @@
 </Border></Grid>
 </Grid></TabItem>
     <TabItem Header="Truck"><Grid Margin="0,4,0,10">
-    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="0.7*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="1.3*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
     <StackPanel>
         <TextBlock Text="Aktiver Truck" FontSize="18" FontWeight="SemiBold" />
@@ -764,7 +764,7 @@
         <TextBlock Text="Eigener Truck auswählen" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
         <Grid Margin="0,4,0,10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" />
+            <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}" DisplayMemberPath="DisplayName" Height="40" Padding="8,5" ToolTip="{Binding SaveEditorSelectedTruck.DisplayName}" />
             <Button Grid.Column="1" Content="Wechseln" Command="{Binding SwitchSaveEditorTruckCommand}" Margin="8,0,0,0" />
         </Grid>
 
@@ -779,7 +779,7 @@
             <Button Grid.Column="1" Content="Setzen" Command="{Binding SetSaveEditorFuelCommand}" Margin="8,0,0,0" />
         </Grid>
 
-        <TextBlock Text="Kilometerstand (Tacho + Truck-Manager)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
+        <TextBlock Text="Kilometerstand (Tacho + Truck-Manager)" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" />
         <Grid Margin="0,4,0,10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <TextBox Text="{Binding SaveEditorMileageText, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" />
@@ -790,8 +790,10 @@
 </Border></Grid>
     <Grid Grid.Column="2"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
     <StackPanel>
-        <TextBlock Text="Motor &amp; Getriebe" FontSize="19" FontWeight="SemiBold" />
-        <TextBlock Text="Die schreibbare Auswahl stammt von vorhandenen Trucks desselben Modells. Weitere Komponenten lassen sich im Reiter „Komponentenkatalog“ ansehen." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
+        <views:TruckPowertrainSelection />
+        <Expander Header="Bisherige Auswahl aus dem Spielstand" Margin="0,14,0,0">
+        <StackPanel>
+        <TextBlock Text="Vorhandene Komponenten anderer Trucks desselben Modells im aktuellen Save." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
         <TextBlock Text="Motor · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
         <Grid Margin="0,4,0,10">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -822,6 +824,8 @@
             <Button Grid.Column="1" Content="Getriebe setzen" Command="{Binding SetSaveEditorTransmissionCommand}" Margin="8,0,0,0" />
         </Grid>
         <TextBlock Text="Die Auswahl stammt nur aus bereits vorhandenen Trucks desselben Modells im aktuellen Save. Dadurch werden keine unbekannten Definitionen geraten." Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
+        </StackPanel>
+        </Expander>
     </StackPanel>
 </Border></Grid>
 </Grid></TabItem>

@@ -342,7 +342,7 @@ public sealed class ScsDefinitionDocument
         {
             if (append)
             {
-                if (_scalar is not null || _indexed.Count > 0) throw Error(offset, "Gemischte SII-Arraydarstellung.");
+                if (_indexed.Count > 0) throw Error(offset, "Gemischte SII-Arraydarstellung.");
                 if (_append.Count >= MaximumArrayEntries) throw Error(offset, "SII-Array überschreitet das Elementlimit.");
                 _append.Add(value);
             }
@@ -354,21 +354,23 @@ public sealed class ScsDefinitionDocument
             else
             {
                 if (_scalar is not null) throw Error(offset, "SII-Skalar ist mehrfach vorhanden.");
-                if (_append.Count > 0) throw Error(offset, "Gemischte SII-Arraydarstellung.");
                 _scalar = value;
             }
         }
 
         internal ScsDefinitionUnit.Attribute Finish(string key)
         {
-            if (_append.Count > 0) return new(null, _append.AsReadOnly());
-            if (_indexed.Count == 0) return new(_scalar, null);
+            if (_append.Count == 0 && _indexed.Count == 0) return new(_scalar, null);
             if (_indexed.Keys.Where((index, position) => index != position).Any())
                 throw Error(offset, $"SII-Array '{key}' enthält Indexlücken.");
+            var entryCount = _append.Count > 0 ? _append.Count : _indexed.Count;
             if (_scalar is not null && (_scalar.Kind != ScsDefinitionValueKind.Token ||
-                !int.TryParse(_scalar.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var count) || count != _indexed.Count))
+                !int.TryParse(_scalar.Text, NumberStyles.None, CultureInfo.InvariantCulture, out var count) || count != entryCount))
                 throw Error(offset, $"SII-Array '{key}' stimmt nicht mit seiner deklarierten Anzahl überein.");
-            var declaredCount = _scalar is null ? (int?)null : _indexed.Count;
+            var declaredCount = _scalar is null ? (int?)null : entryCount;
+            // Original SCS sound includes combine an explicit count with append entries.
+            // The count still has to match exactly; indexed/append mixing remains invalid.
+            if (_append.Count > 0) return new(null, _append.AsReadOnly(), declaredCount);
             return new(null, Array.AsReadOnly(_indexed.Values.ToArray()), declaredCount);
         }
     }
