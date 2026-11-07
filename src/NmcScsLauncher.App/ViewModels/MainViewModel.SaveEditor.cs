@@ -21,6 +21,20 @@ public partial class MainViewModel
     // A reload performs an awaited inspection and must not also start one via the
     // SelectedSave property callback; otherwise the status updates can race.
     private bool _suppressSaveEditorAutomaticInspection;
+    private long _saveEditorProfileLoadGeneration;
+    private long _saveEditorInspectionGeneration;
+    private long _saveEditorDiscoveryGeneration;
+    private long _saveEditorSelectionGeneration;
+    private string? _saveEditorActiveTruckId;
+    private string? _saveEditorActiveTrailerId;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SaveEditorCanEditPlates))]
+    [NotifyCanExecuteChangedFor(nameof(SetSaveEditorTruckPlateCommand), nameof(SetSaveEditorTrailerPlateCommand))]
+    private bool _saveEditorIsInspecting;
+
+    public bool SaveEditorCanEditPlates => SaveEditorSelectedSave is not null &&
+        _saveEditorVehicleEditService is not null && !SaveEditorIsInspecting && !IsBusy;
 
     [ObservableProperty] private GameType _saveEditorSelectedGame = GameType.Ets2;
     [ObservableProperty] private ScsProfileReference? _saveEditorSelectedProfile;
@@ -42,16 +56,6 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorFuelText = string.Empty;
     [ObservableProperty] private string _saveEditorMileageText = string.Empty;
     [ObservableProperty] private string _saveEditorCargoMassText = string.Empty;
-    [ObservableProperty] private string _saveEditorTruckPlateText = string.Empty;
-    [ObservableProperty] private string _saveEditorTrailerPlateText = string.Empty;
-    [ObservableProperty] private string _saveEditorPlateCountry = "germany";
-    [ObservableProperty] private ScsPlateRegion? _saveEditorSelectedPlateRegion =
-        ScsPlateRegionCatalog.DefaultFor(GameType.Ets2);
-    [ObservableProperty] private string _saveEditorOtherPlateCountryCode = string.Empty;
-    public bool SaveEditorUsesOtherPlateCountry =>
-        SaveEditorSelectedPlateRegion?.Code == ScsPlateRegionCatalog.OtherCode;
-    [ObservableProperty] private string _saveEditorPlateBackgroundRgb = "ffffff";
-    [ObservableProperty] private string _saveEditorPlateTextRgb = "000000";
     [ObservableProperty] private string _saveEditorEnginePath = string.Empty;
     [ObservableProperty] private string _saveEditorTransmissionPath = string.Empty;
     [ObservableProperty] private ScsPowertrainCatalogItem? _saveEditorSelectedEngine;
@@ -61,8 +65,8 @@ public partial class MainViewModel
     [ObservableProperty] private string _saveEditorLastBackupPath = "–";
 
     public IReadOnlyList<GameType> SaveEditorGames { get; } = Enum.GetValues<GameType>();
-    public ObservableCollection<ScsPlateRegion> SaveEditorPlateRegions { get; } =
-        new(ScsPlateRegionCatalog.For(GameType.Ets2));
+    public LicensePlateEditorViewModel SaveEditorTruckPlate { get; } = new(GameType.Ets2);
+    public LicensePlateEditorViewModel SaveEditorTrailerPlate { get; } = new(GameType.Ets2);
     public ObservableCollection<ScsProfileReference> SaveEditorProfiles { get; } = new();
     public ObservableCollection<ScsSaveReference> SaveEditorSaves { get; } = new();
     public ObservableCollection<ScsVehicleInventoryItem> SaveEditorTrucks { get; } = new();
@@ -91,11 +95,14 @@ public partial class MainViewModel
             return;
         }
 
+        var selectedGame = SaveEditorSelectedGame;
+        var generation = ++_saveEditorDiscoveryGeneration;
+        bool IsCurrent() => generation == _saveEditorDiscoveryGeneration && selectedGame == SaveEditorSelectedGame;
         IsBusy = true;
         try
         {
             var candidates = ScsProfileHomeLocator.GetCandidates(
-                SaveEditorSelectedGame,
+                selectedGame,
                 GetConfiguredSaveEditorHome(),
                 ScsProfileHomeLocator.GetDocumentRoots());
             var home = candidates.FirstOrDefault() ?? GetDefaultSaveEditorHome();
@@ -109,8 +116,9 @@ public partial class MainViewModel
 
                 attemptedPaths.Add(candidate);
                 var discovered = await _saveEditorLocator.FindProfilesAsync(
-                    SaveEditorSelectedGame,
+                    selectedGame,
                     candidate);
+                if (!IsCurrent()) return;
 
                 if (discovered.Count == 0)
                     continue;
@@ -122,7 +130,8 @@ public partial class MainViewModel
 
             // Local steam_profiles usually holds machine-specific settings,
             // while actual Steam Cloud game.sii saves live in Steam userdata.
-            var remoteProfiles = await _saveEditorLocator.FindSteamCloudProfilesAsync(SaveEditorSelectedGame);
+            var remoteProfiles = await _saveEditorLocator.FindSteamCloudProfilesAsync(selectedGame);
+            if (!IsCurrent()) return;
             var combined = remoteProfiles.Concat(profiles)
                 .DistinctBy(static item => item.ProfileDirectory, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
@@ -161,6 +170,7 @@ public partial class MainViewModel
         }
         catch (Exception ex)
         {
+            if (!IsCurrent()) return;
             SaveEditorProfiles.Clear();
             ClearSaveEditorSaveState();
             SaveEditorStatusText = "Profile konnten nicht gelesen werden. Details wurden protokolliert.";
@@ -179,6 +189,7 @@ public partial class MainViewModel
             return;
 
         var selectedGame = SaveEditorSelectedGame;
+        var discoveryGeneration = _saveEditorDiscoveryGeneration;
         var selected = _folderPicker.PickFolder(
             $"Profilverzeichnis für {GameDefinition.For(selectedGame).DisplayName} wählen",
             GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome());
@@ -205,6 +216,8 @@ public partial class MainViewModel
         try
         {
             var profiles = await _saveEditorLocator.FindProfilesAsync(selectedGame, home);
+            if (selectedGame != SaveEditorSelectedGame || discoveryGeneration != _saveEditorDiscoveryGeneration)
+                return;
             if (profiles.Count == 0)
             {
                 SaveEditorStatusText =
@@ -225,6 +238,8 @@ public partial class MainViewModel
         }
         catch (Exception ex)
         {
+            if (selectedGame != SaveEditorSelectedGame || discoveryGeneration != _saveEditorDiscoveryGeneration)
+                return;
             SaveEditorStatusText = "Der Profilordner konnte nicht übernommen werden. Details wurden protokolliert.";
             await _logger.WriteAsync("ERROR", "Save editor profile home selection failed.", ex);
         }
@@ -242,33 +257,14 @@ public partial class MainViewModel
 
     partial void OnSaveEditorSelectedGameChanged(GameType value)
     {
-        // ETS2 uses country definitions, while ATS uses individual US states.
-        // Switching games must never silently retain the other game's plate code.
-        SaveEditorPlateRegions.Clear();
-        foreach (var region in ScsPlateRegionCatalog.For(value))
-            SaveEditorPlateRegions.Add(region);
-        SaveEditorSelectedPlateRegion = ScsPlateRegionCatalog.DefaultFor(value);
-
+        ++_saveEditorDiscoveryGeneration;
+        ++_saveEditorProfileLoadGeneration;
         SaveEditorProfiles.Clear();
         SaveEditorSelectedProfile = null;
         ClearSaveEditorSaveState();
         SaveEditorGameHome = GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome();
         SaveEditorStatusText =
             $"{GameDefinition.For(value).DisplayName}: auf „Profile laden“ klicken.";
-    }
-
-    partial void OnSaveEditorSelectedPlateRegionChanged(ScsPlateRegion? value)
-    {
-        OnPropertyChanged(nameof(SaveEditorUsesOtherPlateCountry));
-        SaveEditorPlateCountry = value?.Code == ScsPlateRegionCatalog.OtherCode
-            ? SaveEditorOtherPlateCountryCode.Trim()
-            : value?.Code ?? string.Empty;
-    }
-
-    partial void OnSaveEditorOtherPlateCountryCodeChanged(string value)
-    {
-        if (SaveEditorUsesOtherPlateCountry)
-            SaveEditorPlateCountry = value.Trim();
     }
 
     partial void OnSaveEditorSelectedProfileChanged(ScsProfileReference? value)
@@ -284,7 +280,20 @@ public partial class MainViewModel
     partial void OnSaveEditorSelectedSaveChanged(ScsSaveReference? value)
     {
         if (!_suppressSaveEditorAutomaticInspection)
+        {
+            ++_saveEditorSelectionGeneration;
             _ = InspectSaveEditorVehicleStateAsync(value);
+        }
+        NotifySaveEditorPlateAvailability();
+    }
+
+    partial void OnIsBusyChanged(bool value) => NotifySaveEditorPlateAvailability();
+
+    private void NotifySaveEditorPlateAvailability()
+    {
+        OnPropertyChanged(nameof(SaveEditorCanEditPlates));
+        SetSaveEditorTruckPlateCommand.NotifyCanExecuteChanged();
+        SetSaveEditorTrailerPlateCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnSaveEditorSelectedTruckChanged(ScsVehicleInventoryItem? value) =>
@@ -474,32 +483,60 @@ public partial class MainViewModel
             () => _saveEditorVehicleEditService!.SwitchActiveTrailerAsync(SaveEditorSelectedSave!, target.Id));
     }
 
-    [RelayCommand]
-    private async Task SetSaveEditorTruckPlateAsync()
-    {
-        await ExecuteSelectedVehicleEditAsync(
-            "Truck-Kennzeichen ändern",
-            $"Kennzeichen des aktiven Trucks auf '{SaveEditorTruckPlateText.Trim()}' setzen?",
-            () => _saveEditorVehicleEditService!.SetActiveTruckLicensePlateAsync(
-                SaveEditorSelectedSave!,
-                SaveEditorTruckPlateText,
-                SaveEditorPlateCountry,
-                SaveEditorPlateBackgroundRgb,
-                SaveEditorPlateTextRgb));
-    }
+    [RelayCommand(CanExecute = nameof(CanSetSaveEditorPlate))]
+    private Task SetSaveEditorTruckPlateAsync() => SetSaveEditorPlateAsync(trailer: false);
 
-    [RelayCommand]
-    private async Task SetSaveEditorTrailerPlateAsync()
+    [RelayCommand(CanExecute = nameof(CanSetSaveEditorPlate))]
+    private Task SetSaveEditorTrailerPlateAsync() => SetSaveEditorPlateAsync(trailer: true);
+
+    private bool CanSetSaveEditorPlate() => SaveEditorCanEditPlates;
+
+    private async Task SetSaveEditorPlateAsync(bool trailer)
     {
+        if (!SaveEditorCanEditPlates)
+            return;
+
+        var save = SaveEditorSelectedSave!;
+        var profile = SaveEditorSelectedProfile;
+        var game = SaveEditorSelectedGame;
+        var selectionGeneration = _saveEditorSelectionGeneration;
+        var profileGeneration = _saveEditorProfileLoadGeneration;
+        var inspectionGeneration = _saveEditorInspectionGeneration;
+        var editor = trailer ? SaveEditorTrailerPlate : SaveEditorTruckPlate;
+        var draft = editor.CaptureDraft();
+        var countryCode = editor.CountryCode;
+        var oppositeEditor = trailer ? SaveEditorTruckPlate : SaveEditorTrailerPlate;
+        var oppositeDraft = oppositeEditor.CaptureDraft();
+        var oppositeVehicleId = trailer ? _saveEditorActiveTruckId : _saveEditorActiveTrailerId;
+        var writeSucceeded = false;
+
+        bool SameContext() => game == SaveEditorSelectedGame &&
+            selectionGeneration == _saveEditorSelectionGeneration &&
+            profileGeneration == _saveEditorProfileLoadGeneration &&
+            ReferenceEquals(profile, SaveEditorSelectedProfile) &&
+            string.Equals(save.GameSiiPath, SaveEditorSelectedSave?.GameSiiPath, StringComparison.OrdinalIgnoreCase);
+
         await ExecuteSelectedVehicleEditAsync(
-            "Trailer-Kennzeichen ändern",
-            $"Kennzeichen der aktiven Trailer-Kette auf '{SaveEditorTrailerPlateText.Trim()}' setzen?",
-            () => _saveEditorVehicleEditService!.SetActiveTrailerLicensePlateAsync(
-                SaveEditorSelectedSave!,
-                SaveEditorTrailerPlateText,
-                SaveEditorPlateCountry,
-                SaveEditorPlateBackgroundRgb,
-                SaveEditorPlateTextRgb));
+            trailer ? "Trailer-Kennzeichen ändern" : "Truck-Kennzeichen ändern",
+            trailer ? $"Kennzeichen der aktiven Trailer-Kette auf '{draft.Text.Trim()}' setzen?"
+                : $"Kennzeichen des aktiven Trucks auf '{draft.Text.Trim()}' setzen?",
+            async () =>
+            {
+                var result = trailer
+                    ? await _saveEditorVehicleEditService!.SetActiveTrailerLicensePlateAsync(
+                        save, draft.Text, countryCode, draft.BackgroundRgb, draft.TextRgb)
+                    : await _saveEditorVehicleEditService!.SetActiveTruckLicensePlateAsync(
+                        save, draft.Text, countryCode, draft.BackgroundRgb, draft.TextRgb);
+                writeSucceeded = true;
+                return result;
+            },
+            () => SameContext() && inspectionGeneration == _saveEditorInspectionGeneration);
+
+        // A plate-only reload refreshes the written value, but keeps the other vehicle's draft.
+        // A new selection or active vehicle always takes precedence over an old draft.
+        if (writeSucceeded && SameContext() && !SaveEditorIsInspecting &&
+            oppositeVehicleId == (trailer ? _saveEditorActiveTruckId : _saveEditorActiveTrailerId))
+            oppositeEditor.RestoreDraft(oppositeDraft);
     }
 
     [RelayCommand]
@@ -599,6 +636,7 @@ public partial class MainViewModel
 
     private async Task LoadSaveEditorSavesAsync(ScsProfileReference? profile)
     {
+        var generation = ++_saveEditorProfileLoadGeneration;
         SaveEditorSaves.Clear();
         SaveEditorSelectedSave = null;
         ClearSaveEditorVehicleState();
@@ -606,21 +644,26 @@ public partial class MainViewModel
         if (profile is null || _saveEditorLocator is null)
             return;
 
+        bool IsCurrent() => generation == _saveEditorProfileLoadGeneration &&
+            ReferenceEquals(profile, SaveEditorSelectedProfile) && profile.GameType == SaveEditorSelectedGame;
+
         try
         {
             var saves = await _saveEditorLocator.FindSavesAsync(profile);
+            if (!IsCurrent()) return;
             foreach (var save in saves)
             {
                 SaveEditorSaves.Add(save);
             }
 
-            SaveEditorSelectedSave = saves.FirstOrDefault();
             SaveEditorStatusText = saves.Count == 0
                 ? $"Profil '{profile.DisplayName}' enthält keine Saves mit game.sii."
                 : $"{saves.Count} Save(s) gefunden. Neuester Save wurde ausgewählt.";
+            SaveEditorSelectedSave = saves.FirstOrDefault();
         }
         catch (Exception ex)
         {
+            if (!IsCurrent()) return;
             SaveEditorStatusText = "Saves konnten nicht gelesen werden. Details wurden protokolliert.";
             await _logger.WriteAsync("ERROR", "Save editor save discovery failed.", ex);
         }
@@ -629,20 +672,43 @@ public partial class MainViewModel
     private async Task InspectSaveEditorVehicleStateAsync(ScsSaveReference? save)
     {
         ClearSaveEditorVehicleState();
+        var generation = _saveEditorInspectionGeneration;
         if (save is null || _saveEditorVehicleEditService is null)
             return;
+
+        SaveEditorIsInspecting = true;
+        try
+        {
+            await InspectSaveEditorVehicleStateCoreAsync(save, generation, _saveEditorVehicleEditService);
+        }
+        finally
+        {
+            if (generation == _saveEditorInspectionGeneration)
+                SaveEditorIsInspecting = false;
+        }
+    }
+
+    private async Task InspectSaveEditorVehicleStateCoreAsync(
+        ScsSaveReference save, long generation, IScsVehicleEditService vehicleEditService)
+    {
+
+        bool IsCurrent() => generation == _saveEditorInspectionGeneration &&
+            ReferenceEquals(save, SaveEditorSelectedSave) && save.GameType == SaveEditorSelectedGame;
 
         if (_saveEditorProfileEditService is not null)
         {
             try
             {
                 var money = await _saveEditorProfileEditService.GetMoneyAsync(save);
+                if (!IsCurrent()) return;
                 var experience = await _saveEditorProfileEditService.GetExperienceAsync(save);
+                if (!IsCurrent()) return;
                 SaveEditorMoneyText = money.ToString(CultureInfo.CurrentCulture);
                 SaveEditorExperienceText = experience.ToString(CultureInfo.CurrentCulture);
             }
             catch (ScsSaveEditException)
             {
+                if (!IsCurrent()) return;
                 SaveEditorMoneyText = string.Empty;
                 SaveEditorExperienceText = string.Empty;
             }
@@ -650,6 +716,7 @@ public partial class MainViewModel
             try
             {
                 var skills = await _saveEditorProfileEditService.GetCareerSkillsAsync(save);
+                if (!IsCurrent()) return;
                 SaveEditorAdrMaskText = skills.AdrMask.ToString(CultureInfo.CurrentCulture);
                 SaveEditorLongDistanceText = skills.LongDistance.ToString(CultureInfo.CurrentCulture);
                 SaveEditorHighValueCargoText = skills.HighValueCargo.ToString(CultureInfo.CurrentCulture);
@@ -659,14 +726,22 @@ public partial class MainViewModel
             }
             catch (ScsSaveEditException)
             {
+                if (!IsCurrent()) return;
                 ClearSaveEditorCareerSkills();
             }
         }
 
         try
         {
-            var state = await _saveEditorVehicleEditService.InspectActiveVehiclesAsync(save);
-            var inventory = await _saveEditorVehicleEditService.GetVehicleInventoryAsync(save);
+            var state = await vehicleEditService.InspectActiveVehiclesAsync(save);
+            if (!IsCurrent()) return;
+            var inventory = await vehicleEditService.GetVehicleInventoryAsync(save);
+            if (!IsCurrent()) return;
+
+            SaveEditorTruckPlate.Load(state.TruckLicensePlate);
+            SaveEditorTrailerPlate.Load(state.TrailerLicensePlate);
+            _saveEditorActiveTruckId = state.TruckId;
+            _saveEditorActiveTrailerId = state.TrailerId;
 
             SaveEditorActiveTruckText = inventory.Trucks
                 .FirstOrDefault(item => item.IsActive)?.DisplayName ?? state.TruckId;
@@ -680,13 +755,15 @@ public partial class MainViewModel
 
             try
             {
-                var mileage = await _saveEditorVehicleEditService.GetActiveTruckMileageAsync(save);
+                var mileage = await vehicleEditService.GetActiveTruckMileageAsync(save);
+                if (!IsCurrent()) return;
                 SaveEditorMileageText = mileage.ToString(
                     "0.############################",
                     CultureInfo.CurrentCulture);
             }
             catch (ScsSaveEditException)
             {
+                if (!IsCurrent()) return;
                 SaveEditorMileageText = string.Empty;
             }
 
@@ -704,8 +781,10 @@ public partial class MainViewModel
 
             try
             {
-                var powertrain = await _saveEditorVehicleEditService.GetActiveTruckPowertrainAsync(save);
-                var catalog = await _saveEditorVehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
+                var powertrain = await vehicleEditService.GetActiveTruckPowertrainAsync(save);
+                if (!IsCurrent()) return;
+                var catalog = await vehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
+                if (!IsCurrent()) return;
 
                 SaveEditorEnginePath = powertrain.EngineDataPath;
                 SaveEditorTransmissionPath = powertrain.TransmissionDataPath;
@@ -727,6 +806,7 @@ public partial class MainViewModel
             }
             catch (ScsSaveEditException)
             {
+                if (!IsCurrent()) return;
                 SaveEditorEnginePath = string.Empty;
                 SaveEditorTransmissionPath = string.Empty;
                 SaveEditorEngines.Clear();
@@ -740,6 +820,7 @@ public partial class MainViewModel
         }
         catch (Exception ex)
         {
+            if (!IsCurrent()) return;
             SaveEditorStatusText =
                 $"Save konnte nicht vollständig analysiert werden: {ex.Message}";
             await _logger.WriteAsync("WARN", "Save editor vehicle inspection failed.", ex);
@@ -784,7 +865,8 @@ public partial class MainViewModel
     private async Task ExecuteSelectedVehicleEditAsync(
         string title,
         string confirmationMessage,
-        Func<Task<ScsSaveEditResult>> operation)
+        Func<Task<ScsSaveEditResult>> operation,
+        Func<bool>? selectionIsCurrent = null)
     {
         if (SaveEditorSelectedSave is null || _saveEditorVehicleEditService is null)
         {
@@ -797,6 +879,12 @@ public partial class MainViewModel
 
         if (!_confirmationService.ConfirmSaveEdit(title, confirmationMessage))
             return;
+
+        if (selectionIsCurrent is not null && !selectionIsCurrent())
+        {
+            SaveEditorStatusText = "Die Auswahl wurde während der Bestätigung geändert. Kennzeichen bitte erneut prüfen.";
+            return;
+        }
 
         await ExecuteSaveEditorEditAsync(title, operation);
     }
@@ -882,20 +970,28 @@ public partial class MainViewModel
     private async Task ReloadCurrentSaveEditorSelectionAsync()
     {
         var profile = SaveEditorSelectedProfile;
-        var saveDirectory = SaveEditorSelectedSave?.SaveDirectory;
+        var selectedSave = SaveEditorSelectedSave;
+        var saveDirectory = selectedSave?.SaveDirectory;
+        var profileGeneration = _saveEditorProfileLoadGeneration;
+        var inspectionGeneration = _saveEditorInspectionGeneration;
 
         if (profile is null || _saveEditorLocator is null)
             return;
 
         var saves = await _saveEditorLocator.FindSavesAsync(profile);
-        SaveEditorSaves.Clear();
-        foreach (var save in saves)
-            SaveEditorSaves.Add(save);
+        if (profileGeneration != _saveEditorProfileLoadGeneration ||
+            inspectionGeneration != _saveEditorInspectionGeneration ||
+            !ReferenceEquals(profile, SaveEditorSelectedProfile) ||
+            !ReferenceEquals(selectedSave, SaveEditorSelectedSave))
+            return;
 
         // Prevent a second, unawaited inspection triggered by the selection setter.
         _suppressSaveEditorAutomaticInspection = true;
         try
         {
+            SaveEditorSaves.Clear();
+            foreach (var save in saves)
+                SaveEditorSaves.Add(save);
             SaveEditorSelectedSave =
                 saves.FirstOrDefault(item =>
                     string.Equals(
@@ -911,6 +1007,7 @@ public partial class MainViewModel
 
         if (SaveEditorSelectedSave is null)
         {
+            ClearSaveEditorVehicleState();
             SaveEditorStatusText =
                 "Der Schreibvorgang wurde abgeschlossen, der Save konnte danach jedoch nicht erneut gefunden werden.";
             return;
@@ -928,6 +1025,12 @@ public partial class MainViewModel
 
     private void ClearSaveEditorVehicleState()
     {
+        ++_saveEditorInspectionGeneration;
+        SaveEditorIsInspecting = false;
+        _saveEditorActiveTruckId = null;
+        _saveEditorActiveTrailerId = null;
+        SaveEditorTruckPlate.Reset(SaveEditorSelectedGame);
+        SaveEditorTrailerPlate.Reset(SaveEditorSelectedGame);
         SaveEditorTrucks.Clear();
         SaveEditorTrailers.Clear();
         SaveEditorSelectedTruck = null;

@@ -50,6 +50,8 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 - [x] Reparaturinstallation des finalen 1.0.0-Stands auf Windows bestätigt: Launcher zeigt Version 1.0.0 und die vom Inno-Installer erzeugten `unins000.exe`/`unins000.dat` sind im Installationsverzeichnis wieder vorhanden
 
 ## Nach 1.0.0
+- [x] Kennzeichen-Länderauswahl aus PR #86: 36 ETS2-Länder / 21 ATS-Bundesstaaten plus Custom-RGB und manuelle Map-Mod-Codes; bestehende Werte getrennt für aktiven Truck/Trailer laden, Entwürfe bei Kontextwechseln leeren und veraltete Leseantworten verwerfen; Regressionstests für Parser, Schreib-/Lese-Rundläufe, ViewModel-Zustände und WPF-Bindings
+- [~] Windows-/Ingame-Abnahme der vervollständigten Kennzeichen-Auswahl für ETS2 und ATS nach [`SAVE_EDITOR_PLATES_TEST.md`](SAVE_EDITOR_PLATES_TEST.md); keine neuen Ingame-Ergebnisse durch automatisierte Tests behauptet
 - [x] optionaler klassischer Windows-Installer inklusive CI-Smoke-Test
 - [x] eigener NMC Custom Installer auf WiX Toolset 5/Burn mit vollständig gebrandeter .NET-10-WPF-Oberfläche, per-user MSI, Installationspfad, optionaler Desktop-Verknüpfung, Repair/Uninstall, Inno-Migration und eigenem Install/Uninstall-CI-Smoke-Test
 - [x] realer Windows-Feldtest des neuen NMC Custom Installers: Inno-Migration, Installation, Repair vor dem LicenseHub-Update, Desktop-Verknüpfung, LicenseHub-Update und Uninstall mit erhaltenen Benutzerdaten bestätigt
