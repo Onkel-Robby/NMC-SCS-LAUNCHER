@@ -228,6 +228,7 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
     private ScsTruckPowertrainSnapshot Parse(string text) => ScsTruckPowertrainSnapshotReader.Parse(_save, Sha, text);
     private static string AddUnit(string text, string unit) => text[..text.LastIndexOf('}')] + unit + "\n}\n";
 
+    // Raw literals inherit source-file line endings; fixture mutations intentionally use LF.
     internal static string ValidSave() => """
         SiiNunit
         {
@@ -265,7 +266,7 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
          paint_color: (0, 0, 0)
         }
         }
-        """;
+        """.ReplaceLineEndings("\n");
 
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
 
