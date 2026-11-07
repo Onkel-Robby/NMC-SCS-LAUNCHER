@@ -373,6 +373,11 @@ public sealed partial class ScsTruckPowertrainRulesTests
             {
                 Assert.Single(preview.Engines);
                 Assert.False(preview.AssessPair(Engine, Gearbox).IsVerified);
+                Assert.Equal(saveChanges, preview.InspectionReport!.DefinitionsAttempted);
+                Assert.Equal(saveChanges, preview.InspectionReport.ResultsInvalidated);
+                if (saveChanges) Assert.Contains("verworfen", Assert.Single(preview.Engines).Reasons.Single());
+                Assert.Equal(saveChanges ? "1.58.1.0" : "", preview.InspectionReport.GameVersion);
+                Assert.DoesNotContain(preview.Diagnostics, value => value.Contains("außerhalb des geprüften", StringComparison.Ordinal));
             }
             else Assert.True(preview.AssessPair(NewEngine, NewGearbox).IsVerified);
             // No source session or original-save lease survives the returned preview.

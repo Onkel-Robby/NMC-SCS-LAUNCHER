@@ -102,10 +102,254 @@ public sealed class ScsActiveContentResolverTests : IDisposable
     public async Task MissingOrAmbiguousLocalPackageBlocksConfiguration(bool ambiguous)
     {
         WriteMods("active");
-        if (ambiguous) { Package(_modRoot, "active.scs"); Package(_modRoot, "active.zip"); }
+        if (ambiguous) { Package(_modRoot, "active.zip"); Directory.CreateDirectory(Path.Combine(_modRoot, "active")); }
         var result = await Service().ResolveAsync(_request);
         Assert.False(result.ConfigurationVerified);
         Assert.DoesNotContain(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.LocalMod);
+    }
+
+    [Fact]
+    public async Task LocalPackageWithoutManifestPreservesUnknownVersionAndActualDefinitions()
+    {
+        WriteMods("legacy");
+        Zip(_modRoot, "legacy.zip", (Definition, "legacy definition"));
+        using var session = await new ScsEffectiveContentService(Service()).OpenAsync(_request);
+        Assert.True(session.Evidence.ConfigurationVerified, string.Join(";", session.Evidence.Diagnostics));
+        var layer = Assert.Single(session.Evidence.Layers, value => value.Kind == ScsPowertrainSourceKind.LocalMod);
+        Assert.Equal(string.Empty, layer.PackageVersion);
+        Assert.True(layer.AvailabilityVerified);
+        Assert.Equal("legacy definition", session.ReadDefinition("/" + Definition).Content);
+        await session.VerifyUnchangedAsync();
+    }
+
+    [Theory]
+    [InlineData("malformed")]
+    [InlineData("duplicate")]
+    [InlineData("workshop")]
+    [InlineData("casevariant")]
+    public async Task AbsentLocalManifestSupportDoesNotHideInvalidOrRequiredMetadata(string failure)
+    {
+        string path;
+        if (failure == "workshop")
+        {
+            var root = WorkshopRoot(); WriteVersions(root, ("current", null));
+            Zip(root, "current.zip", (Definition, "component")); path = Path.Combine(root, "current.zip");
+        }
+        else
+        {
+            WriteMods("active"); path = Path.Combine(_modRoot, "active.zip");
+            if (failure == "malformed") Zip(_modRoot, "active.zip", ("manifest.sii", "SiiNunit { incomplete"));
+            else if (failure == "casevariant") Zip(_modRoot, "active.zip", ("Manifest.sii", "SiiNunit { mod_package : .p { dlc_dependencies[]: \"dlc_required\" } }"));
+            else Zip(_modRoot, "active.zip", ("manifest.sii", Manifest), ("base/manifest.sii", Manifest));
+        }
+        var result = await Service().ResolveAsync(_request);
+        Assert.False(result.ConfigurationVerified);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal(failure is "malformed" or "casevariant" ? "manifest_invalid" : failure == "duplicate" ? "manifest_ambiguous" : "manifest_missing", issue.Code);
+        Assert.Equal(path, issue.PhysicalPath);
+        Assert.DoesNotContain(result.Layers, layer => layer.Kind is ScsPowertrainSourceKind.LocalMod or ScsPowertrainSourceKind.Workshop);
+    }
+
+    [Fact]
+    public async Task UniqueLocalScsWinsOverSameStemZipWithoutReadingTheShadowedPackage()
+    {
+        WriteMods("active");
+        Package(_modRoot, "active.scs"); File.WriteAllText(Path.Combine(_modRoot, "active.zip"), "unreadable shadowed archive");
+        var result = await Service().ResolveAsync(_request);
+        Assert.True(result.ConfigurationVerified, string.Join(";", result.Diagnostics));
+        Assert.Equal(Path.Combine(_modRoot, "active.scs"), Assert.Single(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.LocalMod).PhysicalPath);
+    }
+
+    [Fact]
+    public async Task LocalScsPrecedenceDoesNotResolveAnAdditionalDirectoryOrWorkshopDuplicate()
+    {
+        WriteMods("active"); Package(_modRoot, "active.scs"); Package(_modRoot, "active.zip");
+        Directory.CreateDirectory(Path.Combine(_modRoot, "active"));
+        var local = await Service().ResolveAsync(_request);
+        Assert.False(local.ConfigurationVerified);
+        Assert.Contains(local.DiagnosticDetails!, issue => issue.Code == "package_ambiguous" && issue.PhysicalPath == _modRoot);
+        var root = WorkshopRoot(); WriteVersions(root, ("current", null)); Package(root, "current.scs"); Package(root, "current.zip");
+        var workshop = await Service().ResolveAsync(_request);
+        Assert.False(workshop.ConfigurationVerified);
+        Assert.Contains(workshop.DiagnosticDetails!, issue => issue.Code == "package_ambiguous" && issue.PackageVersion == "current");
+    }
+
+    [Fact]
+    public async Task ChangedLocalPrecedenceIsDetectedByFreshSessionRevalidation()
+    {
+        WriteMods("active"); Package(_modRoot, "active.zip");
+        using var session = await new ScsEffectiveContentService(Service()).OpenAsync(_request);
+        Assert.True(session.Evidence.ConfigurationVerified);
+        Package(_modRoot, "active.scs");
+        await Assert.ThrowsAsync<ScsSaveEditException>(() => session.VerifyUnchangedAsync());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WorkshopMissingAndDuplicateRootsHaveDifferentContextualIssues(bool duplicate)
+    {
+        var root = WorkshopRoot();
+        if (duplicate)
+        {
+            var other = DirectoryFor("second/steamapps/workshop/content/227300/123");
+            _workshop = _workshop with { ScannedContentRoots = [Directory.GetParent(root)!.FullName, Directory.GetParent(other)!.FullName] };
+        }
+        else { Directory.Delete(root); _workshop = _workshop with { Items = [] }; }
+        var result = await Service().ResolveAsync(_request);
+        Assert.False(result.ConfigurationVerified);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal(duplicate ? "workshop_package_ambiguous" : "workshop_package_missing", issue.Code);
+        Assert.Equal("mod_workshop_package.000000000000007B", issue.PackageIdentity);
+        Assert.Equal("Display 0", issue.DisplayName);
+        Assert.NotNull(issue.PhysicalPath);
+        Assert.Equal(ScsPowertrainDiagnosticScope.Source, issue.Scope);
+        Assert.Equal(ScsPowertrainDiagnosticStage.ActiveConfiguration, issue.Stage);
+    }
+
+    [Theory]
+    [InlineData("missing-file", "workshop_versions_invalid")]
+    [InlineData("no-match", "workshop_version_missing")]
+    [InlineData("multiple", "workshop_version_ambiguous")]
+    [InlineData("package-missing", "package_missing")]
+    public async Task WorkshopVersionFailuresRetainSelectedPackageAndVersionTableContext(string scenario, string code)
+    {
+        var root = WorkshopRoot();
+        if (scenario == "no-match") WriteVersions(root, ("old", "1.40.*"));
+        if (scenario == "multiple") WriteVersions(root, ("one", null), ("two", null));
+        if (scenario == "package-missing") WriteVersions(root, ("current", "1.62.*"));
+        var result = await Service().ResolveAsync(_request);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal(code, issue.Code);
+        Assert.Equal(scenario == "package-missing" ? root : Path.Combine(root, "versions.sii"), issue.PhysicalPath);
+        if (scenario == "package-missing") Assert.Equal("current", issue.PackageVersion);
+        Assert.DoesNotContain(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Workshop);
+    }
+
+    [Fact]
+    public async Task HighWorkshopIdUsesUnsignedConversionAndExactGameRoot()
+    {
+        const ulong id = 0xf0000000ffffffff;
+        WriteMods($"mod_workshop_package.{id:X16}");
+        var root = DirectoryFor($"library/steamapps/workshop/content/227300/{id}");
+        _workshop = new(GameType.Ets2, [new(GameType.Ets2, id, root, _root, DateTimeOffset.UtcNow)], [Directory.GetParent(root)!.FullName], []);
+        WriteVersions(root, ("universal", null)); Package(root, "universal.zip");
+        var result = await Service().ResolveAsync(_request);
+        Assert.True(result.ConfigurationVerified, string.Join(";", result.Diagnostics));
+        Assert.Equal($"mod_workshop_package.{id:X16}", Assert.Single(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Workshop).PackageIdentity);
+    }
+
+    [Fact]
+    public async Task UnreadableActiveArchiveSurvivesAsTypedIssueWithoutInventingLayer()
+    {
+        WriteMods("active"); var path = Path.Combine(_modRoot, "active.scs"); File.WriteAllText(path, "AEM!unsupported synthetic content");
+        var result = await Service().ResolveAsync(_request);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal("package_archive_unreadable", issue.Code);
+        Assert.Equal("active", issue.PackageIdentity); Assert.Equal("Display 0", issue.DisplayName); Assert.Equal(path, issue.PhysicalPath);
+        Assert.DoesNotContain(result.Layers, layer => layer.PackageIdentity == "active");
+        Assert.NotEmpty(result.Diagnostics);
+    }
+
+    [Fact]
+    public async Task ProfileAndInstallationFailuresAlwaysHaveBlockingTypedDiagnostics()
+    {
+        var mismatch = await Service().ResolveAsync(_request with { Save = _request.Save with { GameType = GameType.Ats } });
+        Assert.Contains(mismatch.DiagnosticDetails!, issue => issue.BlocksConfiguration && issue.Code == "profile_selection_invalid");
+        var installation = await Service("1.61.0.0").ResolveAsync(_request);
+        var issue = Assert.Single(installation.DiagnosticDetails!, item => item.BlocksConfiguration && item.Code == "installation_unverified");
+        Assert.Equal(Path.Combine(_installation.InstallPath, "version.scs"), issue.PhysicalPath);
+        Assert.Equal("/version.sii", issue.VirtualPath);
+    }
+
+    [Fact]
+    public async Task InvalidActiveModArrayPointsToProfileMetadataInsteadOfSaveInfo()
+    {
+        File.WriteAllText(_request.Profile.ProfileSiiPath, "SiiNunit { user_profile : .profile { active_mods: unknown } }");
+        var result = await Service().ResolveAsync(_request);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal("profile_metadata_invalid", issue.Code);
+        Assert.Equal(_request.Profile.ProfileSiiPath, issue.PhysicalPath);
+    }
+
+    [Fact]
+    public async Task DeletedWorkshopItemIsReportedMissingAtWorkshopRootInsteadOfLocalModRoot()
+    {
+        var root = WorkshopRoot(); Directory.Delete(root);
+        var result = await Service().ResolveAsync(_request);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+        Assert.Equal("workshop_package_missing", issue.Code);
+        Assert.Equal(Directory.GetParent(root)!.FullName, issue.PhysicalPath);
+    }
+
+    [Fact]
+    public async Task WorkshopInventoryItemMustUseTheExactGameAndPublishedIdDirectory()
+    {
+        WriteMods("mod_workshop_package.000000000000007B");
+        var wrong = DirectoryFor("library/steamapps/workshop/content/270880/123");
+        WriteVersions(wrong, ("universal", null)); Package(wrong, "universal.zip");
+        _workshop = new(GameType.Ets2, [new(GameType.Ets2, 123, wrong, _root, DateTimeOffset.UtcNow)], [], []);
+        var result = await Service().ResolveAsync(_request);
+        Assert.False(result.ConfigurationVerified);
+        Assert.Contains(result.DiagnosticDetails!, issue => issue.Code == "workshop_root_wrong_game" && issue.PhysicalPath == wrong);
+        Assert.DoesNotContain(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Workshop);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReparseCandidateKeepsExactRejectedPathAndSelectedWorkshopVariant(bool workshop)
+    {
+        var parent = _modRoot;
+        var name = "active";
+        WriteMods(name);
+        if (workshop) { parent = WorkshopRoot(); name = "current"; WriteVersions(parent, (name, null)); }
+        var target = DirectoryFor("synthetic-link-target");
+        File.WriteAllText(Path.Combine(target, "manifest.sii"), Manifest);
+        var link = Path.Combine(parent, name);
+        if (OperatingSystem.IsWindows())
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
+            {
+                Arguments = $"/c mklink /J \"{link}\" \"{target}\"", CreateNoWindow = true, UseShellExecute = false,
+                RedirectStandardOutput = true, RedirectStandardError = true
+            });
+            Assert.NotNull(process); process.WaitForExit(); Assert.Equal(0, process.ExitCode);
+        }
+        else Directory.CreateSymbolicLink(link, target);
+        try
+        {
+            var result = await Service().ResolveAsync(_request);
+            Assert.False(result.ConfigurationVerified);
+            var issue = Assert.Single(result.DiagnosticDetails!, item => item.BlocksConfiguration);
+            Assert.Equal("package_path_invalid", issue.Code);
+            Assert.Equal(link, issue.PhysicalPath);
+            Assert.Equal(workshop ? "current" : null, issue.PackageVersion);
+            Assert.DoesNotContain(result.Layers, layer => layer.Kind is ScsPowertrainSourceKind.Workshop or ScsPowertrainSourceKind.LocalMod);
+        }
+        finally { Directory.Delete(link); }
+    }
+
+    [Fact]
+    public async Task DlcAvailabilityIssuesDoNotBlockUnrelatedConfiguration()
+    {
+        Zip(_installation.InstallPath, "dlc_synthetic.scs", ("dlc_synthetic.manifest.sii", "SiiNunit { dlc_package : .d { id: eut2_test game_id: eut2 } }"));
+        var result = await Service().ResolveAsync(_request);
+        Assert.True(result.ConfigurationVerified);
+        var issue = Assert.Single(result.DiagnosticDetails!, item => item.PackageIdentity == "eut2_test");
+        Assert.Equal("dlc_availability_unverified", issue.Code); Assert.False(issue.BlocksConfiguration);
+    }
+
+    [Fact]
+    public async Task ManyUncertainDlcArchivesCannotHideBlockingPackageDiagnostics()
+    {
+        WriteMods("missing_a", "missing_b", "missing_c", "missing_d", "missing_e");
+        for (var index = 0; index < 510; index++)
+            Zip(_installation.InstallPath, $"dlc_test_{index}.scs", ("unexpected.sii", "no DLC metadata"));
+        var result = await Service().ResolveAsync(_request);
+        Assert.False(result.ConfigurationVerified);
+        Assert.Equal(5, result.DiagnosticDetails!.Count(issue => issue.BlocksConfiguration && issue.Code == "package_missing"));
+        Assert.InRange(result.DiagnosticDetails!.Count, 5, 1024);
     }
 
     [Fact]
@@ -303,7 +547,7 @@ public sealed class ScsActiveContentResolverTests : IDisposable
         using var session = await new ScsEffectiveContentService(Service()).OpenAsync(_request);
         Assert.True(session.Evidence.ConfigurationVerified);
         Assert.False(Assert.Single(session.Evidence.Layers, layer => layer.PackageIdentity == "copied_extra.scs").AvailabilityVerified);
-        if (conflict) Assert.Throws<ScsSaveEditException>(() => session.ReadDefinition("/" + virtualPath));
+        if (conflict) Assert.ThrowsAny<ScsSaveEditException>(() => session.ReadDefinition("/" + virtualPath));
         else Assert.False(session.ReadDefinition("/" + virtualPath).AvailabilityVerified);
     }
 

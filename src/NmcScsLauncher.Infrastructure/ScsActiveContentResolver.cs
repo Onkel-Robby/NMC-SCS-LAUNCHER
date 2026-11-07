@@ -53,20 +53,44 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
     {
         var evidence = new Evidence(token);
         var diagnostics = new List<string>();
+        var diagnosticDetails = new List<ScsPowertrainDiagnostic>();
+        var availabilityDetails = new List<ScsPowertrainDiagnostic>();
         var layers = new List<ScsContentLayer>();
         IReadOnlyList<ScsActiveMod> mods = [];
         var game = request.Profile.GameType;
         var gameVersion = string.Empty;
         var verified = true;
-        void Fail(string message) { verified = false; if (diagnostics.Count < 128) diagnostics.Add(message); }
-        ScsActiveContentEvidence Result() => new(game, gameVersion, verified, mods, layers.ToArray(), evidence.Files, diagnostics.ToArray());
+        void Fail(ScsPowertrainDiagnostic issue)
+        {
+            verified = false;
+            if (diagnostics.Count < 128) diagnostics.Add(issue.Message);
+            if (diagnosticDetails.Count < 1024) diagnosticDetails.Add(issue with { BlocksConfiguration = true });
+        }
+        void Unavailable(ScsPowertrainDiagnostic issue)
+        {
+            if (availabilityDetails.Count < 1024) availabilityDetails.Add(issue);
+        }
+        // At most 512 active packages can fail. Reserve diagnostic capacity for
+        // those blockers before adding possibly numerous unused DLC notices.
+        ScsActiveContentEvidence Result() => new(game, gameVersion, verified, mods, layers.ToArray(), evidence.Files, diagnostics.ToArray(),
+            diagnosticDetails.Concat(availabilityDetails).Take(1024).ToArray());
 
+        try { ValidateSelection(request); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            Fail(Issue("profile_selection_invalid", $"Profil-/Save-Auswahl nicht verifiziert: {ex.Message}",
+                ScsPowertrainDiagnosticScope.Global, request.Profile.ProfileSiiPath, technical: ex.GetType().Name));
+            return Result();
+        }
+
+        var metadataPath = request.Profile.ProfileSiiPath;
         try
         {
-            ValidateSelection(request);
             var profile = SingleUnit(await ReadSaveMetadataAsync(request.Profile.ProfileSiiPath, evidence, token), "user_profile");
             var infoPath = Path.Combine(request.Save.SaveDirectory, "info.sii");
+            metadataPath = infoPath;
             var info = SingleUnit(await ReadSaveMetadataAsync(infoPath, evidence, token), "save_container");
+            metadataPath = request.Profile.ProfileSiiPath;
             var active = RequiredArray(profile, "active_mods", MaximumMods);
             var identities = new HashSet<string>(StringComparer.Ordinal);
             mods = active.Select((value, index) =>
@@ -78,6 +102,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                 if (!identities.Add(identity)) throw new InvalidDataException("Aktive Mod-Identität ist mehrfach vorhanden.");
                 return new ScsActiveMod(identity, value[(separator + 1)..], index);
             }).ToArray();
+            metadataPath = infoPath;
             var historical = new List<string>();
             foreach (var dependency in RequiredArray(info, "dependencies", MaximumEntries))
             {
@@ -87,17 +112,26 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                 if (parts[0] == "mod") historical.Add(parts[1]);
             }
             if (!historical.SequenceEqual(mods.Select(mod => mod.Identity), StringComparer.Ordinal))
-                Fail("Aktive Profil-Mods und Mod-Abhängigkeiten des ausgewählten Saves stimmen in Identität oder Reihenfolge nicht überein.");
+                Fail(Issue("profile_save_mod_order_mismatch", "Aktive Profil-Mods und Mod-Abhängigkeiten des ausgewählten Saves stimmen in Identität oder Reihenfolge nicht überein.",
+                    ScsPowertrainDiagnosticScope.Global, infoPath));
         }
-        catch (Exception ex) when (IsFailure(ex)) { Fail($"Profil-/Save-Konfiguration nicht verifiziert: {ex.Message}"); return Result(); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            Fail(Issue("profile_metadata_invalid", $"Profil-/Save-Konfiguration nicht verifiziert: {ex.Message}",
+                ScsPowertrainDiagnosticScope.Global, metadataPath, technical: ex.GetType().Name));
+            return Result();
+        }
 
         GameInstallation? installation;
+        var installationPath = request.PreferredInstallPath;
+        string? installationVirtualPath = null;
         try
         {
             installation = await _detector.DetectAsync(game, request.PreferredInstallPath, token).ConfigureAwait(false);
             if (installation is null || installation.GameType != game) throw new InvalidDataException("Passende Spielinstallation fehlt.");
             var definition = GameDefinition.For(game);
             var installRoot = PlainPath(installation.InstallPath);
+            installationPath = installation.ExecutablePath;
             var executable = PlainPath(installation.ExecutablePath);
             if (!SamePath(executable, Path.Combine(installRoot, definition.ExecutableRelativePath)))
                 throw new InvalidDataException("Die Spiel-Executable gehört nicht zur ausgewählten Installation.");
@@ -105,6 +139,8 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
             gameVersion = NormalizeVersion(_installedVersionReader(executable));
             evidence.Physical(executable, MaximumExecutableBytes);
             var versionPath = Path.Combine(installRoot, "version.scs");
+            installationPath = versionPath;
+            installationVirtualPath = "/version.sii";
             using (var source = ScsDefinitionSource.Open(versionPath))
             {
                 var version = SingleUnit(ScsDefinitionDocument.Parse(evidence.ReadMetadata(source, versionPath, "/version.sii")), "fs_pack_set");
@@ -115,6 +151,8 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
             }
             foreach (var path in Entries(installRoot, token).Where(path => File.Exists(path) && Path.GetExtension(path).Equals(".scs", StringComparison.OrdinalIgnoreCase)))
             {
+                installationPath = path;
+                installationVirtualPath = null;
                 evidence.Physical(path);
                 var dlc = Path.GetFileName(path).StartsWith("dlc_", StringComparison.OrdinalIgnoreCase);
                 var identity = Path.GetFileName(path);
@@ -134,13 +172,26 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                         var expectedGame = game == GameType.Ets2 ? "eut2" : "ats";
                         if (manifest.GetToken("game_id") != expectedGame) throw new InvalidDataException("DLC-Metadaten gehören zu einem anderen Spiel.");
                     }
-                    catch (Exception ex) when (IsFailure(ex)) { reason += $" DLC-Metadaten nicht eindeutig: {ex.Message}"; }
+                    catch (Exception ex) when (IsFailure(ex))
+                    {
+                        reason += $" DLC-Metadaten nicht eindeutig: {ex.Message}";
+                        Unavailable(Issue("dlc_metadata_invalid", reason, ScsPowertrainDiagnosticScope.Source, path,
+                            packageIdentity: identity, technical: ex.GetType().Name));
+                    }
                 }
                 AddLayer(layers, new(path, "/", dlc ? ScsPowertrainSourceKind.Dlc : ScsPowertrainSourceKind.Game,
                     identity, gameVersion, dlc ? 100 : 0, !dlc && stock, reason));
+                if (dlc || !stock)
+                    Unavailable(Issue(dlc ? "dlc_availability_unverified" : "installation_archive_activation_unknown", reason,
+                        ScsPowertrainDiagnosticScope.Source, path, packageIdentity: identity, packageVersion: gameVersion));
             }
         }
-        catch (Exception ex) when (IsFailure(ex)) { Fail($"Spielinstallation nicht verifiziert: {ex.Message}"); return Result(); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            Fail(Issue("installation_unverified", $"Spielinstallation nicht verifiziert: {ex.Message}",
+                ScsPowertrainDiagnosticScope.Global, installationPath, virtualPath: installationVirtualPath, technical: ex.GetType().Name));
+            return Result();
+        }
 
         string? localRoot = null;
         try
@@ -150,7 +201,11 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
             if (roots.Length > 1) throw new InvalidDataException("Mehrere lokale Mod-Ordner lassen die aktive Startkonfiguration offen.");
             localRoot = roots.SingleOrDefault() ?? Path.Combine(request.Profile.GameHomeDirectory, "mod");
         }
-        catch (Exception ex) when (IsFailure(ex)) { Fail(ex.Message); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            Fail(Issue("local_roots_ambiguous", ex.Message, ScsPowertrainDiagnosticScope.Global,
+                technical: ex.GetType().Name));
+        }
 
         WorkshopContentSnapshot? workshop = null;
         if (mods.Any(mod => mod.Identity.StartsWith("mod_workshop_package.", StringComparison.Ordinal)))
@@ -164,30 +219,54 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                 // An incomplete scan cannot establish uniqueness across Steam libraries.
                 if (workshop.Warnings.Count != 0) throw new InvalidDataException("Workshop-Erkennung ist nicht vollständig; eindeutige Paketzuordnung ist offen.");
             }
-            catch (Exception ex) when (IsFailure(ex)) { Fail($"Workshop nicht verifiziert: {ex.Message}"); workshop = null; }
+            catch (Exception ex) when (IsFailure(ex))
+            {
+                Fail(Issue("workshop_inventory_unverified", $"Workshop nicht verifiziert: {ex.Message}",
+                    ScsPowertrainDiagnosticScope.Global, technical: ex.GetType().Name));
+                workshop = null;
+            }
         }
 
         foreach (var mod in mods)
         {
             token.ThrowIfCancellationRequested();
+            string? packagePath = null;
+            string? packageVariant = null;
             try
             {
-                string packagePath;
                 var kind = ScsPowertrainSourceKind.LocalMod;
                 if (mod.Identity.StartsWith("mod_workshop_package.", StringComparison.Ordinal))
                 {
                     kind = ScsPowertrainSourceKind.Workshop;
-                    if (workshop is null) throw new InvalidDataException("Workshop-Inventar fehlt.");
-                    packagePath = ResolveWorkshop(mod.Identity, workshop, gameVersion, evidence, token);
+                    if (workshop is null) throw Problem("workshop_inventory_unverified", "Workshop-Inventar fehlt.");
+                    var selected = ResolveWorkshop(mod.Identity, workshop, gameVersion, evidence, token);
+                    packagePath = selected.Path;
+                    packageVariant = selected.Variant;
                 }
                 else
                 {
-                    if (localRoot is null) throw new InvalidDataException("Aktiver lokaler Mod-Ordner ist nicht eindeutig.");
-                    packagePath = ResolvePackage(localRoot, mod.Identity, token);
+                    if (localRoot is null) throw Problem("local_roots_ambiguous", "Aktiver lokaler Mod-Ordner ist nicht eindeutig.");
+                    packagePath = ResolvePackage(localRoot, mod.Identity, token, allowLocalScsPrecedence: true);
                 }
                 AddModLayers(packagePath, mod, kind, gameVersion, layers, evidence, token);
+                foreach (var layer in layers.Where(layer => layer.PackageIdentity == mod.Identity && !layer.AvailabilityVerified))
+                    Unavailable(Issue(layer.VirtualRoot == "/" || layer.VirtualRoot == "/base" ? "mod_dlc_dependency_unverified" : "conditional_dlc_activation_unknown",
+                        layer.AvailabilityReason, ScsPowertrainDiagnosticScope.Source, layer.PhysicalPath,
+                        packageIdentity: mod.Identity, displayName: mod.DisplayName, packageVersion: layer.PackageVersion, virtualPath: layer.VirtualRoot));
             }
-            catch (Exception ex) when (IsFailure(ex)) { Fail($"Aktives Paket '{mod.Identity}' nicht verifiziert: {ex.Message}"); }
+            catch (Exception ex) when (IsFailure(ex))
+            {
+                var issue = ex is ScsPowertrainDiagnosticException contextual ? contextual.Diagnostic :
+                    Issue("package_unverified", ex.Message, ScsPowertrainDiagnosticScope.Source,
+                        packagePath ?? (mod.Identity.StartsWith("mod_workshop_package.", StringComparison.Ordinal) ? null : localRoot), technical: ex.GetType().Name);
+                Fail(issue with
+                {
+                    Message = $"Aktives Paket '{mod.Identity}' nicht verifiziert: {issue.Message}",
+                    PackageIdentity = mod.Identity, DisplayName = mod.DisplayName,
+                    PhysicalPath = issue.PhysicalPath ?? packagePath,
+                    PackageVersion = issue.PackageVersion ?? packageVariant
+                });
+            }
         }
         return Result();
     }
@@ -225,49 +304,84 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
         }
     }
 
-    private static string ResolveWorkshop(string identity, WorkshopContentSnapshot snapshot, string version, Evidence evidence, CancellationToken token)
+    private sealed record SelectedWorkshopPackage(string Path, string Variant);
+
+    private static SelectedWorkshopPackage ResolveWorkshop(string identity, WorkshopContentSnapshot snapshot, string version, Evidence evidence, CancellationToken token)
     {
         const string prefix = "mod_workshop_package.";
         var hex = identity[prefix.Length..];
         if (hex.Length != 16 || !ulong.TryParse(hex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var id) || id == 0)
-            throw new InvalidDataException("Ungültige Workshop-Paket-ID.");
+            throw Problem("workshop_identity_invalid", "Ungültige Workshop-Paket-ID.");
         var roots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var item in snapshot.Items.Where(item => item.Game == snapshot.Game && item.PublishedFileId == id)) roots.Add(PlainPath(item.ContentPath));
+        var appId = GameDefinition.For(snapshot.Game).SteamAppId.ToString(CultureInfo.InvariantCulture);
+        var publishedId = id.ToString(CultureInfo.InvariantCulture);
+        foreach (var item in snapshot.Items.Where(item => item.Game == snapshot.Game && item.PublishedFileId == id))
+        {
+            var itemPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(item.ContentPath));
+            if (Path.GetFileName(itemPath) != publishedId || Path.GetFileName(Path.GetDirectoryName(itemPath)) != appId)
+                throw Problem("workshop_root_wrong_game", "Der Workshop-Paketordner gehört nicht eindeutig zum ausgewählten Spiel und zur veröffentlichten Paket-ID.", itemPath);
+            // A cached inventory entry can disappear before resolution. It is not
+            // evidence of an existing source; retain the searched root in diagnostics.
+            if (Directory.Exists(itemPath)) roots.Add(PlainPath(itemPath));
+        }
         foreach (var contentRoot in snapshot.ScannedContentRoots)
         {
             token.ThrowIfCancellationRequested();
-            if (Path.GetFileName(Path.TrimEndingDirectorySeparator(contentRoot)) != GameDefinition.For(snapshot.Game).SteamAppId.ToString(CultureInfo.InvariantCulture))
-                throw new InvalidDataException("Workshop-Wurzel ist nicht dem ausgewählten Spiel zugeordnet.");
-            var path = Path.Combine(PlainPath(contentRoot), id.ToString(CultureInfo.InvariantCulture));
+            if (Path.GetFileName(Path.TrimEndingDirectorySeparator(contentRoot)) != appId)
+                throw Problem("workshop_root_wrong_game", "Workshop-Wurzel ist nicht dem ausgewählten Spiel zugeordnet.", contentRoot);
+            var path = Path.Combine(PlainPath(contentRoot), publishedId);
             if (Directory.Exists(path)) roots.Add(PlainPath(path));
         }
-        if (roots.Count != 1) throw new InvalidDataException("Workshop-Paket fehlt oder ist in mehreren Bibliotheken vorhanden.");
+        if (roots.Count == 0)
+            throw Problem("workshop_package_missing", "Das aktive Workshop-Paket wurde in keiner durchsuchten Steam-Bibliothek gefunden.",
+                snapshot.ScannedContentRoots.FirstOrDefault(), technical: $"PublishedFileId={id}; durchsuchte Workshop-Wurzeln={snapshot.ScannedContentRoots.Count}");
+        if (roots.Count > 1)
+            throw Problem("workshop_package_ambiguous", "Das aktive Workshop-Paket ist in mehreren Steam-Bibliotheken vorhanden; die verwendete Kopie ist nicht eindeutig.",
+                roots.Order(StringComparer.OrdinalIgnoreCase).First(), technical: $"PublishedFileId={id}; gefundene Paketordner={roots.Count}");
         var root = roots.Single();
         var versionsPath = Path.Combine(root, "versions.sii");
-        evidence.Physical(versionsPath, MaximumMetadataFileBytes);
-        var versions = ScsDefinitionDocument.Parse(File.ReadAllText(versionsPath, new UTF8Encoding(false, true)));
-        evidence.Physical(versionsPath, MaximumMetadataFileBytes);
-        if (versions.Units.Count == 0 || versions.Units.Count > MaximumMods || versions.Units.Any(unit => unit.Type != "package_version_info"))
-            throw new InvalidDataException("Nicht unterstützte Workshop-Versionstabelle.");
         var matches = new List<(string Name, bool Informational)>();
         var universal = new List<(string Name, bool Informational)>();
-        foreach (var unit in versions.Units)
+        try
         {
-            if (unit.AttributeNames.Any(name => name is not ("package_name" or "compatible_versions" or "informational")))
-                throw new InvalidDataException("Unbekannte Workshop-Paketbedingung.");
-            var name = unit.GetString("package_name") ?? throw new InvalidDataException("Workshop-Paketname fehlt.");
-            ValidateIdentity(name);
-            var informational = unit.GetToken("informational");
-            if (informational is not (null or "true" or "false")) throw new InvalidDataException("Ungültige Informationspaket-Kennzeichnung.");
-            var candidate = (name, informational == "true");
-            var patterns = unit.GetStrings("compatible_versions");
-            if (patterns.Count == 0) universal.Add(candidate);
-            else if (patterns.Select(pattern => MatchesVersion(version, pattern)).ToArray().Any(match => match)) matches.Add(candidate);
+            evidence.Physical(versionsPath, MaximumMetadataFileBytes);
+            var versions = ScsDefinitionDocument.Parse(File.ReadAllText(versionsPath, new UTF8Encoding(false, true)));
+            evidence.Physical(versionsPath, MaximumMetadataFileBytes);
+            if (versions.Units.Count == 0 || versions.Units.Count > MaximumMods || versions.Units.Any(unit => unit.Type != "package_version_info"))
+                throw new InvalidDataException("Nicht unterstützte Workshop-Versionstabelle.");
+            foreach (var unit in versions.Units)
+            {
+                if (unit.AttributeNames.Any(name => name is not ("package_name" or "compatible_versions" or "informational")))
+                    throw new InvalidDataException("Unbekannte Workshop-Paketbedingung.");
+                var name = unit.GetString("package_name") ?? throw new InvalidDataException("Workshop-Paketname fehlt.");
+                ValidateIdentity(name);
+                var informational = unit.GetToken("informational");
+                if (informational is not (null or "true" or "false")) throw new InvalidDataException("Ungültige Informationspaket-Kennzeichnung.");
+                var candidate = (name, informational == "true");
+                var patterns = unit.GetStrings("compatible_versions");
+                if (patterns.Count == 0) universal.Add(candidate);
+                else if (patterns.Select(pattern => MatchesVersion(version, pattern)).ToArray().Any(match => match)) matches.Add(candidate);
+            }
+        }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            throw Problem("workshop_versions_invalid", $"Die Workshop-Versionstabelle kann nicht ausgewertet werden: {ex.Message}",
+                versionsPath, technical: ex.GetType().Name, inner: ex);
         }
         var selected = matches.Count > 0 ? matches : universal;
-        if (selected.Count != 1) throw new InvalidDataException("Workshop-Paketversion fehlt oder ist mehrdeutig.");
-        if (selected[0].Informational) throw new InvalidDataException("Das passende Workshop-Paket dient nur zur Information und ist nicht ladbar.");
-        return ResolvePackage(root, selected[0].Name, token);
+        if (selected.Count == 0)
+            throw Problem("workshop_version_missing", $"Für Spielversion {version} ist keine passende Workshop-Paketversion angegeben.", versionsPath);
+        if (selected.Count > 1)
+            throw Problem("workshop_version_ambiguous", $"Für Spielversion {version} passen mehrere Workshop-Paketversionen; die Auswahl ist mehrdeutig.",
+                versionsPath, technical: $"Passende Varianten={selected.Count}");
+        if (selected[0].Informational)
+            throw Problem("workshop_variant_informational", "Das passende Workshop-Paket dient nur zur Information und ist nicht ladbar.",
+                versionsPath, packageVersion: selected[0].Name);
+        try { return new(ResolvePackage(root, selected[0].Name, token), selected[0].Name); }
+        catch (ScsPowertrainDiagnosticException ex)
+        {
+            throw new ScsPowertrainDiagnosticException(ex.Diagnostic with { PackageVersion = selected[0].Name }, ex);
+        }
     }
 
     private static void AddModLayers(string path, ScsActiveMod mod, ScsPowertrainSourceKind kind, string gameVersion,
@@ -275,32 +389,63 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
     {
         PlainPath(path);
         if (File.Exists(path)) evidence.Physical(path);
-        using var source = ScsDefinitionSource.Open(path);
-        var files = source.GetFiles("/", token);
+        using var source = OpenModSource(path);
+        IReadOnlyList<string> files;
+        try { files = source.GetFiles("/", token); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            throw Problem("package_archive_unreadable", $"Der Dateiindex des aktiven Pakets ist nicht vollständig lesbar: {ex.Message}",
+                path, technical: ex.GetType().Name, inner: ex);
+        }
         if (files.Any(file => file.Count(character => character == '/') == 1 &&
                 (file.Equals("/base.zip", StringComparison.OrdinalIgnoreCase) || file.Equals("/base.scs", StringComparison.OrdinalIgnoreCase) ||
                  file.StartsWith("/dlc_", StringComparison.OrdinalIgnoreCase) &&
                  (file.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".scs", StringComparison.OrdinalIgnoreCase)))))
-            throw new InvalidDataException("Verschachtelte Base-/DLC-Teilarchive werden noch nicht sicher aufgelöst.");
-        var manifests = files.Where(file => file is "/manifest.sii" or "/base/manifest.sii").ToArray();
-        if (manifests.Length != 1) throw new InvalidDataException("Eine eindeutige Mod-Manifestdatei ist erforderlich.");
-        var manifest = SingleUnit(ScsDefinitionDocument.Parse(evidence.ReadMetadata(source, path, manifests[0])), "mod_package");
-        if (manifest.AttributeNames.Any(name => !ManifestAttributes.Contains(name)))
-            throw new InvalidDataException("Nicht unterstützte Mod-Manifestbedingung.");
-        var version = manifest.GetString("package_version");
-        if (string.IsNullOrWhiteSpace(version) || version.Length > 128 || version.Any(char.IsControl))
-            throw new InvalidDataException("Mod-Paketversion fehlt oder ist ungültig.");
-        var compatibility = manifest.GetStrings("compatible_versions");
-        // Workshop activation uses versions.sii; the engine ignores this manifest
-        // compatibility field for Workshop packages.
-        if (kind == ScsPowertrainSourceKind.LocalMod && compatibility.Count > 0 &&
-            !compatibility.Select(pattern => MatchesVersion(gameVersion, pattern)).ToArray().Any(match => match))
-            throw new InvalidDataException("Mod-Paket unterstützt die installierte Spielversion nicht.");
-        var dependencies = manifest.GetStrings("dlc_dependencies");
-        if (dependencies.Any(dependency => string.IsNullOrWhiteSpace(dependency) || dependency.Any(char.IsControl)))
-            throw new InvalidDataException("Ungültige DLC-Abhängigkeit im Mod-Manifest.");
+            throw Problem("nested_package_unsupported", "Verschachtelte Base-/DLC-Teilarchive werden noch nicht sicher aufgelöst.", path);
+        var manifests = files.Where(file => file.Equals("/manifest.sii", StringComparison.OrdinalIgnoreCase) ||
+            file.Equals("/base/manifest.sii", StringComparison.OrdinalIgnoreCase)).ToArray();
+        if (manifests.Length > 1)
+            throw Problem("manifest_ambiguous", "Mehrere Mod-Manifestdateien lassen die Paketbedingungen offen.", path);
+        if (manifests.Length == 0 && kind != ScsPowertrainSourceKind.LocalMod)
+            throw Problem("manifest_missing", "Die erforderliche Mod-Manifestdatei fehlt im Workshop-Paket.", path, virtualPath: "/manifest.sii");
+        if (manifests.Any(file => file is not ("/manifest.sii" or "/base/manifest.sii")))
+            throw Problem("manifest_invalid", "Die Schreibweise des Manifestpfads wird nicht sicher unterstützt; vorhandene Paketbedingungen dürfen nicht übersprungen werden.",
+                path, virtualPath: manifests[0]);
+        // Local manifests are optional metadata in SCS Mod manager. Without one the
+        // game creates default information, including an empty version. Workshop
+        // uploader packages explicitly require a manifest. Never invent a version.
+        var version = string.Empty;
+        IReadOnlyList<string> dependencies = [];
+        if (manifests.Length == 1)
+        {
+            try
+            {
+                var manifest = SingleUnit(ScsDefinitionDocument.Parse(evidence.ReadMetadata(source, path, manifests[0])), "mod_package");
+                if (manifest.AttributeNames.Any(name => !ManifestAttributes.Contains(name)))
+                    throw new InvalidDataException("Nicht unterstützte Mod-Manifestbedingung.");
+                version = manifest.GetString("package_version") ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(version) || version.Length > 128 || version.Any(char.IsControl))
+                    throw new InvalidDataException("Mod-Paketversion fehlt oder ist ungültig.");
+                var compatibility = manifest.GetStrings("compatible_versions");
+                // Workshop activation uses versions.sii; the engine ignores this field.
+                if (kind == ScsPowertrainSourceKind.LocalMod && compatibility.Count > 0 &&
+                    !compatibility.Select(pattern => MatchesVersion(gameVersion, pattern)).ToArray().Any(match => match))
+                    throw Problem("manifest_version_incompatible", "Mod-Paket unterstützt die installierte Spielversion nicht.",
+                        path, packageVersion: version, virtualPath: manifests[0]);
+                dependencies = manifest.GetStrings("dlc_dependencies");
+                if (dependencies.Any(dependency => string.IsNullOrWhiteSpace(dependency) || dependency.Any(char.IsControl)))
+                    throw new InvalidDataException("Ungültige DLC-Abhängigkeit im Mod-Manifest.");
+            }
+            catch (ScsPowertrainDiagnosticException) { throw; }
+            catch (Exception ex) when (IsFailure(ex))
+            {
+                throw Problem("manifest_invalid", $"Die Mod-Manifestdatei ist nicht eindeutig auswertbar: {ex.Message}",
+                    path, packageVersion: version.Length == 0 ? null : version, virtualPath: manifests[0], technical: ex.GetType().Name, inner: ex);
+            }
+        }
         var available = dependencies.Count == 0;
-        var reason = available ? "Aktives Profilpaket mit eindeutig aufgelöster Version." : "Mod-DLC-Abhängigkeiten vorhanden; Steam-Berechtigung und Aktivierung sind nicht verifiziert.";
+        var reason = available ? manifests.Length == 0 ? "Aktives lokales Profilpaket ohne optionale Manifestdatei; keine Paketversion angegeben." :
+            "Aktives Profilpaket mit eindeutig aufgelöster Version." : "Mod-DLC-Abhängigkeiten vorhanden; Steam-Berechtigung und Aktivierung sind nicht verifiziert.";
         var priority = 1000 + mod.LoadOrder * 10;
         var roots = files.Select(file => file.Split('/')[1]).Distinct(StringComparer.Ordinal).ToArray();
         var hasBase = roots.Contains("base", StringComparer.Ordinal);
@@ -320,15 +465,56 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
         layers.Add(layer);
     }
 
-    private static string ResolvePackage(string directory, string identity, CancellationToken token)
+    private static ScsDefinitionSource OpenModSource(string path)
+    {
+        try { return ScsDefinitionSource.Open(path); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            throw Problem("package_archive_unreadable", $"Das aktive Paket kann nicht sicher gelesen werden: {ex.Message}",
+                path, technical: ex.GetType().Name, inner: ex);
+        }
+    }
+
+    private static ScsPowertrainDiagnostic Issue(string code, string message,
+        ScsPowertrainDiagnosticScope scope = ScsPowertrainDiagnosticScope.Source, string? path = null,
+        string? packageIdentity = null, string? displayName = null, string? packageVersion = null,
+        string? virtualPath = null, string? technical = null) =>
+        new(code, ScsPowertrainDiagnosticStage.ActiveConfiguration, scope, message,
+            packageIdentity, displayName, path, packageVersion, virtualPath, technical);
+
+    private static ScsPowertrainDiagnosticException Problem(string code, string message, string? path = null,
+        string? packageVersion = null, string? virtualPath = null, string? technical = null, Exception? inner = null) =>
+        new(Issue(code, message, path: path, packageVersion: packageVersion, virtualPath: virtualPath, technical: technical), inner);
+
+    private static string ResolvePackage(string directory, string identity, CancellationToken token, bool allowLocalScsPrecedence = false)
     {
         ValidateIdentity(identity);
+        if (!Directory.Exists(directory)) throw Problem("package_missing", "Der Ordner des aktiven Pakets fehlt.", directory);
         var paths = Entries(PlainPath(directory), token).Where(path =>
             Directory.Exists(path) ? Path.GetFileName(path).Equals(identity, StringComparison.Ordinal) :
             (Path.GetExtension(path).Equals(".scs", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase)) &&
             Path.GetFileNameWithoutExtension(path).Equals(identity, StringComparison.Ordinal)).ToArray();
-        if (paths.Length != 1) throw new InvalidDataException("Paketdatei/-ordner fehlt oder die Identität ist mehrdeutig.");
-        return PlainPath(paths[0]);
+        if (paths.Length == 0) throw Problem("package_missing", $"Die aktive Paketdatei oder der Paketordner '{identity}' fehlt.", directory);
+        // Observed SCS 1.62 local-package selection: a single .scs wins over the
+        // same-stem .zip. This does not establish precedence for directories,
+        // additional duplicate candidates or Workshop variants.
+        if (allowLocalScsPrecedence && paths.Length == 2 && paths.All(File.Exists) &&
+            paths.Count(path => Path.GetExtension(path).Equals(".scs", StringComparison.OrdinalIgnoreCase)) == 1 &&
+            paths.Count(path => Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase)) == 1)
+            return ValidateSelectedPackagePath(paths.Single(path => Path.GetExtension(path).Equals(".scs", StringComparison.OrdinalIgnoreCase)));
+        if (paths.Length != 1) throw Problem("package_ambiguous", "Mehrere Dateien oder Ordner passen zur aktiven Paketidentität; die verwendete Quelle ist mehrdeutig.",
+            directory, technical: $"Passende Paketdateien/-ordner={paths.Length}");
+        return ValidateSelectedPackagePath(paths[0]);
+    }
+
+    private static string ValidateSelectedPackagePath(string path)
+    {
+        try { return PlainPath(path); }
+        catch (Exception ex) when (IsFailure(ex))
+        {
+            throw Problem("package_path_invalid", $"Der ausgewählte Paketpfad kann nicht sicher verwendet werden: {ex.Message}",
+                path, technical: ex.GetType().Name, inner: ex);
+        }
     }
 
     private static void ValidateSelection(ScsEffectiveContentRequest request)

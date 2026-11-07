@@ -75,13 +75,13 @@ public interface IScsSaveEditService
         CancellationToken cancellationToken = default);
 }
 
-public sealed class ScsSaveEditException : Exception
+public class ScsSaveEditException : Exception
 {
     public ScsSaveEditException(string message) : base(message)
     {
     }
 
-    public ScsSaveEditException(string message, Exception innerException) : base(message, innerException)
+    public ScsSaveEditException(string message, Exception? innerException) : base(message, innerException)
     {
     }
 }

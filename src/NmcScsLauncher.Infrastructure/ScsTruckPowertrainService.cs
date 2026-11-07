@@ -10,10 +10,14 @@ public sealed class ScsTruckPowertrainService(
         CancellationToken cancellationToken = default)
     {
         var read = await reader.ReadAsync(request.Save, cancellationToken).ConfigureAwait(false);
+        ScsActiveContentEvidence? knownEvidence = null;
+        IScsTruckPowertrainPreview? inspectedPreview = null;
         try
         {
             using var session = await effectiveContent.OpenAsync(request, cancellationToken).ConfigureAwait(false);
+            knownEvidence = session.Evidence;
             var preview = await Task.Run(() => ScsTruckPowertrainRules.Build(read.Snapshot, session, cancellationToken), cancellationToken).ConfigureAwait(false);
+            inspectedPreview = preview;
             if (session.Evidence.ConfigurationVerified)
                 await session.VerifyUnchangedAsync(cancellationToken).ConfigureAwait(false);
             await VerifySaveUnchangedAsync(read.Snapshot, cancellationToken).ConfigureAwait(false);
@@ -21,8 +25,20 @@ public sealed class ScsTruckPowertrainService(
         }
         catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ScsSaveEditException)
         {
-            using var unavailable = new UnavailableSession(read.Snapshot.Game, exception.Message);
-            return ScsTruckPowertrainRules.Build(read.Snapshot, unavailable, cancellationToken);
+            var issue = exception is ScsPowertrainDiagnosticException contextual ? contextual.Diagnostic with { BlocksConfiguration = true } :
+                new ScsPowertrainDiagnostic("inspection_unavailable", ScsPowertrainDiagnosticStage.ActiveConfiguration,
+                    ScsPowertrainDiagnosticScope.Global, exception.Message, BlocksConfiguration: true);
+            var evidence = knownEvidence ?? (exception as ScsPowertrainDiagnosticException)?.Evidence ??
+                new ScsActiveContentEvidence(read.Snapshot.Game, string.Empty, false, [], [], [], []);
+            using var unavailable = new UnavailableSession(evidence with
+            {
+                ConfigurationVerified = false,
+                Diagnostics = Array.AsReadOnly(evidence.Diagnostics.Append(exception.Message).ToArray()),
+                DiagnosticDetails = Array.AsReadOnly((evidence.DiagnosticDetails ?? []).Append(issue).ToArray())
+            });
+            var blockedPreview = ScsTruckPowertrainRules.Build(read.Snapshot, unavailable, cancellationToken);
+            return inspectedPreview?.InspectionReport is { DefinitionsAttempted: true } priorReport
+                ? new InvalidatedPreview(blockedPreview, priorReport) : blockedPreview;
         }
     }
 
@@ -80,12 +96,43 @@ public sealed class ScsTruckPowertrainService(
             throw new ScsSaveEditException("Der ausgewählte Save hat sich während der Truck-Prüfung geändert. Bitte neu laden.");
     }
 
-    private sealed class UnavailableSession(GameType game, string reason) : IScsEffectiveContentSession
+    private sealed class UnavailableSession(ScsActiveContentEvidence evidence) : IScsEffectiveContentSession
     {
-        public ScsActiveContentEvidence Evidence { get; } = new(game, string.Empty, false, [], [], [], [reason]);
+        public ScsActiveContentEvidence Evidence { get; } = evidence;
         public IReadOnlyList<string> GetFiles(string virtualDirectory, CancellationToken cancellationToken = default) => [];
         public ScsResolvedDefinition ReadDefinition(string virtualPath, CancellationToken cancellationToken = default) => throw new InvalidOperationException();
         public Task VerifyUnchangedAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void Dispose() { }
+    }
+
+    // Preserve the history of a completed inspection without retaining any stale authorization or options.
+    private sealed class InvalidatedPreview : IScsTruckPowertrainPreview
+    {
+        private readonly IScsTruckPowertrainPreview _blocked;
+        public InvalidatedPreview(IScsTruckPowertrainPreview blocked, ScsTruckPowertrainInspectionReport prior)
+        {
+            _blocked = blocked;
+            var current = blocked.InspectionReport!;
+            InspectionReport = current with
+            {
+                DefinitionsAttempted = true, ResultsInvalidated = true,
+                Issues = Array.AsReadOnly(current.Issues.Concat(prior.Issues).Distinct().ToArray())
+            };
+            Engines = Invalidate(blocked.Engines);
+            Transmissions = Invalidate(blocked.Transmissions);
+        }
+        private static IReadOnlyList<ScsTruckPowertrainOption> Invalidate(IReadOnlyList<ScsTruckPowertrainOption> options) =>
+            Array.AsReadOnly(options.Select(option => option with
+            {
+                DefinitionVerified = false,
+                Reasons = Array.AsReadOnly(new[] { "Prüfergebnis verworfen: Die abschließende Save- oder Quellenprüfung ist fehlgeschlagen. Bitte neu laden." })
+            }).ToArray());
+        public ScsTruckPowertrainSnapshot Snapshot => _blocked.Snapshot;
+        public IReadOnlyList<ScsTruckPowertrainOption> Engines { get; }
+        public IReadOnlyList<ScsTruckPowertrainOption> Transmissions { get; }
+        public IReadOnlyList<string> Diagnostics => _blocked.Diagnostics;
+        public ScsTruckPowertrainInspectionReport InspectionReport { get; }
+        public ScsTruckPowertrainAssessment AssessPair(string engineDataPath, string transmissionDataPath) =>
+            _blocked.AssessPair(engineDataPath, transmissionDataPath);
     }
 }

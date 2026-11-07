@@ -1,5 +1,3 @@
-using System.Buffers.Binary;
-using System.IO.Compression;
 using System.Text;
 
 namespace NmcScsLauncher.Infrastructure;
@@ -31,7 +29,7 @@ public abstract class ScsDefinitionSource : IDisposable
             stream.ReadExactly(magic);
             stream.Position = 0;
             if (magic.SequenceEqual("SCS#"u8)) return new HashFsDefinitionSource(stream);
-            if (magic[0] == 'P' && magic[1] == 'K') return new ZipDefinitionSource(stream);
+            if (magic[0] == 'P' && magic[1] == 'K') return new ScsZipDefinitionSource(stream);
             throw new NotSupportedException("Das Archivformat wird nicht unterstützt.");
         }
         catch
@@ -190,97 +188,4 @@ public abstract class ScsDefinitionSource : IDisposable
         }
     }
 
-    private sealed class ZipDefinitionSource : ScsDefinitionSource
-    {
-        private readonly ZipArchive _archive;
-        private readonly Dictionary<string, ZipArchiveEntry> _files = new(StringComparer.Ordinal);
-
-        public ZipDefinitionSource(FileStream stream)
-        {
-            ValidateCentralDirectory(stream);
-            _archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false, StrictUtf8);
-            try
-            {
-                var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var entry in _archive.Entries)
-                {
-                    if (names.Count >= MaximumFiles) throw new InvalidDataException("Zu viele ZIP-Einträge.");
-                    if (entry.FullName.StartsWith('/')) throw new InvalidDataException("Absoluter Pfad im ZIP-Archiv.");
-                    var directory = entry.FullName.EndsWith('/');
-                    var path = ValidatePath("/" + entry.FullName, directory);
-                    if (!names.Add(path)) throw new InvalidDataException("Doppelter Pfad im ZIP-Archiv.");
-                    var unixType = (entry.ExternalAttributes >> 16) & 0xf000;
-                    if (unixType == 0xa000 || (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
-                        throw new InvalidDataException("Verknüpfung im ZIP-Archiv.");
-                    if (!directory) _files.Add(path, entry);
-                }
-            }
-            catch
-            {
-                _archive.Dispose();
-                throw;
-            }
-        }
-
-        public override IReadOnlyList<string> GetFiles(string virtualDirectory, CancellationToken cancellationToken = default)
-        {
-            CheckAvailable(cancellationToken);
-            var prefix = ValidatePath(virtualDirectory, directory: true).TrimEnd('/') + "/";
-            var files = new List<string>();
-            foreach (var path in _files.Keys)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (path.StartsWith(prefix, StringComparison.Ordinal)) files.Add(path);
-            }
-            files.Sort(StringComparer.Ordinal);
-            return files;
-        }
-
-        public override string ReadText(string virtualPath, CancellationToken cancellationToken = default)
-        {
-            CheckAvailable(cancellationToken);
-            virtualPath = ValidatePath(virtualPath);
-            if (!_files.TryGetValue(virtualPath, out var entry)) throw new FileNotFoundException("Definition nicht im ZIP-Archiv gefunden.", virtualPath);
-            // Check before Open, which may construct a decompression stream.
-            if (entry.Length > MaximumTextBytes || entry.CompressedLength > MaximumTextBytes * 2L)
-                throw new InvalidDataException("Die Definitionsdatei ist zu groß.");
-            using var stream = entry.Open();
-            return DecodeText(ReadContent(stream, entry.Length, cancellationToken));
-        }
-
-        public override void Dispose()
-        {
-            _archive.Dispose();
-            base.Dispose();
-        }
-
-        private static void ValidateCentralDirectory(FileStream stream)
-        {
-            // ZipArchive populates Entries eagerly. Bound its central directory before allocating it.
-            var tailSize = (int)Math.Min(stream.Length, 22 + ushort.MaxValue);
-            if (tailSize < 22) throw new InvalidDataException("Abgeschnittenes ZIP-Archiv.");
-            stream.Position = stream.Length - tailSize;
-            var tail = ReadExactBytes(stream, tailSize, CancellationToken.None, false);
-            for (var position = tail.Length - 22; position >= 0; position--)
-            {
-                var end = tail.AsSpan(position);
-                if (BinaryPrimitives.ReadUInt32LittleEndian(end) != 0x06054b50 ||
-                    position + 22 + BinaryPrimitives.ReadUInt16LittleEndian(end[20..]) != tail.Length) continue;
-                var count = BinaryPrimitives.ReadUInt16LittleEndian(end[10..]);
-                var size = BinaryPrimitives.ReadUInt32LittleEndian(end[12..]);
-                var offset = BinaryPrimitives.ReadUInt32LittleEndian(end[16..]);
-                if (count == ushort.MaxValue || size == uint.MaxValue || offset == uint.MaxValue)
-                    throw new NotSupportedException("ZIP64-Definitionsarchive werden nicht unterstützt.");
-                if (BinaryPrimitives.ReadUInt16LittleEndian(end[4..]) != 0 || BinaryPrimitives.ReadUInt16LittleEndian(end[6..]) != 0 ||
-                    BinaryPrimitives.ReadUInt16LittleEndian(end[8..]) != count)
-                    throw new NotSupportedException("Mehrteilige ZIP-Archive werden nicht unterstützt.");
-                var endOffset = stream.Length - tailSize + position;
-                if (size > MaximumMetadataBytes || (long)offset + size != endOffset)
-                    throw new InvalidDataException("Ungültiger oder zu großer ZIP-Verzeichnisindex.");
-                stream.Position = 0;
-                return;
-            }
-            throw new InvalidDataException("ZIP-Verzeichnisindex nicht gefunden.");
-        }
-    }
 }

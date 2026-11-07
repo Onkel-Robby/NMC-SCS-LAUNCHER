@@ -44,6 +44,40 @@
         </DockPanel>
         <TextBlock Text="{Binding TruckPowertrainStatus}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" />
         <TextBlock Text="{Binding TruckPowertrainContext}" TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,6,0,10" />
+        <Border Padding="10" Margin="0,0,0,10" BorderThickness="1" CornerRadius="5">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding TruckPowertrainConfigurationBlocked}" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding TruckPowertrainInspectionSummary}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel>
+                <TextBlock x:Name="InspectionSummary" Text="{Binding TruckPowertrainInspectionSummary}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                <ScrollViewer MaxHeight="160" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,0">
+                    <ItemsControl x:Name="DiagnosticIssues" ItemsSource="{Binding TruckPowertrainDiagnosticIssues}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,4,0,6">
+                                    <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="12" />
+                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="12" />
+                                    <Expander Header="Technische Details" FontSize="11">
+                                        <TextBox Text="{Binding TechnicalText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                                 MaxHeight="130" VerticalScrollBarVisibility="Auto" />
+                                    </Expander>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
         <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,10">
             <ProgressBar.Style>
                 <Style TargetType="ProgressBar">
@@ -86,8 +120,22 @@
                 HorizontalAlignment="Left" Margin="0,12,0,0" Padding="14,8" />
         <TextBlock Text="Beide Spiele müssen beendet sein. Unvollständig geprüfte Kombinationen bleiben gesperrt."
                    TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,6,0,0" />
-        <Expander Header="Prüfhinweise" Margin="0,10,0,0">
-            <TextBox Text="{Binding TruckPowertrainDiagnostics, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="160" VerticalScrollBarVisibility="Auto" />
+        <Expander Header="Lokale technische Diagnose" Margin="0,10,0,0">
+            <StackPanel>
+                <TextBlock Text="Aktive Quellen und Auswahl" FontWeight="SemiBold" />
+                <TextBox Text="{Binding TruckPowertrainSourceDetails, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="160" VerticalScrollBarVisibility="Auto" />
+                <TextBlock Text="Weitere Prüfhinweise" FontWeight="SemiBold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding TruckPowertrainDiagnostics, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="130" VerticalScrollBarVisibility="Auto" />
+                <TextBlock Text="Gewählter Motor" FontWeight="SemiBold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding TruckPowertrainSelectedEngine.DiagnosticText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="100" VerticalScrollBarVisibility="Auto" />
+                <TextBlock Text="Gewähltes Getriebe" FontWeight="SemiBold" Margin="0,8,0,0" />
+                <TextBox Text="{Binding TruckPowertrainSelectedTransmission.DiagnosticText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="100" VerticalScrollBarVisibility="Auto" />
+            </StackPanel>
         </Expander>
+        <Button x:Name="ExportDiagnostics" Content="Diagnose lokal speichern …" Command="{Binding ExportTruckPowertrainDiagnosticsCommand}"
+                HorizontalAlignment="Left" Margin="0,10,0,0" Padding="10,6" />
+        <TextBlock Text="Der JSON-Bericht enthält Prüfstatus, Paketangaben und Quellen-Aliase. Spielstände, Profile, Logs und vollständige lokale Pfade werden nicht exportiert."
+                   TextWrapping="Wrap" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,5,0,0" />
+        <TextBlock Text="{Binding TruckPowertrainExportStatus}" TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0" />
     </StackPanel>
 </UserControl>

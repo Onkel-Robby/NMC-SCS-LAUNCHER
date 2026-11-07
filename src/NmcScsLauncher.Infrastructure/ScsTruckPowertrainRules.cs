@@ -16,18 +16,32 @@ public static class ScsTruckPowertrainRules
     {
         cancellationToken.ThrowIfCancellationRequested();
         var diagnostics = new List<string>();
+        var issues = new List<ScsPowertrainDiagnostic>(session.Evidence.DiagnosticDetails ?? []);
+        void Block(string code, ScsPowertrainDiagnosticStage stage, string message)
+        {
+            diagnostics.Add(message);
+            issues.Add(new(code, stage, ScsPowertrainDiagnosticScope.Global, message));
+        }
         // Evidence may describe unused DLCs. Only unresolved configuration or a referenced definition is a blocker.
         if (!session.Evidence.ConfigurationVerified)
-            diagnostics.Add("Die aktive Spiel-, Profil- und Mod-Konfiguration ist nicht vollständig bestätigt.");
+            Block("configuration_unverified", ScsPowertrainDiagnosticStage.ActiveConfiguration,
+                "Die aktive Spiel-, Profil- und Mod-Konfiguration ist nicht vollständig bestätigt.");
         if (session.Evidence.Game != snapshot.Game)
-            diagnostics.Add("Spielstand und wirksame Inhalte gehören zu unterschiedlichen Spielen.");
-        if (!Version.TryParse(session.Evidence.GameVersion, out var version) || version.Major != 1 || version.Minor is < 39 or > 62)
-            diagnostics.Add("Die Spielversion liegt außerhalb des geprüften Definitionsschemas (1.39–1.62).");
-        diagnostics.AddRange(snapshot.Accessories.SelectMany(accessory => accessory.UnsupportedReasons));
-        if (snapshot.Accessories.Count > 512) diagnostics.Add("Der Truck überschreitet das Limit von 512 prüfbaren Zubehörinstanzen.");
+            Block("game_mismatch", ScsPowertrainDiagnosticStage.TruckModel,
+                "Spielstand und wirksame Inhalte gehören zu unterschiedlichen Spielen.");
+        var supportedVersion = Version.TryParse(session.Evidence.GameVersion, out var version) && version.Major == 1 && version.Minor is >= 39 and <= 62;
+        // A failed source lookup does not establish an unsupported version.
+        if (!supportedVersion && (session.Evidence.ConfigurationVerified || session.Evidence.GameVersion.Length != 0))
+            Block("game_version_unsupported", ScsPowertrainDiagnosticStage.EffectiveDefinition,
+                "Die Spielversion liegt außerhalb des geprüften Definitionsschemas (1.39–1.62) oder ist nicht bestätigt.");
+        foreach (var reason in snapshot.Accessories.SelectMany(accessory => accessory.UnsupportedReasons))
+            Block("saved_accessory_unsupported", ScsPowertrainDiagnosticStage.AccessoryRules, reason);
+        if (snapshot.Accessories.Count > 512) Block("accessory_limit", ScsPowertrainDiagnosticStage.AccessoryRules,
+            "Der Truck überschreitet das Limit von 512 prüfbaren Zubehörinstanzen.");
         var loader = new Loader(session, cancellationToken);
         var definitions = new Dictionary<string, Definition>(StringComparer.Ordinal);
         var failures = new Dictionary<string, string>(StringComparer.Ordinal);
+        var failureDetails = new Dictionary<string, ScsPowertrainDiagnostic>(StringComparer.Ordinal);
         Definition? Load(string path)
         {
             if (definitions.TryGetValue(path, out var existing)) return existing;
@@ -43,13 +57,18 @@ public static class ScsTruckPowertrainRules
             catch (Exception exception) when (IsDefinitionFailure(exception))
             {
                 failures[path] = $"{path}: {exception.Message}";
+                var issue = Failure(exception, path);
+                failureDetails.Add(path, issue);
+                issues.Add(issue);
                 return null;
             }
         }
 
         var enginePaths = new HashSet<string>(StringComparer.Ordinal) { snapshot.CurrentEnginePath };
         var transmissionPaths = new HashSet<string>(StringComparer.Ordinal) { snapshot.CurrentTransmissionPath };
-        if (session.Evidence.ConfigurationVerified && session.Evidence.Game == snapshot.Game && snapshot.Accessories.Count <= 512)
+        var definitionsAttempted = session.Evidence.ConfigurationVerified && session.Evidence.Game == snapshot.Game &&
+            snapshot.Accessories.Count <= 512 && supportedVersion;
+        if (definitionsAttempted)
         {
             foreach (var accessory in snapshot.Accessories)
             {
@@ -94,11 +113,28 @@ public static class ScsTruckPowertrainRules
                 }
             }
             catch (Exception exception) when (IsDefinitionFailure(exception))
-            { diagnostics.Add($"Die Liste {directory} konnte nicht vollständig gelesen werden: {exception.Message}"); }
+            {
+                diagnostics.Add($"Die Liste {directory} konnte nicht vollständig gelesen werden: {exception.Message}");
+                issues.Add(Failure(exception, snapshot.TruckModelRoot + "/" + directory));
+            }
         }
 
-        return new Preview(snapshot, definitions, failures, enginePaths, transmissionPaths, diagnostics, session.Evidence.Diagnostics);
+        // Include non-source blockers generated while checking retained accessories.
+        foreach (var reason in diagnostics.Where(reason => !issues.Any(issue => issue.Message == reason)))
+            issues.Add(new("accessory_verification_failed", ScsPowertrainDiagnosticStage.AccessoryRules,
+                ScsPowertrainDiagnosticScope.Component, reason));
+        var report = new ScsTruckPowertrainInspectionReport(session.Evidence.GameVersion, session.Evidence.ConfigurationVerified,
+            definitionsAttempted, Array.AsReadOnly(session.Evidence.ActiveMods.ToArray()), Array.AsReadOnly(session.Evidence.Layers.ToArray()),
+            Array.AsReadOnly(issues.Distinct().ToArray()));
+        return new Preview(snapshot, definitions, failures, failureDetails, enginePaths, transmissionPaths, diagnostics,
+            session.Evidence.Diagnostics, report);
     }
+
+    private static ScsPowertrainDiagnostic Failure(Exception exception, string path, ScsContentLayer? source = null) =>
+        exception is ScsPowertrainDiagnosticException contextual ? contextual.Diagnostic : new(
+            exception is FileNotFoundException ? "definition_missing" : "definition_invalid",
+            ScsPowertrainDiagnosticStage.EffectiveDefinition, ScsPowertrainDiagnosticScope.Component,
+            exception.Message, source?.PackageIdentity, source?.PackageIdentity, source?.PhysicalPath, source?.PackageVersion, path);
 
     private static bool IsDefinitionFailure(Exception exception) => exception is IOException or InvalidDataException
         or UnauthorizedAccessException or ScsSaveEditException or FormatException or OverflowException;
@@ -117,16 +153,20 @@ public static class ScsTruckPowertrainRules
     {
         private readonly IReadOnlyDictionary<string, Definition> _definitions;
         private readonly IReadOnlyDictionary<string, string> _failures;
+        private readonly IReadOnlyDictionary<string, ScsPowertrainDiagnostic> _failureDetails;
         private readonly HashSet<string> _engines;
         private readonly HashSet<string> _transmissions;
         private readonly IReadOnlyList<string> _blockers;
         public Preview(ScsTruckPowertrainSnapshot snapshot, Dictionary<string, Definition> definitions,
-            Dictionary<string, string> failures, HashSet<string> engines, HashSet<string> transmissions, List<string> diagnostics,
-            IReadOnlyList<string> information)
+            Dictionary<string, string> failures, Dictionary<string, ScsPowertrainDiagnostic> failureDetails,
+            HashSet<string> engines, HashSet<string> transmissions, List<string> diagnostics,
+            IReadOnlyList<string> information, ScsTruckPowertrainInspectionReport report)
         {
             Snapshot = snapshot;
             _definitions = definitions;
             _failures = failures;
+            _failureDetails = failureDetails;
+            InspectionReport = report;
             _engines = engines;
             _transmissions = transmissions;
             _blockers = Array.AsReadOnly(diagnostics.Distinct(StringComparer.Ordinal).ToArray());
@@ -138,17 +178,21 @@ public static class ScsTruckPowertrainRules
         public IReadOnlyList<ScsTruckPowertrainOption> Engines { get; }
         public IReadOnlyList<ScsTruckPowertrainOption> Transmissions { get; }
         public IReadOnlyList<string> Diagnostics { get; }
+        public ScsTruckPowertrainInspectionReport InspectionReport { get; }
 
         private IReadOnlyList<ScsTruckPowertrainOption> Options(IEnumerable<string> paths, ScsPowertrainKind kind, string current) =>
             Array.AsReadOnly(paths.OrderBy(path => path == current ? 0 : 1).ThenBy(path => path, StringComparer.Ordinal).Select(path =>
             {
                 _definitions.TryGetValue(path, out var definition);
                 var reasons = new List<string>();
-                if (definition is null) reasons.Add(_failures.GetValueOrDefault(path) ?? "Die wirksame Definition ist nicht bestätigt.");
+                if (definition is null) reasons.Add(_failures.GetValueOrDefault(path) ??
+                    (InspectionReport.DefinitionsAttempted ? "Die wirksame Definition ist nicht bestätigt." :
+                    "Noch nicht geprüft: Voraussetzungen für die Komponentenprüfung sind nicht bestätigt. Details stehen im Prüfstatus."));
                 else if (definition.Unit.Type != ExpectedType(kind)) reasons.Add("Die Definition hat nicht den erwarteten Zubehörtyp.");
                 return new ScsTruckPowertrainOption(kind, path, definition?.Name ?? FallbackName(path), path == current,
                     definition?.SourceName ?? "Quelle nicht bestätigt", definition?.TechnicalInfo ?? "Technische Angaben nicht bestätigt",
-                    reasons.Count == 0, Array.AsReadOnly(reasons.ToArray()));
+                    reasons.Count == 0, Array.AsReadOnly(reasons.ToArray()),
+                    _failureDetails.TryGetValue(path, out var issue) ? Array.AsReadOnly(new[] { issue }) : []);
             }).ToArray());
 
         public ScsTruckPowertrainAssessment AssessPair(string engineDataPath, string transmissionDataPath)
@@ -156,7 +200,7 @@ public static class ScsTruckPowertrainRules
             var reasons = new List<string>(_blockers);
             if (!_engines.Contains(engineDataPath) || !_transmissions.Contains(transmissionDataPath))
                 reasons.Add("Die Auswahl gehört nicht zur geprüften Liste dieses Trucks.");
-            if (reasons.Count > 0) return new(engineDataPath, transmissionDataPath, false, Array.AsReadOnly(reasons.ToArray()));
+            if (reasons.Count > 0) return Assessment(engineDataPath, transmissionDataPath, reasons);
             var selected = new List<Definition>();
             foreach (var accessory in Snapshot.Accessories)
             {
@@ -190,7 +234,7 @@ public static class ScsTruckPowertrainRules
                 if (group.Select(d => d.Path).Distinct(StringComparer.Ordinal).Skip(1).Any())
                     reasons.Add($"Zubehör-Unit {group.Key} ist durch unterschiedliche Definitionen mehrdeutig.");
             if (selected.Sum(d => d.Suitable.Count + d.Conflicts.Count + d.Requires.Count + d.Defaults.Count + d.Overrides.Count) > 2048)
-                return new(engineDataPath, transmissionDataPath, false, new[] { "Die Konfiguration überschreitet das Limit von 2048 Zubehörregeln." });
+                return Assessment(engineDataPath, transmissionDataPath, ["Die Konfiguration überschreitet das Limit von 2048 Zubehörregeln."]);
             foreach (var definition in selected)
             {
                 // Alternatives within one explicit accessory type are OR, different types remain AND.
@@ -219,8 +263,15 @@ public static class ScsTruckPowertrainRules
                         reasons.Add($"{definition.Name}: defaults würde fehlendes Zubehör ergänzen ({target}).");
                 }
             }
+            return Assessment(engineDataPath, transmissionDataPath, reasons);
+        }
+
+        private static ScsTruckPowertrainAssessment Assessment(string engine, string transmission, IEnumerable<string> reasons)
+        {
             var unique = Array.AsReadOnly(reasons.Distinct(StringComparer.Ordinal).ToArray());
-            return new(engineDataPath, transmissionDataPath, unique.Count == 0, unique);
+            return new(engine, transmission, unique.Count == 0, unique, Array.AsReadOnly(unique.Select(reason =>
+                new ScsPowertrainDiagnostic("pair_unverified", ScsPowertrainDiagnosticStage.PairCompatibility,
+                    ScsPowertrainDiagnosticScope.Pair, reason)).ToArray()));
         }
     }
 
@@ -235,43 +286,53 @@ public static class ScsTruckPowertrainRules
         private int _readCount;
         public Definition Load(string path)
         {
-            var sources = new List<string>();
-            var expanded = Expand(Normalize(path, "/"), new HashSet<string>(StringComparer.Ordinal), sources, 0);
-            var document = ScsDefinitionDocument.Parse(expanded);
-            var accessories = document.Units.Where(unit => unit.Type.StartsWith("accessory_", StringComparison.Ordinal)).ToArray();
-            if (accessories.Length != 1) throw new InvalidDataException("Die Datei enthält nicht genau eine Zubehördefinition.");
-            var unit = accessories[0];
-            if (unit.Id.Length > 256) throw new InvalidDataException("Die Zubehör-Unit überschreitet die sichere Namenslänge von 256 Zeichen.");
-            ScsTruckDefinitionSchema.Validate(document, unit, session.Evidence.GameVersion);
-            var suitable = Patterns(unit.GetStrings("suitable_for"));
-            if (suitable.Count > 1 && suitable.Any(pattern => SuitableCategory(pattern) is null))
-                throw new InvalidDataException("suitable_for enthält mehrdeutige Zubehörtypen; die Gruppierung wird nicht geraten.");
-            var conflicts = Patterns(unit.GetStrings("conflict_with"));
-            var required = unit.GetTokens("require");
-            if (required.Any(value => !Regex.IsMatch(value, "^[A-Za-z0-9_]{1,12}$", RegexOptions.CultureInvariant)))
-                throw new InvalidDataException("require enthält keinen eindeutigen Zubehörtyp.");
-            var defaults = unit.GetStrings("defaults").Select(value => Normalize(value, path)).ToArray();
-            var overrides = unit.GetStrings("overrides").Select(value => Normalize(value, path)).ToArray();
-            var rawName = unit.GetString("name");
-            var name = string.IsNullOrWhiteSpace(rawName) || rawName.Contains("@@", StringComparison.Ordinal)
-                ? FallbackName(path) : rawName.Trim();
-            return new(path, unit, name, string.Join(" + ", sources.Distinct(StringComparer.Ordinal)),
-                TechnicalInfo(unit), unit.Type == "accessory_engine_data" ? unit.GetToken("type") ?? "diesel" : null,
-                suitable, conflicts, required, Array.AsReadOnly(defaults), Array.AsReadOnly(overrides));
+            var sources = new List<ScsContentLayer>();
+            try
+            {
+                var expanded = Expand(Normalize(path, "/"), new HashSet<string>(StringComparer.Ordinal), sources, 0);
+                var document = ScsDefinitionDocument.Parse(expanded);
+                var accessories = document.Units.Where(unit => unit.Type.StartsWith("accessory_", StringComparison.Ordinal)).ToArray();
+                if (accessories.Length != 1) throw new InvalidDataException("Die Datei enthält nicht genau eine Zubehördefinition.");
+                var unit = accessories[0];
+                if (unit.Id.Length > 256) throw new InvalidDataException("Die Zubehör-Unit überschreitet die sichere Namenslänge von 256 Zeichen.");
+                ScsTruckDefinitionSchema.Validate(document, unit, session.Evidence.GameVersion);
+                var suitable = Patterns(unit.GetStrings("suitable_for"));
+                if (suitable.Count > 1 && suitable.Any(pattern => SuitableCategory(pattern) is null))
+                    throw new InvalidDataException("suitable_for enthält mehrdeutige Zubehörtypen; die Gruppierung wird nicht geraten.");
+                var conflicts = Patterns(unit.GetStrings("conflict_with"));
+                var required = unit.GetTokens("require");
+                if (required.Any(value => !Regex.IsMatch(value, "^[A-Za-z0-9_]{1,12}$", RegexOptions.CultureInvariant)))
+                    throw new InvalidDataException("require enthält keinen eindeutigen Zubehörtyp.");
+                var defaults = unit.GetStrings("defaults").Select(value => Normalize(value, path)).ToArray();
+                var overrides = unit.GetStrings("overrides").Select(value => Normalize(value, path)).ToArray();
+                var rawName = unit.GetString("name");
+                var name = string.IsNullOrWhiteSpace(rawName) || rawName.Contains("@@", StringComparison.Ordinal)
+                    ? FallbackName(path) : rawName.Trim();
+                return new(path, unit, name, string.Join(" + ", sources.Select(source => source.PackageIdentity).Distinct(StringComparer.Ordinal)),
+                    TechnicalInfo(unit), unit.Type == "accessory_engine_data" ? unit.GetToken("type") ?? "diesel" : null,
+                    suitable, conflicts, required, Array.AsReadOnly(defaults), Array.AsReadOnly(overrides));
+            }
+            catch (Exception exception) when (IsDefinitionFailure(exception) && exception is not ScsPowertrainDiagnosticException)
+            { throw new ScsPowertrainDiagnosticException(Failure(exception, path, sources.FirstOrDefault()), exception); }
         }
 
-        private string Expand(string path, HashSet<string> stack, List<string> sources, int depth)
+        private string Expand(string path, HashSet<string> stack, List<ScsContentLayer> sources, int depth)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (depth > 16 || !stack.Add(path)) throw new InvalidDataException("Include-Zyklus oder zu tiefe Include-Kette.");
             if (++_readCount > 16384) throw new InvalidDataException("Zu viele Definitions- und Include-Zugriffe.");
+            ScsContentLayer? source = null;
             try
             {
                 var definition = session.ReadDefinition(path, cancellationToken);
-                if (!definition.AvailabilityVerified) throw new InvalidDataException("Verfügbarkeit nicht bestätigt: " + definition.AvailabilityReason);
+                source = definition.Source;
+                sources.Add(source);
+                if (!definition.AvailabilityVerified) throw new ScsPowertrainDiagnosticException(new(
+                    "definition_availability_unverified", ScsPowertrainDiagnosticStage.EffectiveDefinition,
+                    ScsPowertrainDiagnosticScope.Component, "Verfügbarkeit nicht bestätigt: " + definition.AvailabilityReason,
+                    source.PackageIdentity, source.PackageIdentity, source.PhysicalPath, source.PackageVersion, path));
                 _totalCharacters += definition.Content.Length;
                 if (_totalCharacters > 32 * 1024 * 1024) throw new InvalidDataException("Definitionskatalog überschreitet die sichere Lesegrenze.");
-                sources.Add(definition.Source.PackageIdentity);
                 var content = StripComments(definition.Content);
                 var result = new StringBuilder();
                 foreach (var line in content.Split('\n'))
@@ -291,6 +352,19 @@ public static class ScsTruckPowertrainRules
                 }
                 return result.ToString();
             }
+            catch (ScsPowertrainDiagnosticException exception) when (source is not null && exception.Diagnostic.PackageIdentity is null)
+            {
+                // This is the referring package, not an assertion that the missing include exists in it.
+                throw new ScsPowertrainDiagnosticException(exception.Diagnostic with
+                {
+                    PackageIdentity = source.PackageIdentity, DisplayName = source.PackageIdentity,
+                    PhysicalPath = source.PhysicalPath, PackageVersion = source.PackageVersion,
+                    TechnicalDetails = $"Verweisende Definition: {path}. Quelle des Verweises: {source.PackageIdentity}. " +
+                        exception.Diagnostic.TechnicalDetails
+                }, exception);
+            }
+            catch (Exception exception) when (IsDefinitionFailure(exception) && exception is not ScsPowertrainDiagnosticException)
+            { throw new ScsPowertrainDiagnosticException(Failure(exception, path, source), exception); }
             finally { stack.Remove(path); }
         }
     }

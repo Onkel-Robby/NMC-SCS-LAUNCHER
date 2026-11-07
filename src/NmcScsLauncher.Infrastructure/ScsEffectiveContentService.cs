@@ -20,6 +20,14 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
             await Task.Run(() => session.Initialize(cancellationToken), cancellationToken).ConfigureAwait(false);
             return session;
         }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ScsSaveEditException)
+        {
+            session.Dispose();
+            var issue = exception is ScsPowertrainDiagnosticException contextual ? contextual.Diagnostic :
+                new ScsPowertrainDiagnostic("source_snapshot_invalid", ScsPowertrainDiagnosticStage.ActiveConfiguration,
+                    ScsPowertrainDiagnosticScope.Global, exception.Message, BlocksConfiguration: true);
+            throw new ScsPowertrainDiagnosticException(issue, exception, evidence);
+        }
         catch
         {
             session.Dispose();
@@ -60,7 +68,8 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
                 ActiveMods = Array.AsReadOnly(evidence.ActiveMods.ToArray()),
                 Layers = Array.AsReadOnly(evidence.Layers.ToArray()),
                 Files = Array.AsReadOnly(evidence.Files.ToArray()),
-                Diagnostics = Array.AsReadOnly(evidence.Diagnostics.ToArray())
+                Diagnostics = Array.AsReadOnly(evidence.Diagnostics.ToArray()),
+                DiagnosticDetails = Array.AsReadOnly((evidence.DiagnosticDetails ?? []).ToArray())
             };
             _layers = Evidence.Layers.OrderByDescending(layer => layer.Priority).ToArray();
             _request = request;
@@ -169,7 +178,10 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
                 var layer = _layers[index];
                 var source = GetSource(layer.PhysicalPath);
                 var mountRoot = MountRoot(layer);
-                var paths = source.Reader.GetFiles(MountPath(layer, directory), token);
+                IReadOnlyList<string> paths;
+                try { paths = source.Reader.GetFiles(MountPath(layer, directory), token); }
+                catch (Exception exception) when (IsSourceFailure(exception))
+                { throw SourceFailure("source_listing_failed", layer, directory, exception); }
                 count += paths.Count;
                 if (count > MaximumListedFiles) throw new ScsSaveEditException("Zu viele Dateien in der effektiven Dateisicht.");
                 var mapped = new string[paths.Count];
@@ -207,10 +219,16 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
                     source.VerifyPhysicalIdentity();
                     continue;
                 }
+                catch (Exception exception) when (IsSourceFailure(exception))
+                { throw SourceFailure("definition_read_failed", layer, virtualPath, exception); }
                 if (selectedLayer is not null)
                 {
                     if (!string.Equals(selectedContent, content, StringComparison.Ordinal))
-                        throw new ScsSaveEditException($"Mehrdeutige Definition '{virtualPath}': unterschiedliche Inhalte bei gleicher Priorität.");
+                        throw new ScsPowertrainDiagnosticException(new("definition_priority_ambiguous",
+                            ScsPowertrainDiagnosticStage.EffectiveDefinition, ScsPowertrainDiagnosticScope.Component,
+                            $"Mehrdeutige Definition '{virtualPath}': unterschiedliche Inhalte bei gleicher Priorität.",
+                            layer.PackageIdentity, layer.PackageIdentity, layer.PhysicalPath, layer.PackageVersion, virtualPath,
+                            $"Priorität {layer.Priority}: {selectedLayer.PackageIdentity} / {layer.PackageIdentity}"));
                     // A known identical file establishes the same result even when an optional
                     // equal-priority layer is absent. All candidates are rechecked before use.
                     if (!selectedLayer.AvailabilityVerified && layer.AvailabilityVerified) selectedLayer = layer;
@@ -275,11 +293,23 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
             try { source = new Source(path); }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException)
             {
-                throw new ScsSaveEditException("Eine potenziell wirksame Inhaltsquelle ist nicht lesbar: " + path, exception);
+                var layer = _layers.FirstOrDefault(candidate => string.Equals(Path.GetFullPath(candidate.PhysicalPath), path, StringComparison.OrdinalIgnoreCase));
+                throw new ScsPowertrainDiagnosticException(new("source_unreadable", ScsPowertrainDiagnosticStage.ArchiveDiscovery,
+                    ScsPowertrainDiagnosticScope.Source, "Eine potenziell wirksame Inhaltsquelle ist nicht lesbar: " +
+                    (layer?.PackageIdentity ?? Path.GetFileName(path)), layer?.PackageIdentity, layer?.PackageIdentity,
+                    path, layer?.PackageVersion, TechnicalDetails: exception.Message, BlocksConfiguration: true), exception);
             }
             _sources.Add(path, source);
             return source;
         }
+
+        private static bool IsSourceFailure(Exception exception) =>
+            exception is IOException or InvalidDataException or UnauthorizedAccessException or NotSupportedException;
+
+        private static ScsPowertrainDiagnosticException SourceFailure(string code, ScsContentLayer layer, string virtualPath, Exception exception) =>
+            new(new(code, ScsPowertrainDiagnosticStage.EffectiveDefinition, ScsPowertrainDiagnosticScope.Component,
+                $"{layer.PackageIdentity}: {virtualPath} konnte nicht sicher gelesen werden. {exception.Message}",
+                layer.PackageIdentity, layer.PackageIdentity, layer.PhysicalPath, layer.PackageVersion, virtualPath), exception);
 
         private static string MountPath(ScsContentLayer layer, string virtualPath)
         {

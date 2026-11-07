@@ -25,6 +25,7 @@ public partial class MainViewModel
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(InstallTruckPowertrainCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportTruckPowertrainDiagnosticsCommand))]
     private bool _truckPowertrainIsLoading;
     [ObservableProperty] private string _truckPowertrainStatus = "Spielstand mit aktivem Truck auswählen.";
     [ObservableProperty] private string _truckPowertrainContext = string.Empty;
@@ -136,7 +137,7 @@ public partial class MainViewModel
                     label = "Start-Modset: " + modset.Name;
                 }
             }
-            TruckPowertrainContext = label + Environment.NewLine + root;
+            TruckPowertrainContext = label;
             request = new(profile, save, installPath, [new(game, label, root)]);
         }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or IOException)
@@ -177,6 +178,7 @@ public partial class MainViewModel
             TruckPowertrainSelectedEngine = _truckEngineOptions.FirstOrDefault(item => item.IsCurrent);
             TruckPowertrainSelectedTransmission = _truckTransmissionOptions.FirstOrDefault(item => item.IsCurrent);
             TruckPowertrainDiagnostics = string.Join(Environment.NewLine, preview.Diagnostics);
+            SetTruckPowertrainDiagnostics(request, preview);
             TruckPowertrainStatus = $"Vorschau · {_truckEngineOptions.Length} Motoren und {_truckTransmissionOptions.Length} Getriebe. Vor dem Einbau werden Spielstand und Quellen erneut geprüft.";
             AssessTruckPowertrainPair();
         }
@@ -212,6 +214,7 @@ public partial class MainViewModel
         _truckPowertrainContextMatches = null;
         _truckPowertrainPreview = null;
         _truckPowertrainInstallContext = null;
+        ClearTruckPowertrainDiagnostics();
         _truckEngineOptions = [];
         _truckTransmissionOptions = [];
         TruckPowertrainEngineSearch = string.Empty;
@@ -415,7 +418,8 @@ public partial class MainViewModel
 public sealed class TruckPowertrainOptionViewModel
 {
     private readonly ScsTruckPowertrainOption _option;
-    public TruckPowertrainOptionViewModel(ScsTruckPowertrainOption option) => _option = option with { Reasons = option.Reasons.ToArray() };
+    public TruckPowertrainOptionViewModel(ScsTruckPowertrainOption option) => _option = option with
+        { Reasons = option.Reasons.ToArray(), DiagnosticDetails = option.DiagnosticDetails?.ToArray() };
     public string Name => _option.Name;
     public string DataPath => _option.DataPath;
     public bool IsCurrent => _option.IsCurrent;
@@ -424,5 +428,7 @@ public sealed class TruckPowertrainOptionViewModel
     public string TechnicalInfo => _option.TechnicalInfo;
     public string CurrentText => IsCurrent ? "Aktuell verbaut" : string.Empty;
     public string ReasonText => string.Join(Environment.NewLine, _option.Reasons);
+    public string DiagnosticText => string.Join(Environment.NewLine + Environment.NewLine,
+        _option.DiagnosticDetails?.Take(16).Select(issue => new TruckPowertrainDiagnosticViewModel(issue).TechnicalText) ?? []);
     public string SearchText => $"{Name} {SourceName} {TechnicalInfo} {DataPath} {ReasonText}";
 }

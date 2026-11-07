@@ -11,10 +11,12 @@ public sealed record ScsTruckPowertrainSnapshot(
 
 public sealed record ScsTruckPowertrainOption(
     ScsPowertrainKind Kind, string DataPath, string Name, bool IsCurrent,
-    string SourceName, string TechnicalInfo, bool DefinitionVerified, IReadOnlyList<string> Reasons);
+    string SourceName, string TechnicalInfo, bool DefinitionVerified, IReadOnlyList<string> Reasons,
+    IReadOnlyList<ScsPowertrainDiagnostic>? DiagnosticDetails = null);
 
 public sealed record ScsTruckPowertrainAssessment(
-    string EngineDataPath, string TransmissionDataPath, bool IsVerified, IReadOnlyList<string> Reasons);
+    string EngineDataPath, string TransmissionDataPath, bool IsVerified, IReadOnlyList<string> Reasons,
+    IReadOnlyList<ScsPowertrainDiagnostic>? DiagnosticDetails = null);
 
 /// <summary>Detached read-only preview. It holds no open files and cannot authorize a later write.</summary>
 public interface IScsTruckPowertrainPreview
@@ -23,6 +25,7 @@ public interface IScsTruckPowertrainPreview
     IReadOnlyList<ScsTruckPowertrainOption> Engines { get; }
     IReadOnlyList<ScsTruckPowertrainOption> Transmissions { get; }
     IReadOnlyList<string> Diagnostics { get; }
+    ScsTruckPowertrainInspectionReport? InspectionReport => null;
     ScsTruckPowertrainAssessment AssessPair(string engineDataPath, string transmissionDataPath);
 }
 
