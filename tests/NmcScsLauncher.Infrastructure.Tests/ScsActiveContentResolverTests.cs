@@ -420,8 +420,26 @@ public sealed class ScsActiveContentResolverTests : IDisposable
         Assert.True(result.ConfigurationVerified, string.Join(";", result.Diagnostics));
         var layer = Assert.Single(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Dlc);
         Assert.Equal("eut2_balkane", layer.PackageIdentity);
+        Assert.True(layer.DlcMetadataVerified);
         Assert.False(layer.AvailabilityVerified);
         Assert.Equal(100, layer.Priority);
+    }
+
+    [Fact]
+    public async Task TruncatedDlcIssuesRetainExplicitInvalidMetadataEvidence()
+    {
+        WriteMods(Enumerable.Range(0, 512).Select(index => "missing_" + index).ToArray());
+        for (var index = 0; index < 300; index++)
+            Zip(_installation.InstallPath, $"dlc_wrong_{index:D3}.scs", ("package.manifest.sii",
+                $"SiiNunit {{ dlc_package : .d {{ id: wrong_{index} game_id: ats }} }}"));
+        var result = await Service().ResolveAsync(_request);
+        var layers = result.Layers.Where(layer => layer.Kind == ScsPowertrainSourceKind.Dlc).ToArray();
+        var invalidIssues = result.DiagnosticDetails!.Where(issue => issue.Code == "dlc_metadata_invalid").ToArray();
+        Assert.Equal(300, layers.Length);
+        Assert.True(invalidIssues.Length < layers.Length); // Exercise the real report cap.
+        Assert.Contains(layers, layer => !invalidIssues.Any(issue => issue.PhysicalPath == layer.PhysicalPath));
+        Assert.All(layers, layer => { Assert.False(layer.DlcMetadataVerified); Assert.False(layer.AvailabilityVerified); });
+        Assert.False(result.ConfigurationVerified);
     }
 
     [Fact]

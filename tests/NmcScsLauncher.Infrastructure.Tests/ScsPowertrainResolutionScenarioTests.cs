@@ -105,6 +105,163 @@ public sealed class ScsPowertrainResolutionScenarioTests
         Assert.Contains(preview.InspectionReport.Issues, issue => issue.Code == "package_archive_unreadable" && issue.BlocksConfiguration);
     }
 
+    [Theory]
+    [InlineData("empty")]
+    [InlineData("invalid")]
+    [InlineData("missing")]
+    public async Task AtsUnreadDependenciesAreNotReportedAsKnownEmptyHistory(string state)
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        if (state == "invalid") fixture.WriteDependencies("unknown|ats_test|Synthetic invalid type");
+        if (state == "missing") File.Delete(Path.Combine(Path.GetDirectoryName(fixture.Request.Save.GameSiiPath)!, "info.sii"));
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        var report = Assert.IsType<ScsTruckPowertrainInspectionReport>(preview.InspectionReport);
+        if (state == "empty") Assert.Empty(Assert.IsAssignableFrom<IReadOnlyList<ScsSaveDependency>>(report.SaveDependencies));
+        else Assert.Null(report.SaveDependencies);
+        Assert.Equal(state == "empty", report.ConfigurationVerified);
+        Assert.Equal(state == "empty", preview.AssessPair(NewEngine, NewTransmission).IsVerified);
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+    }
+
+    [Fact]
+    public async Task AtsDlcOnlySavePreservesDependencyKindsWithoutScanningWorkshopOrBlockingOriginalPairs()
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        fixture.Dlc("dlc_oversize.scs", "ats_oversize", "Shared package title", "962750");
+        fixture.Dlc("dlc_truck.scs", "ats_test_truck", "Shared package title", "123");
+        fixture.Dlc("dlc_map.scs", "ats_test_map", "Shared package title", "456");
+        fixture.WriteDependencies("dlc|ats_oversize|Shared package title", "rdlc|ats_test_truck|Shared package title",
+            "dlc|ats_test_map|Shared package title");
+        var expected = new ScsSaveDependency[]
+        {
+            new(ScsSaveDependencyKind.Dlc, "ats_oversize", "Shared package title", 0),
+            new(ScsSaveDependencyKind.Rdlc, "ats_test_truck", "Shared package title", 1),
+            new(ScsSaveDependencyKind.Dlc, "ats_test_map", "Shared package title", 2)
+        };
+        var original = fixture.HashFiles();
+
+        using var session = await new ScsEffectiveContentService(fixture.Resolver()).OpenAsync(fixture.Request);
+        Assert.Equal(expected, session.Evidence.SaveDependencies);
+        Assert.True(session.Evidence.ConfigurationVerified);
+        Assert.Empty(session.Evidence.ActiveMods);
+        Assert.Equal(3, session.Evidence.Layers.Count(layer => layer.Kind == ScsPowertrainSourceKind.Dlc));
+        Assert.All(session.Evidence.Layers.Where(layer => layer.Kind == ScsPowertrainSourceKind.Dlc),
+            layer => { Assert.True(layer.DlcMetadataVerified); Assert.False(layer.AvailabilityVerified); });
+        Assert.Equal(ScsPowertrainSourceKind.Game, session.ReadDefinition(NewEngine).Source.Kind);
+        await session.VerifyUnchangedAsync();
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        Assert.Equal(expected, preview.InspectionReport!.SaveDependencies);
+        Assert.True(preview.InspectionReport.ConfigurationVerified);
+        Assert.True(preview.InspectionReport.DefinitionsAttempted);
+        Assert.Equal(2, preview.Engines.Count);
+        Assert.Equal(2, preview.Transmissions.Count);
+        foreach (var engine in preview.Engines)
+            foreach (var transmission in preview.Transmissions)
+                Assert.True(preview.AssessPair(engine.DataPath, transmission.DataPath).IsVerified);
+        Assert.DoesNotContain(preview.InspectionReport.Issues, issue => issue.BlocksConfiguration || issue.Code.StartsWith("workshop_", StringComparison.Ordinal));
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+        Assert.Equal(original, fixture.HashFiles());
+    }
+
+    [Theory]
+    [InlineData("old")]
+    [InlineData("new")]
+    public async Task AtsDlcShadowLeavesAvailabilityFailureOnAffectedEngine(string engineName)
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        var path = Model + "/engine/" + engineName + ".sii";
+        fixture.Dlc("dlc_truck.scs", "ats_test_truck", "Shared package title", "123",
+            (path, Engine("DLC engine", 2500)));
+        fixture.WriteDependencies("rdlc|ats_test_truck|Shared package title");
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        Assert.True(preview.InspectionReport!.ConfigurationVerified);
+        Assert.True(preview.InspectionReport.DefinitionsAttempted);
+        Assert.Equal(2, preview.Engines.Count);
+        Assert.Equal(2, preview.Transmissions.Count);
+        Assert.False(Assert.Single(preview.Engines, option => option.DataPath == path).DefinitionVerified);
+        Assert.True(Assert.Single(preview.Engines, option => option.DataPath != path).DefinitionVerified);
+        Assert.False(preview.AssessPair(path, NewTransmission).IsVerified);
+        Assert.Contains(preview.InspectionReport.Issues, issue => issue.Code == "definition_availability_unverified" &&
+            issue.Scope == ScsPowertrainDiagnosticScope.Component && issue.VirtualPath == path &&
+            issue.PackageIdentity == "ats_test_truck" && !issue.BlocksConfiguration);
+        Assert.DoesNotContain(preview.InspectionReport.Issues, issue => issue.BlocksConfiguration || issue.Code.StartsWith("workshop_", StringComparison.Ordinal));
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+    }
+
+    [Fact]
+    public async Task AtsActiveWorkshopIdentityCannotBeSatisfiedByDlcWithSameTitleOrNumericAppId()
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        fixture.WriteActiveMods((WorkshopIdentity, "Shared package title"));
+        fixture.Dlc("dlc_truck.scs", "ats_test_truck", "Shared package title", "123");
+        fixture.WriteDependencies("dlc|ats_test_truck|Shared package title", $"mod|{WorkshopIdentity}|Shared package title");
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        var report = preview.InspectionReport!;
+        Assert.False(report.ConfigurationVerified);
+        Assert.False(report.DefinitionsAttempted);
+        Assert.Equal(WorkshopIdentity, Assert.Single(report.ActiveMods).Identity);
+        Assert.Equal(new ScsSaveDependency[]
+        {
+            new(ScsSaveDependencyKind.Dlc, "ats_test_truck", "Shared package title", 0),
+            new(ScsSaveDependencyKind.Mod, WorkshopIdentity, "Shared package title", 1)
+        }, report.SaveDependencies);
+        Assert.Equal("ats_test_truck", Assert.Single(report.Sources, layer => layer.Kind == ScsPowertrainSourceKind.Dlc).PackageIdentity);
+        Assert.DoesNotContain(report.Sources, layer => layer.Kind == ScsPowertrainSourceKind.Workshop);
+        Assert.Contains(report.Issues, issue => issue.Code == "workshop_package_missing" && issue.BlocksConfiguration && issue.PackageIdentity == WorkshopIdentity);
+        Assert.DoesNotContain(report.Issues, issue => issue.Code == "profile_save_mod_order_mismatch");
+        Assert.Equal(1, fixture.WorkshopScanCalls);
+    }
+
+    [Fact]
+    public async Task AtsHistoricalWorkshopDependencyWithNoActiveModsBlocksMismatchWithoutWorkshopScan()
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        fixture.Dlc("dlc_truck.scs", "ats_test_truck", "Shared package title", "123");
+        fixture.WriteDependencies($"mod|{WorkshopIdentity}|Shared package title", "rdlc|ats_test_truck|Shared package title");
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        var report = preview.InspectionReport!;
+        Assert.False(report.ConfigurationVerified);
+        Assert.False(report.DefinitionsAttempted);
+        Assert.Empty(report.ActiveMods);
+        Assert.Equal(new ScsSaveDependency[]
+        {
+            new(ScsSaveDependencyKind.Mod, WorkshopIdentity, "Shared package title", 0),
+            new(ScsSaveDependencyKind.Rdlc, "ats_test_truck", "Shared package title", 1)
+        }, report.SaveDependencies);
+        Assert.Contains(report.Issues, issue => issue.Code == "profile_save_mod_order_mismatch" && issue.BlocksConfiguration);
+        Assert.DoesNotContain(report.Issues, issue => issue.Code.StartsWith("workshop_", StringComparison.Ordinal));
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AtsMissingOrDuplicateDlcManifestIdentityDoesNotGuessEntitlement(bool duplicate)
+    {
+        using var fixture = new Fixture(GameType.Ats);
+        fixture.Dlc("dlc_first.scs", "ats_test_truck", "Shared package title", "123");
+        fixture.Dlc("dlc_second.scs", duplicate ? "ats_test_truck" : null, "Shared package title", "123");
+        fixture.WriteDependencies("dlc|ats_test_truck|Shared package title");
+
+        var evidence = await fixture.Resolver().ResolveAsync(fixture.Request);
+        Assert.True(evidence.ConfigurationVerified);
+        var layers = evidence.Layers.Where(layer => layer.Kind == ScsPowertrainSourceKind.Dlc).ToArray();
+        Assert.Equal(2, layers.Length);
+        Assert.All(layers, layer => Assert.False(layer.AvailabilityVerified));
+        Assert.Equal(duplicate ? 2 : 1, layers.Count(layer => layer.PackageIdentity == "ats_test_truck"));
+        if (!duplicate)
+        {
+            Assert.Contains(layers, layer => layer.PackageIdentity == "dlc_second.scs");
+            Assert.Contains(evidence.DiagnosticDetails!, issue => issue.Code == "dlc_metadata_invalid" && !issue.BlocksConfiguration);
+        }
+        Assert.DoesNotContain(evidence.DiagnosticDetails!, issue => issue.Code.StartsWith("workshop_", StringComparison.Ordinal));
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+    }
+
     private static string Unit(string type, string id, string attributes) => $"SiiNunit {{ {type} : {id} {{ {attributes} }} }}";
     private static string Engine(string name, int torque) => Unit("accessory_engine_data", "new.test.engine", $"name: \"{name}\" torque: {torque}");
     private static string Gearbox(string id, string ratios) => Unit("accessory_transmission_data", id, ratios + " ratios_reverse[]: -4 differential_ratio: 2.85");
@@ -115,6 +272,7 @@ public sealed class ScsPowertrainResolutionScenarioTests
         public string ModRoot { get; }
         public ScsEffectiveContentRequest Request { get; }
         public WorkshopContentSnapshot Workshop { get; set; }
+        public int WorkshopScanCalls { get; private set; }
         private readonly GameInstallation _installation;
         private readonly GameType _game;
         private readonly string _infoPath;
@@ -151,17 +309,36 @@ public sealed class ScsPowertrainResolutionScenarioTests
         public ScsTruckPowertrainService Service()
         {
             var codec = new ScsPlainTextSaveCodec();
-            var resolver = new ScsActiveContentResolver(codec, new Detector(_installation), new WorkshopLocator(Workshop), _ => "1.62.1.0");
-            return new(new(codec), new ScsEffectiveContentService(resolver));
+            return new(new(codec), new ScsEffectiveContentService(Resolver()));
         }
+
+        public ScsActiveContentResolver Resolver() => new(new ScsPlainTextSaveCodec(), new Detector(_installation),
+            new WorkshopLocator(Workshop, () => WorkshopScanCalls++), _ => "1.62.1.0");
 
         public void WriteMods(params string[] identities)
         {
-            var active = string.Join('\n', identities.Select((id, index) => $"active_mods[{index}]: \"{id}|Synthetic mod {index}\""));
-            File.WriteAllText(Request.Profile.ProfileSiiPath, Unit("user_profile", ".profile", $"active_mods: {identities.Length}\n{active}"));
-            var dependencies = string.Join('\n', identities.Select((id, index) => $"dependencies[{index}]: \"mod|{id}|Synthetic mod {index}\""));
-            File.WriteAllText(_infoPath, Unit("save_container", ".save", $"dependencies: {identities.Length}\n{dependencies}"));
+            WriteActiveMods(identities.Select((id, index) => (id, $"Synthetic mod {index}")).ToArray());
+            WriteDependencies(identities.Select((id, index) => $"mod|{id}|Synthetic mod {index}").ToArray());
         }
+
+        public void WriteActiveMods(params (string Identity, string Title)[] mods)
+        {
+            var active = string.Join('\n', mods.Select((mod, index) => $"active_mods[{index}]: \"{mod.Identity}|{mod.Title}\""));
+            File.WriteAllText(Request.Profile.ProfileSiiPath, Unit("user_profile", ".profile", $"active_mods: {mods.Length}\n{active}"));
+        }
+
+        public void WriteDependencies(params string[] values)
+        {
+            var dependencies = string.Join('\n', values.Select((value, index) => $"dependencies[{index}]: \"{value}\""));
+            File.WriteAllText(_infoPath, Unit("save_container", ".save", $"dependencies: {values.Length}\n{dependencies}"));
+        }
+
+        public void Dlc(string fileName, string? identity, string title, string steamAppId, params (string Path, string Content)[] entries) =>
+            Zip(_installation.InstallPath, fileName, [("/" + Path.GetFileNameWithoutExtension(fileName) + ".manifest.sii",
+                Unit("dlc_package", ".package", $"{(identity is null ? "" : "id: " + identity)} game_id: ats display_name: \"{title}\" steam_app_id: {steamAppId}")), .. entries]);
+
+        public KeyValuePair<string, string>[] HashFiles() => Directory.GetFiles(Root, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal).Select(path => new KeyValuePair<string, string>(path, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))))).ToArray();
 
         public string WorkshopRoot()
         {
@@ -196,9 +373,13 @@ public sealed class ScsPowertrainResolutionScenarioTests
         public Task<GameInstallation?> DetectAsync(GameType gameType, string? preferredInstallPath = null, CancellationToken cancellationToken = default) => Task.FromResult<GameInstallation?>(installation);
     }
 
-    private sealed class WorkshopLocator(WorkshopContentSnapshot snapshot) : IWorkshopContentLocator
+    private sealed class WorkshopLocator(WorkshopContentSnapshot snapshot, Action scanned) : IWorkshopContentLocator
     {
-        public Task<WorkshopContentSnapshot> ScanAsync(GameType game, CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
-        public Task<WorkshopContentSnapshot> ScanAsync(GameType game, string? preferredInstallPath, CancellationToken cancellationToken = default) => Task.FromResult(snapshot);
+        public Task<WorkshopContentSnapshot> ScanAsync(GameType game, CancellationToken cancellationToken = default)
+        {
+            scanned();
+            return Task.FromResult(snapshot);
+        }
+        public Task<WorkshopContentSnapshot> ScanAsync(GameType game, string? preferredInstallPath, CancellationToken cancellationToken = default) => ScanAsync(game, cancellationToken);
     }
 }

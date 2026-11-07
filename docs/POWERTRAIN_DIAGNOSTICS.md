@@ -1,5 +1,7 @@
 # Auftrag 5: Quellenfehler und Einbaufreigabe
 
+Ergänzende Untersuchung: [ATS-DLCs, Profilmods und Save-Provenienz](ATS_DLC_PROVENANCE.md). Der vom Nutzer genannte Profilname ist inzwischen direkt geprüft; der aktuelle Ingame-Save bleibt unbestätigt.
+
 Version 1.0.0. Dieser Auftrag baut auf D3 auf; die bisherigen Pull Requests bleiben unverändert und ungemergt. Die Diagnosevorschau autorisiert keinen Schreibvorgang. Beim Einbau werden Save, Truck, Quellen und Kombination weiterhin frisch geprüft.
 
 ## Warum der Katalog mehr findet als der Truck-Editor

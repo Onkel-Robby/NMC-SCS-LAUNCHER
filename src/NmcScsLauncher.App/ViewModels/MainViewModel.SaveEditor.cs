@@ -270,6 +270,7 @@ public partial class MainViewModel
     partial void OnSaveEditorSelectedProfileChanged(ScsProfileReference? value)
     {
         SaveEditorProfileNameText = value?.DisplayName ?? string.Empty;
+        SaveEditorGameHome = value?.GameHomeDirectory ?? GetConfiguredSaveEditorHome() ?? GetDefaultSaveEditorHome();
         SaveEditorCloudNotice = value?.StorageKind == ScsProfileStorageKind.SteamCloudRemote
             ? "Steam-Cloud-Profil aus Steam userdata: Saves können angezeigt werden. " +
               "Änderungen und Wiederherstellung sind bis zur sicheren Cloud-Freigabe gesperrt."

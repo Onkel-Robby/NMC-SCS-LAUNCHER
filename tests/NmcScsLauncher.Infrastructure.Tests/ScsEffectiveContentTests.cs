@@ -273,6 +273,17 @@ public sealed class ScsEffectiveContentTests : IDisposable
     }
 
     private Task<IScsEffectiveContentSession> Open(params ScsContentLayer[] layers) => Service(Evidence(layers)).OpenAsync(Request());
+
+    [Fact]
+    public async Task SaveDependencyEvidenceIsDetachedFromCallerOwnedLists()
+    {
+        var original = new ScsSaveDependency(ScsSaveDependencyKind.Rdlc, "ats_toys", "DLC - Cabin Accessories", 0);
+        var dependencies = new List<ScsSaveDependency> { original };
+        using var session = await Service(Evidence() with { ConfigurationVerified = false, SaveDependencies = dependencies }).OpenAsync(Request());
+        dependencies.Clear();
+        Assert.Equal(original, Assert.Single(session.Evidence.SaveDependencies!));
+        Assert.False(session.Evidence.ConfigurationVerified);
+    }
     private static ScsEffectiveContentService Service(ScsActiveContentEvidence evidence) => new(new Resolver(evidence));
     private static ScsActiveContentEvidence Evidence(params ScsContentLayer[] layers) => new(GameType.Ets2, "1.62.1.0", true, [], layers, [], []);
     private static ScsContentLayer Layer(string path, int priority = 0, bool verified = true) =>

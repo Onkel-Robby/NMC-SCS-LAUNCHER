@@ -17,7 +17,9 @@ public sealed record ScsContentLayer(
     string PackageVersion,
     int Priority,
     bool AvailabilityVerified,
-    string AvailabilityReason);
+    string AvailabilityReason,
+    // Identity/game metadata only; never proof of entitlement or activation.
+    bool DlcMetadataVerified = false);
 
 /// <summary>VirtualPath identifies archive text hashed as UTF-8; otherwise Sha256 hashes physical bytes.</summary>
 public sealed record ScsEvidenceFile(string Path, long Length, DateTimeOffset LastWriteTimeUtc, string Sha256,
@@ -31,7 +33,8 @@ public sealed record ScsActiveContentEvidence(
     IReadOnlyList<ScsContentLayer> Layers,
     IReadOnlyList<ScsEvidenceFile> Files,
     IReadOnlyList<string> Diagnostics,
-    IReadOnlyList<ScsPowertrainDiagnostic>? DiagnosticDetails = null);
+    IReadOnlyList<ScsPowertrainDiagnostic>? DiagnosticDetails = null,
+    IReadOnlyList<ScsSaveDependency>? SaveDependencies = null);
 
 public sealed record ScsResolvedDefinition(
     string VirtualPath,

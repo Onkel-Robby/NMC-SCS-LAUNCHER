@@ -42,20 +42,70 @@ public partial class MainViewModel
                 (packageCount > 0 ? packageText + " die aktive Konfiguration. " : "Eine Voraussetzung für die Komponentenprüfung ist nicht bestätigt; die Gründe stehen unten. ") +
                 "Angezeigt werden nur die im Save vermerkten Komponenten; zusätzliche Archivfunde sind noch keine Einbaufreigabe.",
             { ConfigurationVerified: false } => "Die aktive Konfiguration ist nicht vollständig bestätigt. Einbau gesperrt.",
-            { ConfigurationVerified: true } => $"Aktive Konfiguration geprüft · {report.ActiveMods.Count} aktive Mods · {report.Sources.Count} Quellen. " +
+            { ConfigurationVerified: true } => $"Aktive Konfiguration geprüft · {report.ActiveMods.Count} aktive Mods · " + SourceCounts(report) + ". " +
                 "Komponenten und gewählte Kombination werden getrennt bewertet.",
             _ => "Für diese Vorschau liegt kein strukturierter Diagnosebericht vor."
         };
-        var context = "Spielversion: " + (string.IsNullOrEmpty(report?.GameVersion) ? "nicht ermittelt" : report.GameVersion) +
+        var context = "Auswahl im Launcher; zuletzt im Spiel verwendeter Save nicht bestätigt." +
+            Environment.NewLine + "Profil: " + request.Profile.DisplayName + " (" + request.Profile.StorageKind + ")" +
+            Environment.NewLine + "Profildatei: " + request.Profile.ProfileSiiPath +
+            Environment.NewLine + "Profil-Home: " + request.Profile.GameHomeDirectory +
+            Environment.NewLine + "Save: " + request.Save.DisplayName + " (" + request.Save.Kind + ")" +
+            Environment.NewLine + "Save-Datei: " + request.Save.GameSiiPath +
+            Environment.NewLine + "Save-Zeitstempel beim Laden (UTC): " + request.Save.LastWriteTimeUtc.ToUniversalTime().ToString("O") +
+            Environment.NewLine + "Spielversion: " + (string.IsNullOrEmpty(report?.GameVersion) ? "nicht ermittelt" : report.GameVersion) +
             Environment.NewLine + "Spielinstallation: " + (request.PreferredInstallPath ?? "automatisch ermittelt") +
             Environment.NewLine + string.Join(Environment.NewLine, request.ModDirectories?.Select(root => "Mod-Ordner: " + root.DirectoryPath) ?? []);
         var sourceLines = report?.Sources.Take(256).Select(source =>
-            $"{source.PackageIdentity} · Version {source.PackageVersion} · Priorität {source.Priority}\n{source.PhysicalPath}\n" +
+            $"{source.Kind} · {source.PackageIdentity} · Version {source.PackageVersion} · Priorität {source.Priority}\n{source.PhysicalPath}\n" +
             $"Verfügbarkeit: {(source.AvailabilityVerified ? "bestätigt" : source.AvailabilityReason)}") ?? [];
         var modLines = report?.ActiveMods.Take(256).Select(mod => $"{mod.LoadOrder}: {mod.DisplayName} ({mod.Identity})") ?? [];
-        TruckPowertrainSourceDetails = context + "\n\nAktive Mods (Ladereihenfolge):\n" + string.Join("\n", modLines) +
-            "\n\nQuellen:\n" + string.Join("\n\n", sourceLines);
+        TruckPowertrainSourceDetails = context + $"\n\nAktive Mods aus profile.sii ({report?.ActiveMods.Count ?? 0}) · Ladereihenfolge:\n" +
+            string.Join("\n", modLines) + SaveDependencyDetails(report) +
+            "\n\nQuellen · " + SourceCounts(report) + ":\n" + string.Join("\n\n", sourceLines);
         ExportTruckPowertrainDiagnosticsCommand.NotifyCanExecuteChanged();
+    }
+
+    private static string SourceCounts(ScsTruckPowertrainInspectionReport? report)
+    {
+        var sources = report?.Sources ?? [];
+        return $"Spielarchive: {sources.Count(source => source.Kind == ScsPowertrainSourceKind.Game)} · " +
+            $"DLC-Archive: {sources.Count(source => source.Kind == ScsPowertrainSourceKind.Dlc)} · " +
+            $"Lokale Mod-Quellen: {sources.Count(source => source.Kind == ScsPowertrainSourceKind.LocalMod)} · " +
+            $"Workshop-Quellen: {sources.Count(source => source.Kind == ScsPowertrainSourceKind.Workshop)}";
+    }
+
+    private static string SaveDependencyDetails(ScsTruckPowertrainInspectionReport? report)
+    {
+        if (report?.SaveDependencies is null) return "\n\nSave-Abhängigkeiten aus info.sii: nicht ermittelt.";
+        var sections = new List<string>();
+        foreach (var kind in new[] { ScsSaveDependencyKind.Mod, ScsSaveDependencyKind.Dlc, ScsSaveDependencyKind.Rdlc })
+        {
+            var dependencies = report.SaveDependencies.Where(item => item.Kind == kind).ToArray();
+            var title = kind switch
+            {
+                ScsSaveDependencyKind.Mod => "Mod-Historie",
+                ScsSaveDependencyKind.Dlc => "DLC-Abhängigkeiten",
+                _ => "RDLC-Abhängigkeiten"
+            };
+            var lines = dependencies.Take(256).Select(dependency =>
+            {
+                var match = TruckPowertrainDependencyDiagnostics.Describe(dependency, report);
+                var status = match.Status switch
+                {
+                    "Active" => "im ausgewählten Profil als aktiv eingetragen",
+                    "Historical" => "nur im Save vermerkt; nicht im aktiven Profil",
+                    "Matched" => "1 Archiv mit exakt passender Manifest-ID",
+                    "Ambiguous" => $"{match.Sources.Count} Archive mit exakt passender Manifest-ID; Zuordnung mehrdeutig",
+                    _ => "kein Archiv mit exakt passender Manifest-ID"
+                };
+                return $"{dependency.Index}: {dependency.DisplayName} ({dependency.Identity}) · {status}" +
+                    string.Concat(match.Sources.Take(16).Select(source => "\n  " + source.PhysicalPath));
+            });
+            sections.Add($"{title} aus info.sii ({dependencies.Length}):\n" + string.Join("\n", lines));
+        }
+        return "\n\n" + string.Join("\n\n", sections) +
+            "\nDLC-Zuordnung: Datei vorhanden bestätigt keine aktuelle Berechtigung oder Aktivierung.";
     }
 
     private void ClearTruckPowertrainDiagnostics()

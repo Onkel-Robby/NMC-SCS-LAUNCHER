@@ -5,6 +5,23 @@ namespace NmcScsLauncher.Infrastructure.Tests;
 
 public sealed partial class ScsTruckPowertrainRulesTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void HistoricalDependenciesRemainDetachedDiagnosticEvidenceWithoutGrantingAvailability(bool verified)
+    {
+        using var source = Source();
+        var dependencies = new List<ScsSaveDependency> { new(ScsSaveDependencyKind.Dlc, "ats_oversize", "DLC - Special Transport", 0),
+            new(ScsSaveDependencyKind.Rdlc, "ats_toys", "DLC - Cabin Accessories", 1) };
+        source.Evidence = source.Evidence with { ConfigurationVerified = verified, SaveDependencies = dependencies };
+        var preview = Build(source);
+        dependencies.Clear();
+        Assert.Equal(2, preview.InspectionReport!.SaveDependencies!.Count);
+        Assert.Equal(ScsSaveDependencyKind.Dlc, preview.InspectionReport.SaveDependencies[0].Kind);
+        Assert.Equal(ScsSaveDependencyKind.Rdlc, preview.InspectionReport.SaveDependencies[1].Kind);
+        Assert.Equal(verified, preview.AssessPair(NewEngine, NewGearbox).IsVerified);
+    }
+
     [Fact]
     public void MissingActivePackageReportsNotAttemptedInsteadOfComponentFailure()
     {
@@ -30,6 +47,7 @@ public sealed partial class ScsTruckPowertrainRulesTests
         var preview = Build(source);
         Assert.DoesNotContain(preview.Diagnostics, value => value.Contains("außerhalb des geprüften"));
         Assert.False(preview.InspectionReport!.DefinitionsAttempted);
+        Assert.Null(preview.InspectionReport.SaveDependencies);
     }
 
     [Fact]

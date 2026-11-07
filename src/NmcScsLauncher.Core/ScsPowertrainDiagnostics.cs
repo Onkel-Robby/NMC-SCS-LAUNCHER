@@ -29,7 +29,8 @@ public sealed record ScsTruckPowertrainInspectionReport(
     IReadOnlyList<ScsActiveMod> ActiveMods,
     IReadOnlyList<ScsContentLayer> Sources,
     IReadOnlyList<ScsPowertrainDiagnostic> Issues,
-    bool ResultsInvalidated = false);
+    bool ResultsInvalidated = false,
+    IReadOnlyList<ScsSaveDependency>? SaveDependencies = null);
 
 public sealed class ScsPowertrainDiagnosticException : ScsSaveEditException
 {

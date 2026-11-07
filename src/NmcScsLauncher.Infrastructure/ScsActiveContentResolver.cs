@@ -57,6 +57,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
         var availabilityDetails = new List<ScsPowertrainDiagnostic>();
         var layers = new List<ScsContentLayer>();
         IReadOnlyList<ScsActiveMod> mods = [];
+        IReadOnlyList<ScsSaveDependency>? saveDependencies = null;
         var game = request.Profile.GameType;
         var gameVersion = string.Empty;
         var verified = true;
@@ -73,7 +74,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
         // At most 512 active packages can fail. Reserve diagnostic capacity for
         // those blockers before adding possibly numerous unused DLC notices.
         ScsActiveContentEvidence Result() => new(game, gameVersion, verified, mods, layers.ToArray(), evidence.Files, diagnostics.ToArray(),
-            diagnosticDetails.Concat(availabilityDetails).Take(1024).ToArray());
+            diagnosticDetails.Concat(availabilityDetails).Take(1024).ToArray(), saveDependencies);
 
         try { ValidateSelection(request); }
         catch (Exception ex) when (IsFailure(ex))
@@ -104,13 +105,24 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
             }).ToArray();
             metadataPath = infoPath;
             var historical = new List<string>();
+            var dependencies = new List<ScsSaveDependency>();
             foreach (var dependency in RequiredArray(info, "dependencies", MaximumEntries))
             {
                 var parts = dependency.Split('|', 3);
                 if (parts.Length != 3 || parts[1].Length == 0 || parts[0] is not ("mod" or "dlc" or "rdlc"))
                     throw new InvalidDataException("Nicht unterstützte Save-Abhängigkeit.");
+                var kind = parts[0] switch
+                {
+                    "mod" => ScsSaveDependencyKind.Mod,
+                    "dlc" => ScsSaveDependencyKind.Dlc,
+                    _ => ScsSaveDependencyKind.Rdlc
+                };
+                dependencies.Add(new(kind, parts[1], parts[2], dependencies.Count));
                 if (parts[0] == "mod") historical.Add(parts[1]);
             }
+            // Retain the source's typed historical references for diagnostics only.
+            // Display names, dlc and rdlc never become active Workshop packages or entitlement.
+            saveDependencies = Array.AsReadOnly(dependencies.ToArray());
             if (!historical.SequenceEqual(mods.Select(mod => mod.Identity), StringComparer.Ordinal))
                 Fail(Issue("profile_save_mod_order_mismatch", "Aktive Profil-Mods und Mod-Abhängigkeiten des ausgewählten Saves stimmen in Identität oder Reihenfolge nicht überein.",
                     ScsPowertrainDiagnosticScope.Global, infoPath));
@@ -155,6 +167,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                 installationVirtualPath = null;
                 evidence.Physical(path);
                 var dlc = Path.GetFileName(path).StartsWith("dlc_", StringComparison.OrdinalIgnoreCase);
+                var dlcMetadataVerified = false;
                 var identity = Path.GetFileName(path);
                 var stock = StockArchives.Contains(identity);
                 var reason = dlc ? "DLC-Datei vorhanden; aktuelle Steam-Berechtigung und Aktivierung sind nicht verifiziert." :
@@ -171,6 +184,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                         identity = manifest.GetToken("id") ?? throw new InvalidDataException("DLC-ID fehlt.");
                         var expectedGame = game == GameType.Ets2 ? "eut2" : "ats";
                         if (manifest.GetToken("game_id") != expectedGame) throw new InvalidDataException("DLC-Metadaten gehören zu einem anderen Spiel.");
+                        dlcMetadataVerified = true;
                     }
                     catch (Exception ex) when (IsFailure(ex))
                     {
@@ -180,7 +194,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                     }
                 }
                 AddLayer(layers, new(path, "/", dlc ? ScsPowertrainSourceKind.Dlc : ScsPowertrainSourceKind.Game,
-                    identity, gameVersion, dlc ? 100 : 0, !dlc && stock, reason));
+                    identity, gameVersion, dlc ? 100 : 0, !dlc && stock, reason, dlcMetadataVerified));
                 if (dlc || !stock)
                     Unavailable(Issue(dlc ? "dlc_availability_unverified" : "installation_archive_activation_unknown", reason,
                         ScsPowertrainDiagnosticScope.Source, path, packageIdentity: identity, packageVersion: gameVersion));

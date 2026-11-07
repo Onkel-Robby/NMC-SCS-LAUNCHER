@@ -16,6 +16,159 @@ public sealed partial class TruckPowertrainSelectionTests
         TechnicalDetails: "Lokale technische Details", BlocksConfiguration: true);
 
     [Fact]
+    public void SelectedProfileChangeUpdatesDisplayedGameHome()
+    {
+        var harness = new SaveEditorTestHarness();
+        harness.ViewModel.SaveEditorSelectedProfile = SaveEditorTestHarness.Profile("local") with
+            { GameHomeDirectory = "local-game-home" };
+        Assert.Equal("local-game-home", harness.ViewModel.SaveEditorGameHome);
+        harness.ViewModel.SaveEditorSelectedProfile = SaveEditorTestHarness.Profile("remote") with
+            { GameHomeDirectory = "remote-game-home", StorageKind = ScsProfileStorageKind.SteamCloudRemote };
+        Assert.Equal("remote-game-home", harness.ViewModel.SaveEditorGameHome);
+    }
+
+    [Fact]
+    public async Task LocalDiagnosticsIdentifySelectedProfileAndSaveWithoutClaimingGameSelection()
+    {
+        var (harness, service) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request)
+        { InspectionReport = new("1.62.1.0", true, true, [], [], []) }));
+        await Loaded(harness.ViewModel);
+        var request = service.Requests.Last();
+        var details = harness.ViewModel.TruckPowertrainSourceDetails;
+        Assert.Contains(request.Profile.DisplayName, details);
+        Assert.Contains(request.Profile.ProfileSiiPath, details);
+        Assert.Contains(request.Save.GameSiiPath, details);
+        Assert.Contains("1970-01-01", details);
+        Assert.Contains("Local", details);
+        Assert.Contains("Auswahl im Launcher", details);
+        Assert.Contains("zuletzt im Spiel verwendeter Save nicht bestätigt", details);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnknownAndKnownEmptyDependencyHistoryRemainDistinctInUiAndExport(bool read)
+    {
+        var (harness, service) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request)
+        { InspectionReport = new("1.62.1.0", false, false, [], [], [], SaveDependencies: read ? [] : null) }));
+        await Loaded(harness.ViewModel);
+        Assert.Contains(read ? "DLC-Abhängigkeiten aus info.sii (0)" : "Save-Abhängigkeiten aus info.sii: nicht ermittelt.",
+            harness.ViewModel.TruckPowertrainSourceDetails);
+        var request = service.Requests.Last();
+        using var json = JsonDocument.Parse(TruckPowertrainDiagnosticReport.Create(request, new Preview(request)
+        { InspectionReport = new("1.62.1.0", false, false, [], [], [], SaveDependencies: read ? [] : null) }));
+        Assert.Equal(read, json.RootElement.GetProperty("saveDependenciesRead").GetBoolean());
+    }
+
+    [Fact]
+    public async Task DiagnosticsSeparateActiveModsSavedHistoryAndDlcArchiveEvidence()
+    {
+        var (harness, _) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request)
+            { InspectionReport = DependencyReport() }));
+        await Loaded(harness.ViewModel);
+        var details = harness.ViewModel.TruckPowertrainSourceDetails;
+        Assert.Contains("Aktive Mods aus profile.sii (1)", details);
+        Assert.Contains("Mod-Historie aus info.sii (2)", details);
+        Assert.Contains("im ausgewählten Profil als aktiv eingetragen", details);
+        Assert.Contains("nur im Save vermerkt", details);
+        Assert.Contains("DLC-Abhängigkeiten aus info.sii (4)", details);
+        Assert.Contains("RDLC-Abhängigkeiten aus info.sii (1)", details);
+        Assert.Contains("1 Archiv mit exakt passender Manifest-ID", details);
+        Assert.Contains("2 Archive mit exakt passender Manifest-ID", details);
+        Assert.Contains("kein Archiv mit exakt passender Manifest-ID", details);
+        Assert.Contains("Datei vorhanden bestätigt keine aktuelle Berechtigung oder Aktivierung", details);
+        Assert.Contains("Spielarchive: 1", details);
+        Assert.Contains("DLC-Archive: 4", details);
+        Assert.Contains("Lokale Mod-Quellen: 1", details);
+        Assert.Contains("Workshop-Quellen: 1", details);
+        Assert.False(harness.ViewModel.TruckPowertrainConfigurationBlocked);
+    }
+
+    [Fact]
+    public void ExportMapsTypedDependenciesByExactIdentityWithoutPrivateContext()
+    {
+        var request = new ScsEffectiveContentRequest(SaveEditorTestHarness.Profile("PRIVATE_PROFILE"),
+            SaveEditorTestHarness.Save("PRIVATE_SAVE"), @"C:\PRIVATE_USER\Game");
+        var preview = new Preview(request) { InspectionReport = DependencyReport() };
+        var report = TruckPowertrainDiagnosticReport.Create(request, preview);
+        using var json = JsonDocument.Parse(report);
+        var dependencies = json.RootElement.GetProperty("saveDependencies");
+        Assert.Equal("Active", dependencies[0].GetProperty("status").GetString());
+        Assert.Equal("Historical", dependencies[1].GetProperty("status").GetString());
+        Assert.Equal("Dlc", dependencies[2].GetProperty("kind").GetString());
+        Assert.Equal("Matched", dependencies[2].GetProperty("status").GetString());
+        Assert.Equal(1, dependencies[2].GetProperty("matchingSourceCount").GetInt32());
+        Assert.StartsWith("<GameInstall>/", dependencies[2].GetProperty("matchingSources")[0].GetString());
+        Assert.Equal("Rdlc", dependencies[3].GetProperty("kind").GetString());
+        Assert.Equal("Ambiguous", dependencies[3].GetProperty("status").GetString());
+        Assert.Equal(2, dependencies[3].GetProperty("matchingSourceCount").GetInt32());
+        Assert.Equal("NoMatch", dependencies[4].GetProperty("status").GetString()); // wrong case
+        Assert.Equal("NoMatch", dependencies[5].GetProperty("status").GetString()); // mod source is not DLC
+        Assert.Equal("NoMatch", dependencies[6].GetProperty("status").GetString()); // invalid DLC manifest
+        Assert.DoesNotContain("PRIVATE", report);
+        Assert.DoesNotContain("DisplayNameMustStayLocal", report);
+        Assert.DoesNotContain("1970-01-01", report);
+        Assert.False(json.RootElement.TryGetProperty("profile", out _));
+        Assert.False(json.RootElement.TryGetProperty("save", out _));
+    }
+
+    [Fact]
+    public void TruncatedDiagnosticsCannotTurnInvalidDlcMetadataIntoAMatch()
+    {
+        var request = new ScsEffectiveContentRequest(SaveEditorTestHarness.Profile("preview"),
+            SaveEditorTestHarness.Save("preview"), null);
+        // Source evidence survives even when the bounded report omits its invalid-manifest issue.
+        var preview = new Preview(request) { InspectionReport = DependencyReport() with { Issues = [] } };
+        using var json = JsonDocument.Parse(TruckPowertrainDiagnosticReport.Create(request, preview));
+        var rows = json.RootElement.GetProperty("saveDependencies");
+        Assert.Equal("Matched", rows[2].GetProperty("status").GetString());
+        Assert.Equal("NoMatch", rows[6].GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public void ExportBoundsDependenciesAndAppliesIdentityPrivacyFilter()
+    {
+        var request = new ScsEffectiveContentRequest(SaveEditorTestHarness.Profile("PRIVATE_PROFILE"),
+            SaveEditorTestHarness.Save("PRIVATE_SAVE"), null);
+        var dependencies = new[]
+        {
+            new ScsSaveDependency(ScsSaveDependencyKind.Dlc, "PRIVATE_PROFILE", "Private display", 0),
+            new ScsSaveDependency(ScsSaveDependencyKind.Mod, "76561198000000000", "Account", 1),
+            new ScsSaveDependency(ScsSaveDependencyKind.Mod, "mod_workshop_package.1234567890abcdef", "Workshop", 2)
+        }.Concat(Enumerable.Repeat(new ScsSaveDependency(ScsSaveDependencyKind.Dlc, "safe_dlc", "Safe", 3), 150)).ToArray();
+        var preview = new Preview(request) { InspectionReport = new("1.62.1.0", true, true, [], [], [], SaveDependencies: dependencies) };
+        var report = TruckPowertrainDiagnosticReport.Create(request, preview);
+        using var json = JsonDocument.Parse(report);
+        var rows = json.RootElement.GetProperty("saveDependencies");
+        Assert.True(rows.GetArrayLength() <= 128);
+        Assert.True(json.RootElement.GetProperty("truncated").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, rows[0].GetProperty("packageId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, rows[1].GetProperty("packageId").ValueKind);
+        Assert.Equal("mod_workshop_package.1234567890abcdef", rows[2].GetProperty("packageId").GetString());
+        Assert.DoesNotContain("PRIVATE", report);
+        Assert.DoesNotContain("76561198000000000", report);
+    }
+
+    private static ScsTruckPowertrainInspectionReport DependencyReport() => new("1.62.1.0", true, true,
+        [new("active_mod", "Active mod", 0)],
+        [new(@"C:\PRIVATE_USER\Game\base.scs", "/", ScsPowertrainSourceKind.Game, "base", "1.62.1.0", 0, true, "stock"),
+         new(@"C:\PRIVATE_USER\Game\one.scs", "/", ScsPowertrainSourceKind.Dlc, "dlc_one", "1.62.1.0", 100, false, "unknown", DlcMetadataVerified: true),
+         new(@"C:\PRIVATE_USER\Game\shared1.scs", "/", ScsPowertrainSourceKind.Dlc, "dlc_shared", "1.62.1.0", 100, false, "unknown", DlcMetadataVerified: true),
+         new(@"C:\PRIVATE_USER\Game\shared2.scs", "/", ScsPowertrainSourceKind.Dlc, "dlc_shared", "1.62.1.0", 100, false, "unknown", DlcMetadataVerified: true),
+         new(@"C:\PRIVATE_USER\Game\invalid.scs", "/", ScsPowertrainSourceKind.Dlc, "invalid.scs", "1.62.1.0", 100, false, "invalid metadata"),
+         new(@"C:\PRIVATE_USER\mod.scs", "/", ScsPowertrainSourceKind.LocalMod, "mod_only", "1.0", 200, true, "mod"),
+         new(@"C:\PRIVATE_USER\workshop.scs", "/", ScsPowertrainSourceKind.Workshop, "active_mod", "1.0", 300, true, "mod")],
+        [MissingPackage with { Code = "dlc_metadata_invalid", PhysicalPath = @"C:\PRIVATE_USER\Game\invalid.scs", BlocksConfiguration = false }],
+        SaveDependencies:
+        [new(ScsSaveDependencyKind.Mod, "active_mod", "Active DisplayNameMustStayLocal", 0),
+         new(ScsSaveDependencyKind.Mod, "old_mod", "Historical DisplayNameMustStayLocal", 1),
+         new(ScsSaveDependencyKind.Dlc, "dlc_one", "One DisplayNameMustStayLocal", 0),
+         new(ScsSaveDependencyKind.Rdlc, "dlc_shared", "Shared DisplayNameMustStayLocal", 0),
+         new(ScsSaveDependencyKind.Dlc, "DLC_ONE", "Case DisplayNameMustStayLocal", 1),
+         new(ScsSaveDependencyKind.Dlc, "mod_only", "NotDlc DisplayNameMustStayLocal", 2),
+         new(ScsSaveDependencyKind.Dlc, "invalid.scs", "Invalid DisplayNameMustStayLocal", 3)]);
+
+    [Fact]
     public async Task GlobalBlockExplainsThatDefinitionsWereNotAttemptedAndNamesPackage()
     {
         var (harness, _) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request)
