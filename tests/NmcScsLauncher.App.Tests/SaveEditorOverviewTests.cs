@@ -23,22 +23,63 @@ public sealed class SaveEditorOverviewTests
     }
 
     [Fact]
-    public void OverviewUsesThreeEqualColumnsWithoutNarrowFixedCardWidths()
+    public void CategoryPagesShareThreeColumnCardTemplateWithoutNarrowFixedWidths()
     {
         using var stream = typeof(SaveEditorOverviewTests).Assembly
             .GetManifestResourceStream("NmcScsLauncher.Tests.MainWindow.xaml")!;
         var document = XDocument.Load(stream);
-        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
-        var cards = document.Descendants(presentation + "ItemsControl").Single(element =>
-            ((string?)element.Attribute("ItemsSource"))?.Contains("SaveEditorOverviewActions", StringComparison.Ordinal) == true);
-        var panel = cards.Descendants(presentation + "UniformGrid").Single();
-        Assert.Equal("3", (string?)panel.Attribute("Columns"));
-        Assert.Empty(cards.Descendants(presentation + "WrapPanel"));
-        var card = cards.Descendants(presentation + "DataTemplate").Single()
-            .Elements(presentation + "Border").Single();
+        XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+        var template = document.Descendants(p + "DataTemplate").Single(element =>
+            (string?)element.Attribute(x + "Key") == "SaveEditorActionCardTemplate");
+        var card = template.Elements(p + "Border").Single();
         Assert.Null(card.Attribute("Width"));
         Assert.Equal("288", (string?)card.Attribute("Height"));
-        Assert.Equal("1160", (string?)cards.Attribute("MaxWidth"));
+
+        var cardPanel = document.Descendants(p + "ItemsPanelTemplate").Single(element =>
+            (string?)element.Attribute(x + "Key") == "SaveEditorActionCardsPanel");
+        Assert.Equal("3", (string?)cardPanel.Element(p + "UniformGrid")?.Attribute("Columns"));
+
+        var sources = document.Descendants(p + "ItemsControl")
+            .Select(element => (string?)element.Attribute("ItemsSource"))
+            .Where(value => value is not null && value.Contains("SaveEditor", StringComparison.Ordinal))
+            .ToArray();
+        Assert.Contains("{Binding SaveEditorCategories}", sources);
+        Assert.DoesNotContain("{Binding SaveEditorOverviewActions}", sources);
+        foreach (var name in new[] { "SaveEditorProfileActions", "SaveEditorTruckActions",
+            "SaveEditorTrailerActions", "SaveEditorPlateActions", "SaveEditorBackupActions" })
+            Assert.Contains("{Binding " + name + "}", sources);
+    }
+
+    [Fact]
+    public void CategoriesExactlyPartitionExistingActions()
+    {
+        var vm = new SaveEditorTestHarness().ViewModel;
+        var collections = new[]
+        {
+            (Section: "profile", Actions: vm.SaveEditorProfileActions, Count: 3),
+            (Section: "truck", Actions: vm.SaveEditorTruckActions, Count: 4),
+            (Section: "trailer", Actions: vm.SaveEditorTrailerActions, Count: 2),
+            (Section: "plates", Actions: vm.SaveEditorPlateActions, Count: 1),
+            (Section: "backup", Actions: vm.SaveEditorBackupActions, Count: 1)
+        };
+        Assert.Equal(11, collections.Sum(category => category.Actions.Count));
+        Assert.Equal(5, vm.SaveEditorCategories.Count);
+        var allAssignedIds = collections.SelectMany(c => c.Actions.Select(a => a.ActionId)).ToArray();
+        Assert.Equal(allAssignedIds.Length, allAssignedIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(vm.SaveEditorOverviewActions.Select(a => a.ActionId).OrderBy(x => x),
+            allAssignedIds.OrderBy(x => x));
+        foreach (var c in collections)
+        {
+            Assert.Equal(c.Count, c.Actions.Count);
+            Assert.All(c.Actions, action => Assert.Equal(c.Section, action.Section));
+            var category = Assert.Single(vm.SaveEditorCategories.Where(category => category.Section == c.Section));
+            Assert.Equal(c.Count, category.Count);
+            vm.OpenSaveEditorSectionCommand.Execute(category.Section);
+            Assert.Contains(vm.SaveEditorSectionIndex, new[] { 1, 2, 4, 5, 6 });
+        }
+        Assert.False(vm.PowertrainFeaturesEnabled);
     }
 
     [Fact]
@@ -72,9 +113,10 @@ public sealed class SaveEditorOverviewTests
             .GetManifestResourceStream("NmcScsLauncher.Tests.MainWindow.xaml")!;
         var document = XDocument.Load(stream);
         XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
-        var cards = document.Descendants(p + "ItemsControl").Single(e =>
-            ((string?)e.Attribute("ItemsSource"))?.Contains("SaveEditorOverviewActions", StringComparison.Ordinal) == true);
-        var button = cards.Descendants(p + "Button").Single();
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var cardTemplate = document.Descendants(p + "DataTemplate").Single(e =>
+            (string?)e.Attribute(x + "Key") == "SaveEditorActionCardTemplate");
+        var button = cardTemplate.Descendants(p + "Button").Single();
         Assert.Equal("OpenSaveEditorActionClick", (string?)button.Attribute("Click"));
         Assert.Null(button.Attribute("Command"));
     }
