@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using NmcScsLauncher.App.ViewModels;
 using Xunit;
 
@@ -17,6 +18,25 @@ public sealed class SaveEditorOverviewTests
         var vm = new SaveEditorTestHarness().ViewModel;
         vm.OpenSaveEditorSectionCommand.Execute(section);
         Assert.Equal(expectedIndex, vm.SaveEditorSectionIndex);
+    }
+
+    [Fact]
+    public void OverviewUsesThreeEqualColumnsWithoutNarrowFixedCardWidths()
+    {
+        using var stream = typeof(SaveEditorOverviewTests).Assembly
+            .GetManifestResourceStream("NmcScsLauncher.Tests.MainWindow.xaml")!;
+        var document = XDocument.Load(stream);
+        XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var cards = document.Descendants(presentation + "ItemsControl").Single(element =>
+            ((string?)element.Attribute("ItemsSource"))?.Contains("SaveEditorOverviewActions", StringComparison.Ordinal) == true);
+        var panel = cards.Descendants(presentation + "UniformGrid").Single();
+        Assert.Equal("3", (string?)panel.Attribute("Columns"));
+        Assert.Empty(cards.Descendants(presentation + "WrapPanel"));
+        var card = cards.Descendants(presentation + "DataTemplate").Single()
+            .Elements(presentation + "Border").Single();
+        Assert.Null(card.Attribute("Width"));
+        Assert.Equal("288", (string?)card.Attribute("Height"));
+        Assert.Equal("1160", (string?)cards.Attribute("MaxWidth"));
     }
 
     [Fact]
