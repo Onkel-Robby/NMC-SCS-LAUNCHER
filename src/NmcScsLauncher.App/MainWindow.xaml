@@ -756,7 +756,18 @@
 </Grid></TabItem>
     <TabItem Header="Truck"><Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="0.7*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="1.3*" /></Grid.ColumnDefinitions>
-    <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+    <Grid Grid.Column="0">
+    <Grid.Style>
+        <Style TargetType="Grid">
+            <Setter Property="Grid.ColumnSpan" Value="3" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PowertrainFeaturesEnabled, FallbackValue=False}" Value="True">
+                    <Setter Property="Grid.ColumnSpan" Value="1" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Grid.Style>
+    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
     <StackPanel>
         <TextBlock Text="Aktiver Truck" FontSize="18" FontWeight="SemiBold" />
         <TextBlock Text="{Binding SaveEditorActiveTruckText}" Foreground="{StaticResource SuccessBrush}" Margin="0,4,0,12" TextWrapping="Wrap" />
@@ -788,13 +799,40 @@
 
         </StackPanel>
 </Border></Grid>
-    <Grid Grid.Column="2"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
+    <Grid Grid.Column="2">
+    <Grid.Style>
+        <Style TargetType="Grid">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="IsEnabled" Value="False" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PowertrainFeaturesEnabled, FallbackValue=False}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Setter Property="IsEnabled" Value="True" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Grid.Style>
+    <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
     <StackPanel>
         <views:TruckPowertrainSelection />
     </StackPanel>
 </Border></Grid>
 </Grid></TabItem>
     <TabItem Header="Komponentenkatalog">
+        <TabItem.Style>
+            <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Setter Property="IsEnabled" Value="False" />
+                <Setter Property="IsTabStop" Value="False" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding PowertrainFeaturesEnabled, FallbackValue=False}" Value="True">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Setter Property="IsEnabled" Value="True" />
+                        <Setter Property="IsTabStop" Value="True" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </TabItem.Style>
         <views:PowertrainCatalog />
     </TabItem>
     <TabItem Header="Trailer"><Grid Margin="0,4,0,10">

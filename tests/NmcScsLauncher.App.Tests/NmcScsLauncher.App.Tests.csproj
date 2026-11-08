@@ -17,5 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NmcScsLauncher.App\NmcScsLauncher.App.csproj" />
+    <EmbeddedResource Include="..\..\src\NmcScsLauncher.App\MainWindow.xaml" LogicalName="NmcScsLauncher.Tests.MainWindow.xaml" />
+    <EmbeddedResource Include="..\..\src\NmcScsLauncher.App\Views\PowertrainCatalog.xaml" LogicalName="NmcScsLauncher.Tests.PowertrainCatalog.xaml" />
   </ItemGroup>
 </Project>

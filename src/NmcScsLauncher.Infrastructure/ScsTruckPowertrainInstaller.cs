@@ -6,11 +6,15 @@ namespace NmcScsLauncher.Infrastructure;
 
 /// <summary>Installs only a freshly verified pair through the existing backup/replace transaction.</summary>
 public sealed class ScsTruckPowertrainInstaller(
-    ScsTruckPowertrainService powertrainService, IScsSaveEditService saveEditService) : IScsTruckPowertrainInstaller
+    ScsTruckPowertrainService powertrainService, IScsSaveEditService saveEditService,
+    LauncherFeatureFlags? featureFlags = null) : IScsTruckPowertrainInstaller
 {
+    private readonly LauncherFeatureFlags _featureFlags = featureFlags ?? LauncherFeatureFlags.Current;
+
     public async Task<ScsSaveEditResult> InstallAsync(ScsTruckPowertrainInstallRequest request,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         ValidateSelection(request);

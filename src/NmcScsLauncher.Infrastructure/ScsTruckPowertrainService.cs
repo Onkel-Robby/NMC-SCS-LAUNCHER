@@ -4,11 +4,15 @@ using NmcScsLauncher.Core;
 namespace NmcScsLauncher.Infrastructure;
 
 public sealed class ScsTruckPowertrainService(
-    ScsTruckPowertrainSnapshotReader reader, IScsEffectiveContentService effectiveContent) : IScsTruckPowertrainService
+    ScsTruckPowertrainSnapshotReader reader, IScsEffectiveContentService effectiveContent,
+    LauncherFeatureFlags? featureFlags = null) : IScsTruckPowertrainService
 {
+    private readonly LauncherFeatureFlags _featureFlags = featureFlags ?? LauncherFeatureFlags.Current;
+
     public async Task<IScsTruckPowertrainPreview> InspectAsync(ScsEffectiveContentRequest request,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         var read = await reader.ReadAsync(request.Save, cancellationToken).ConfigureAwait(false);
         ScsActiveContentEvidence? knownEvidence = null;
         IScsTruckPowertrainPreview? inspectedPreview = null;
@@ -46,6 +50,7 @@ public sealed class ScsTruckPowertrainService(
     internal async Task<Verification> OpenVerificationAsync(ScsEffectiveContentRequest request,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         var read = await reader.ReadAsync(request.Save, cancellationToken).ConfigureAwait(false);
         var session = await effectiveContent.OpenAsync(request, cancellationToken).ConfigureAwait(false);
         try

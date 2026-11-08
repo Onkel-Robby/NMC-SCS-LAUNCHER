@@ -85,7 +85,7 @@ public sealed class ScsPowertrainCatalogTests : IDisposable
             codec,
             new NeverRunningGuard(),
             Path.Combine(_root, "backups"));
-        var service = new ScsVehicleEditService(codec, saveEdit);
+        var service = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         var save = new ScsSaveReference(
             GameType.Ets2,

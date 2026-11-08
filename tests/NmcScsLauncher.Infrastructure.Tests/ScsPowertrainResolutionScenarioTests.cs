@@ -366,7 +366,7 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
         public ScsTruckPowertrainService Service()
         {
             var codec = new ScsPlainTextSaveCodec();
-            return new(new(codec), new ScsEffectiveContentService(Resolver()));
+            return new(new(codec), new ScsEffectiveContentService(Resolver()), new LauncherFeatureFlags(true));
         }
 
         public ScsActiveContentResolver Resolver() => new(new ScsPlainTextSaveCodec(), new Detector(_installation),
