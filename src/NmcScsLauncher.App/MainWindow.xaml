@@ -695,24 +695,12 @@
             </Setter.Value>
         </Setter>
     </Style>
-</TabControl.Resources>
-    <TabItem Header="Übersicht">
-        <StackPanel Margin="0,4,0,20">
-            <TextBlock Text="Was möchtest du bearbeiten?" FontSize="22" FontWeight="SemiBold" />
-            <TextBlock Text="Wähle eine Funktion. Änderungen erfolgen erst im jeweiligen Editor nach Bestätigung."
-                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13" TextWrapping="Wrap"
-                       Margin="0,6,0,18" />
-            <ItemsControl ItemsSource="{Binding SaveEditorOverviewActions}"
-                          MaxWidth="1160" HorizontalAlignment="Stretch">
-                <!-- Three equal, readable columns instead of an unrestricted eight-column WrapPanel.
-                     The existing 1080 DIP minimum window width still leaves room for all three cards. -->
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <UniformGrid Columns="3" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
+
+    <!-- One reusable card design shared by all five functional categories. -->
+    <ItemsPanelTemplate x:Key="SaveEditorActionCardsPanel">
+        <UniformGrid Columns="3" />
+    </ItemsPanelTemplate>
+    <DataTemplate x:Key="SaveEditorActionCardTemplate">
                         <Border Height="288" Margin="0,0,16,16" Padding="14"
                                 Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="13">
@@ -763,13 +751,26 @@
                             </Grid>
                         </Border>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Hinweis: Motor- und Getriebebearbeitung bleibt deaktiviert. Vorhandene Änderungen und Sicherheits-Backups bleiben geschützt."
-                       Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" />
-        </StackPanel>
-    </TabItem>
-    <TabItem Header="Profil &amp; Karriere"><Grid Margin="0,4,0,10">
+    <Style x:Key="SaveEditorActionCardsStyle" TargetType="ItemsControl">
+        <Setter Property="MaxWidth" Value="1160" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="ItemsPanel" Value="{StaticResource SaveEditorActionCardsPanel}" />
+        <Setter Property="ItemTemplate" Value="{StaticResource SaveEditorActionCardTemplate}" />
+    </Style>
+</TabControl.Resources>
+    <TabItem Header="Profil &amp; Karriere">
+        <StackPanel Margin="0,4,0,14">
+            <TextBlock Text="Profil &amp; Karriere" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Geld, Erfahrung und Fähigkeiten direkt im passenden Bearbeitungsfenster ändern."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13"
+                       TextWrapping="Wrap" Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorProfileActions}"
+                          Style="{StaticResource SaveEditorActionCardsStyle}" />
+            <Expander Header="Erweiterte Bearbeitung (bisheriger Editor)"
+                      Foreground="{StaticResource PrimaryTextBrush}"
+                      Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                      Margin="0,14,0,0" IsExpanded="False">
+                <Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
     <StackPanel>
@@ -826,8 +827,23 @@
         <Button Content="Skills übernehmen" Command="{Binding SetSaveEditorCareerSkillsCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="14,8" HorizontalAlignment="Left" Margin="0,12,0,0" />
     </StackPanel>
 </Border></Grid>
-</Grid></TabItem>
-    <TabItem Header="Truck"><Grid Margin="0,4,0,10">
+</Grid>
+            </Expander>
+        </StackPanel>
+    </TabItem>
+    <TabItem Header="Truck">
+        <StackPanel Margin="0,4,0,14">
+            <TextBlock Text="Truck" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Truck wechseln, reparieren, Kraftstoff und Kilometerstand verwalten."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13"
+                       TextWrapping="Wrap" Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorTruckActions}"
+                          Style="{StaticResource SaveEditorActionCardsStyle}" />
+            <Expander Header="Erweiterte Bearbeitung (bisheriger Editor)"
+                      Foreground="{StaticResource PrimaryTextBrush}"
+                      Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                      Margin="0,14,0,0" IsExpanded="False">
+                <Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="0.7*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="1.3*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0">
     <Grid.Style>
@@ -890,7 +906,10 @@
         <views:TruckPowertrainSelection />
     </StackPanel>
 </Border></Grid>
-</Grid></TabItem>
+</Grid>
+            </Expander>
+        </StackPanel>
+    </TabItem>
     <TabItem Header="Komponentenkatalog">
         <TabItem.Style>
             <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
@@ -908,7 +927,19 @@
         </TabItem.Style>
         <views:PowertrainCatalog />
     </TabItem>
-    <TabItem Header="Trailer"><Grid Margin="0,4,0,10">
+    <TabItem Header="Trailer">
+        <StackPanel Margin="0,4,0,14">
+            <TextBlock Text="Trailer" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Trailer auswählen, reparieren und das Frachtgewicht anpassen."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13"
+                       TextWrapping="Wrap" Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorTrailerActions}"
+                          Style="{StaticResource SaveEditorActionCardsStyle}" />
+            <Expander Header="Erweiterte Bearbeitung (bisheriger Editor)"
+                      Foreground="{StaticResource PrimaryTextBrush}"
+                      Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                      Margin="0,14,0,0" IsExpanded="False">
+                <Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
     <StackPanel>
@@ -939,9 +970,23 @@
         <TextBlock Text="Tipp: Vor Änderungen am Spielstand das aktuelle Save auswählen und die angezeigte Statusmeldung beachten." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
     </StackPanel>
 </Border></Grid>
-</Grid></TabItem>
+</Grid>
+            </Expander>
+        </StackPanel>
+    </TabItem>
     <TabItem Header="Kennzeichen">
-        <Grid Margin="0,4,0,10">
+        <StackPanel Margin="0,4,0,14">
+            <TextBlock Text="Kennzeichen" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Truck- und Trailer-Kennzeichen im eigenen Dialog gestalten."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13"
+                       TextWrapping="Wrap" Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorPlateActions}"
+                          Style="{StaticResource SaveEditorActionCardsStyle}" />
+            <Expander Header="Erweiterte Bearbeitung (bisheriger Editor)"
+                      Foreground="{StaticResource PrimaryTextBrush}"
+                      Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                      Margin="0,14,0,0" IsExpanded="False">
+                <Grid Margin="0,4,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="18" />
@@ -972,9 +1017,22 @@
                 </StackPanel>
             </Border>
         </Grid>
+            </Expander>
+        </StackPanel>
     </TabItem>
     <TabItem Header="Sicherungen">
-        <StackPanel Margin="0,4,0,10">
+        <StackPanel Margin="0,4,0,14">
+            <TextBlock Text="Sicherungen" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Geprüfte Spielstand-Sicherung wiederherstellen."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13"
+                       TextWrapping="Wrap" Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorBackupActions}"
+                          Style="{StaticResource SaveEditorActionCardsStyle}" />
+            <Expander Header="Erweiterte Bearbeitung (bisheriger Editor)"
+                      Foreground="{StaticResource PrimaryTextBrush}"
+                      Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                      Margin="0,14,0,0" IsExpanded="False">
+                <StackPanel Margin="0,4,0,10">
             <TextBlock Text="Sicherungen &amp; Wiederherstellung" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Text="Bestehende Wiederherstellungsfunktion. Weitere Backup-Verläufe folgen in einem eigenen Entwicklungsschritt."
                        Foreground="{StaticResource SecondaryTextBrush}" Margin="0,6,0,16" TextWrapping="Wrap" />
@@ -990,6 +1048,8 @@
                             Padding="16,9" />
                 </StackPanel>
             </Border>
+        </StackPanel>
+            </Expander>
         </StackPanel>
     </TabItem>
 </TabControl>
