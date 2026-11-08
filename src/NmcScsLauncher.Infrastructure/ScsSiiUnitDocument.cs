@@ -25,12 +25,19 @@ internal sealed class ScsSiiUnitDocument
 
     public string Newline { get; }
 
+    // Share immutable line storage with the strict powertrain validator; never duplicate the full save.
+    internal ReadOnlySpan<string> Lines => _lines;
+
     public static ScsSiiUnitDocument Parse(string content)
     {
         ArgumentNullException.ThrowIfNull(content);
         return ParsedDocuments.GetValue(content, static source =>
         {
-            _ = ScsSiiTextDocument.Parse(source);
+            // The general scalar document only checked this header and otherwise split
+            // the complete text a second time. Validate the same header without that copy.
+            if (string.IsNullOrWhiteSpace(source)) throw new ScsSaveEditException("Die SII-Datei ist leer.");
+            if (!source.AsSpan().TrimStart("\uFEFF \t\r\n".AsSpan()).StartsWith("SiiNunit", StringComparison.Ordinal))
+                throw new ScsSaveEditException("Die Datei ist kein unterstütztes textuelles SII-Dokument.");
             var newline = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
             var lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
             return new ScsSiiUnitDocument(lines, newline);

@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main, "feat/powertrain-*" ]
+    branches: [ main, "feat/powertrain-*", "feat/ats-dlc-provenance" ]
 
 permissions:
   contents: read

@@ -60,10 +60,31 @@ public partial class MainViewModel
             $"{source.Kind} · {source.PackageIdentity} · Version {source.PackageVersion} · Priorität {source.Priority}\n{source.PhysicalPath}\n" +
             $"Verfügbarkeit: {(source.AvailabilityVerified ? "bestätigt" : source.AvailabilityReason)}") ?? [];
         var modLines = report?.ActiveMods.Take(256).Select(mod => $"{mod.LoadOrder}: {mod.DisplayName} ({mod.Identity})") ?? [];
-        TruckPowertrainSourceDetails = context + $"\n\nAktive Mods aus profile.sii ({report?.ActiveMods.Count ?? 0}) · Ladereihenfolge:\n" +
+        TruckPowertrainSourceDetails = context + UnitReadDetails(preview.Snapshot.UnitReadDiagnostics) +
+            $"\n\nAktive Mods aus profile.sii ({report?.ActiveMods.Count ?? 0}) · Ladereihenfolge:\n" +
             string.Join("\n", modLines) + SaveDependencyDetails(report) +
             "\n\nQuellen · " + SourceCounts(report) + ":\n" + string.Join("\n\n", sourceLines);
         ExportTruckPowertrainDiagnosticsCommand.NotifyCanExecuteChanged();
+    }
+
+    private static string UnitReadDetails(IReadOnlyList<ScsSaveUnitReadDiagnostic>? diagnostics)
+    {
+        if (diagnostics is null || diagnostics.Count == 0) return string.Empty;
+        var lines = diagnostics.Take(32).Select(diagnostic =>
+        {
+            var unitType = diagnostic.UnitType is { Length: > 0 and <= 64 } &&
+                Regex.IsMatch(diagnostic.UnitType, @"\A[a-zA-Z_][a-zA-Z0-9_]*\z", RegexOptions.CultureInvariant)
+                ? diagnostic.UnitType : "unbekannter Unit-Typ";
+            var phase = diagnostic.Phase switch
+            {
+                ScsSaveUnitReadPhase.StructureValidation => "Strukturprüfung",
+                ScsSaveUnitReadPhase.FieldProjection => "Feldauswahl",
+                _ => "unbekannte Lesephase"
+            };
+            return $"{unitType} · {diagnostic.Characters} Zeichen · {diagnostic.Utf8Bytes} UTF-8-Bytes · {phase}";
+        });
+        return "\n\nSII-Units im Save (nur lokal)\nErfolgreiche Lesephasen; Zeilenenden auf LF normalisiert:\n" +
+            string.Join("\n", lines) + (diagnostics.Count > 32 ? "\nWeitere Units werden nicht angezeigt." : string.Empty);
     }
 
     private static string SourceCounts(ScsTruckPowertrainInspectionReport? report)
