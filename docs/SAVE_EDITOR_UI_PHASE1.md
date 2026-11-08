@@ -9,7 +9,7 @@ Eigenständiges WPF-Funktionskartenkonzept, inspiriert durch die vom Benutzer ge
 
 ## Umfang dieser UI-Etappe
 
-- Neuer Einstieg `Übersicht` mit 11 direkt anklickbaren Funktionskarten; jede Karte hat ein eigenes, lokal eingebettetes, original generiertes Transport-/Werkstatt-/Logistikmotiv (ein 3×4-PNG-Atlas mit 11 unterschiedlichen Ausschnitten).
+- Elf direkt anklickbare Funktionskarten in den fünf Fachkategorien; jede Karte hat ein eigenes, lokal eingebettetes, original generiertes Transport-/Werkstatt-/Logistikmotiv (ein 3×4-PNG-Atlas mit 11 unterschiedlichen Ausschnitten).
 - Drei gleich breite WPF-Kartenspalten mit größerer Bild-/Symbolfläche, besser lesbaren Texten und begrenzter Gesamtbreite. Die einzelnen Karten besitzen keine fixe Breite und bleiben bei der vorgegebenen Fenster-Mindestbreite 1080 DIP verwendbar. Kategorien: Profil, Karriere, LKW, Anhänger, Fahrzeuge und Sicherheit.
 - Direkte modale Bearbeitungsfenster für Geld, XP, Karriere-Skills, Truck-Wechsel/Reparatur/Kraftstoff/Kilometerstand, Trailer-Wechsel/Reparatur/Frachtgewicht, Kennzeichen und Restore; alle Buttons sind ausschließlich an die **bestehenden** Befehle gebunden. Kein verändertes SII-Mapping.
 - Innerhalb des Save-Editors vorhandene Register weiter zugänglich, bestehende Profil- und Spielstand-Auswahl bleibt bestehen.
@@ -25,7 +25,7 @@ Die ersten elf Bearbeitungsaktionen besitzen jetzt eigenständige Dialoginhalte.
 ## Abnahme
 
 - Auf realen Windows-Rechnern bei 1080 und 1320 DIP Fensterbreite sowie maximiert prüfen: genau drei gleichmäßige Kartenspalten, gut lesbare Texte, keine horizontale Scrollbar oder überlaufenden Inhalte. Bei besonders hoher Anzeigeskalierung gesondert nachprüfen.
-- Profil, Spielstand, Geld, Skills, Truck, Trailer, Kennzeichen und Sicherungen über Karten direkt im passenden modalen Dialog öffnen. Jede Aktion verwendet dieselben bestehenden Befehle/Bestätigungen; beim Schließen bleibt der Save-Status korrekt.
+- Profil und Spielstand wie bisher über die Kopfzeile auswählen; anschließend Geld, Skills, Truck, Trailer, Kennzeichen und Sicherungen in den passenden Fachreitern über Karten direkt im jeweiligen modalen Dialog öffnen. Jede Aktion verwendet dieselben bestehenden Befehle/Bestätigungen; beim Schließen bleibt der Save-Status korrekt.
 - Keine Motor-/Getriebebearbeitung sichtbar oder aufrufbar.
 - Bestehenden Save-Editor-Regressionstest und vollständige Windows-CI, klassischen Installer sowie NMC-Custom-Installer prüfen.
 - Kein Merge ohne Freigabe.
@@ -56,8 +56,12 @@ Die Kategoriezuordnung wurde nach der Abnahme von PR #98 auf die vorhandenen Sav
 | Kennzeichen | Kennzeichen (Truck und Trailer im vorhandenen Dialog) |
 | Sicherungen | Backup wiederherstellen |
 
-Die Seite **Übersicht** zeigt jetzt ausschließlich fünf Kategorie-Navigationskacheln mit der jeweiligen Funktionsanzahl. Der Klick auf `Kategorie öffnen` wechselt zum bestehenden Reiter. Jede Kategorie zeigt nur ihre zugewiesenen 3-Spalten-Funktionskarten. Die Aktion `Öffnen` öffnet weiterhin die bereits getesteten modalen NMC-Dialoge.
+Der überflüssige Reiter **Übersicht** wurde auf Nutzerwunsch vollständig entfernt. Der Save-Editor beginnt direkt im Reiter **Profil & Karriere**. Über die sichtbaren Reiter **Truck**, **Trailer**, **Kennzeichen** und **Sicherungen** wird unmittelbar in die jeweilige Kategorie gewechselt. Jede Kategorie zeigt ihre zugewiesenen 3-Spalten-Funktionskarten; `Öffnen` startet weiterhin die bestehenden modalen NMC-Dialoge.
 
-Die bisherigen Eingabemasken sind pro Bereich unter **Erweiterte Bearbeitung (bisheriger Editor)** weiter zugänglich. Das bestehende Tab-Index-Schema (0 Übersicht, 1 Profil, 2 Truck, 3 deaktivierter Komponentenkatalog, 4 Trailer, 5 Kennzeichen, 6 Sicherungen) bleibt unverändert. Insbesondere bleibt die Motor-/Getriebe-Sperre aktiv.
+Die bisherigen Eingabemasken sind pro Bereich unter **Erweiterte Bearbeitung (bisheriger Editor)** weiter zugänglich. Das aktuelle Tab-Index-Schema ist **0 Profil & Karriere**, **1 Truck**, **2 deaktivierter Komponentenkatalog**, **3 Trailer**, **4 Kennzeichen**, **5 Sicherungen**. Im Hintergrund wird der Katalogindex für das deaktivierte Motor-/Getriebemodul beibehalten. Insbesondere bleibt die Motor-/Getriebe-Sperre aktiv.
 
 Änderungsumfang: Präsentation, Kachelsortierung und Navigation. **Keine** neuen Save-Schreiboperationen, geänderten Datenmodelle, Lizenzprüfungen oder Update-Funktionen. Die WPF-Strukturtests prüfen die einmalige Zuordnung aller elf Karten und die bestehende Feature-Flag-Isolation.
+
+### Vereinfachung auf Nutzerwunsch
+
+Die zwischenzeitlich geplante Kategorieauswahl in der **Übersicht** entfällt. Es gibt nur noch fünf sichtbare Fachreiter. Die ViewModel-Daten für die überflüssigen Übersichtskarten wurden entfernt; die elf Bearbeitungskarten, ihre Bildausschnitte, die sicheren Dialoge und das Expander-Fallback bleiben identisch. UI-Regressionen prüfen den ersten Reiter, sämtliche Indizes sowie die unveränderte Feature-Sperre.
