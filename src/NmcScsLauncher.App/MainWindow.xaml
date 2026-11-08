@@ -758,52 +758,6 @@
         <Setter Property="ItemTemplate" Value="{StaticResource SaveEditorActionCardTemplate}" />
     </Style>
 </TabControl.Resources>
-    <TabItem Header="Übersicht">
-        <StackPanel Margin="0,4,0,20">
-            <TextBlock Text="Was möchtest du bearbeiten?" FontSize="22" FontWeight="SemiBold" />
-            <TextBlock Text="Wähle eine Kategorie. Dort öffnest du die passende Funktion direkt im Bearbeitungsdialog."
-                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13" TextWrapping="Wrap"
-                       Margin="0,6,0,18" />
-            <!-- Overview navigates categories. All eleven actual edit cards live in their matching category. -->
-            <ItemsControl x:Name="SaveEditorCategoryNavigation" ItemsSource="{Binding SaveEditorCategories}"
-                          MaxWidth="1160" HorizontalAlignment="Stretch">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="1" CornerRadius="13" Margin="0,0,16,16" Padding="20"
-                                Height="214">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel>
-                                    <Border Width="54" Height="4" Background="{Binding Accent}"
-                                            HorizontalAlignment="Left" CornerRadius="2" Margin="0,0,0,12" />
-                                    <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="SemiBold"
-                                               TextWrapping="Wrap" />
-                                    <TextBlock Text="{Binding Count, StringFormat={}{0} Funktionen}"
-                                               Foreground="{StaticResource AccentBrush}" FontSize="12" Margin="0,6,0,0" />
-                                </StackPanel>
-                                <TextBlock Grid.Row="1" Text="{Binding Description}" FontSize="13" TextWrapping="Wrap"
-                                           Foreground="{StaticResource SecondaryTextBrush}" Margin="0,10,0,8" />
-                                <Button Grid.Row="2" Content="Kategorie öffnen" HorizontalAlignment="Left"
-                                        Padding="17,7" Style="{StaticResource PrimaryButtonStyle}"
-                                        Command="{Binding DataContext.OpenSaveEditorSectionCommand, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}"
-                                        CommandParameter="{Binding Section}" />
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Hinweis: Motor- und Getriebebearbeitung bleibt deaktiviert. Vorhandene Änderungen und Sicherheits-Backups bleiben geschützt."
-                       Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" />
-        </StackPanel>
-    </TabItem>
     <TabItem Header="Profil &amp; Karriere">
         <StackPanel Margin="0,4,0,14">
             <TextBlock Text="Profil &amp; Karriere" FontSize="22" FontWeight="SemiBold" />
