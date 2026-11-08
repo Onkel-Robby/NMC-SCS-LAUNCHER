@@ -659,7 +659,7 @@
     </StackPanel>
 </Border>
 
-<TabControl Margin="0,18,0,0" Background="Transparent" BorderThickness="0" Padding="0">
+<TabControl Margin="0,18,0,0" SelectedIndex="{Binding SaveEditorSectionIndex, Mode=TwoWay}" Background="Transparent" BorderThickness="0" Padding="0">
     <TabControl.Resources>
     <!-- Overrides the hidden page TabItems defined on the outer navigation TabControl. -->
     <Style TargetType="TabItem">
@@ -696,6 +696,60 @@
         </Setter>
     </Style>
 </TabControl.Resources>
+    <TabItem Header="Übersicht">
+        <StackPanel Margin="0,4,0,20">
+            <TextBlock Text="Was möchtest du bearbeiten?" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Wähle eine Funktion. Änderungen erfolgen erst im jeweiligen Editor nach Bestätigung."
+                       Foreground="{StaticResource SecondaryTextBrush}" FontSize="13" TextWrapping="Wrap"
+                       Margin="0,6,0,18" />
+            <ItemsControl ItemsSource="{Binding SaveEditorOverviewActions}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="244" Height="234" Margin="0,0,14,14" Padding="12"
+                                Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="13">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="80" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Background="#1A2D44" CornerRadius="9">
+                                    <Grid Margin="12,9">
+                                        <TextBlock Text="{Binding Category}" FontSize="11" FontWeight="Bold"
+                                                   Foreground="{StaticResource SecondaryTextBrush}"
+                                                   HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                        <TextBlock Text="{Binding Symbol}" FontSize="36" FontWeight="Bold"
+                                                   Foreground="{Binding Accent}" HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center" Opacity="0.96" />
+                                        <Border Height="3" Width="36" CornerRadius="2" HorizontalAlignment="Left"
+                                                VerticalAlignment="Bottom" Background="{Binding Accent}" />
+                                    </Grid>
+                                </Border>
+                                <TextBlock Grid.Row="1" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
+                                           Margin="2,11,0,5" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Row="2" Text="{Binding Description}" FontSize="12" TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" Margin="2,0,0,8"
+                                           MaxHeight="50" />
+                                <Button Grid.Row="3" Content="Öffnen" Padding="18,7" HorizontalAlignment="Left"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding DataContext.OpenSaveEditorSectionCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                                        CommandParameter="{Binding Section}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="Hinweis: Motor- und Getriebebearbeitung bleibt deaktiviert. Vorhandene Änderungen und Sicherheits-Backups bleiben geschützt."
+                       Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" />
+        </StackPanel>
+    </TabItem>
     <TabItem Header="Profil &amp; Karriere"><Grid Margin="0,4,0,10">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="18" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
     <Grid Grid.Column="0"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
@@ -900,15 +954,26 @@
             </Border>
         </Grid>
     </TabItem>
+    <TabItem Header="Sicherungen">
+        <StackPanel Margin="0,4,0,10">
+            <TextBlock Text="Sicherungen &amp; Wiederherstellung" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="Bestehende Wiederherstellungsfunktion. Weitere Backup-Verläufe folgen in einem eigenen Entwicklungsschritt."
+                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,6,0,16" TextWrapping="Wrap" />
+            <Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="Letztes Sicherheits-Backup" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding SaveEditorLastBackupPath}" Margin="0,8,0,16"
+                               Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                    <Button Content="Letztes Backup wiederherstellen"
+                            Command="{Binding RestoreSaveEditorLastBackupCommand}"
+                            HorizontalAlignment="Left" Style="{StaticResource PrimaryButtonStyle}"
+                            Padding="16,9" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </TabItem>
 </TabControl>
-
-<Border Margin="0,14,0,0" Background="#101720" BorderBrush="#263342" BorderThickness="1" CornerRadius="10" Padding="16">
-    <StackPanel>
-        <TextBlock Text="Sicherheits-Backup" FontSize="16" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding SaveEditorLastBackupPath}" Margin="0,6,0,10" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" FontSize="12" />
-        <Button Content="Letztes Backup wiederherstellen" Command="{Binding RestoreSaveEditorLastBackupCommand}" HorizontalAlignment="Left" />
-    </StackPanel>
-</Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
