@@ -39,13 +39,16 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
 
     private readonly IScsSaveCodec _codec;
     private readonly IScsSaveEditService _saveEditService;
+    private readonly LauncherFeatureFlags _featureFlags;
 
     public ScsVehicleEditService(
         IScsSaveCodec codec,
-        IScsSaveEditService saveEditService)
+        IScsSaveEditService saveEditService,
+        LauncherFeatureFlags? featureFlags = null)
     {
         _codec = codec;
         _saveEditService = saveEditService;
+        _featureFlags = featureFlags ?? LauncherFeatureFlags.Current;
     }
 
     public async Task<ScsActiveVehicleState> InspectActiveVehiclesAsync(
@@ -751,6 +754,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         ScsSaveReference save,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ValidateSaveReference(save);
 
         var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
@@ -767,6 +771,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         ScsSaveReference save,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ValidateSaveReference(save);
 
         var source = await _codec.ReadAsync(save.GameSiiPath, cancellationToken);
@@ -845,6 +850,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         string engineDataPath,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ValidateSaveReference(save);
         var normalizedPath = ValidateTruckDefinitionPath(
             engineDataPath,
@@ -879,6 +885,7 @@ public sealed class ScsVehicleEditService : IScsVehicleEditService
         string transmissionDataPath,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ValidateSaveReference(save);
         var normalizedPath = ValidateTruckDefinitionPath(
             transmissionDataPath,

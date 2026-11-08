@@ -756,42 +756,45 @@ public partial class MainViewModel
                 SaveEditorTrailers.FirstOrDefault(item => item.IsActive)
                 ?? SaveEditorTrailers.FirstOrDefault();
 
-            try
+            if (PowertrainFeaturesEnabled)
             {
-                var powertrain = await vehicleEditService.GetActiveTruckPowertrainAsync(save);
-                if (!IsCurrent()) return;
-                var catalog = await vehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
-                if (!IsCurrent()) return;
+                try
+                {
+                    var powertrain = await vehicleEditService.GetActiveTruckPowertrainAsync(save);
+                    if (!IsCurrent() || !PowertrainFeaturesEnabled) return;
+                    var catalog = await vehicleEditService.GetActiveTruckPowertrainCatalogAsync(save);
+                    if (!IsCurrent() || !PowertrainFeaturesEnabled) return;
 
-                SetSaveEditorPowertrainCatalog(catalog);
+                    SetSaveEditorPowertrainCatalog(catalog);
 
-                SaveEditorEnginePath = powertrain.EngineDataPath;
-                SaveEditorTransmissionPath = powertrain.TransmissionDataPath;
+                    SaveEditorEnginePath = powertrain.EngineDataPath;
+                    SaveEditorTransmissionPath = powertrain.TransmissionDataPath;
 
-                SaveEditorEngines.Clear();
-                foreach (var item in catalog.Engines)
-                    SaveEditorEngines.Add(item);
+                    SaveEditorEngines.Clear();
+                    foreach (var item in catalog.Engines)
+                        SaveEditorEngines.Add(item);
 
-                SaveEditorTransmissions.Clear();
-                foreach (var item in catalog.Transmissions)
-                    SaveEditorTransmissions.Add(item);
+                    SaveEditorTransmissions.Clear();
+                    foreach (var item in catalog.Transmissions)
+                        SaveEditorTransmissions.Add(item);
 
-                SaveEditorSelectedEngine =
-                    SaveEditorEngines.FirstOrDefault(item => item.IsCurrent)
-                    ?? SaveEditorEngines.FirstOrDefault();
-                SaveEditorSelectedTransmission =
-                    SaveEditorTransmissions.FirstOrDefault(item => item.IsCurrent)
-                    ?? SaveEditorTransmissions.FirstOrDefault();
-            }
-            catch (ScsSaveEditException)
-            {
-                if (!IsCurrent()) return;
-                SaveEditorEnginePath = string.Empty;
-                SaveEditorTransmissionPath = string.Empty;
-                SaveEditorEngines.Clear();
-                SaveEditorTransmissions.Clear();
-                SaveEditorSelectedEngine = null;
-                SaveEditorSelectedTransmission = null;
+                    SaveEditorSelectedEngine =
+                        SaveEditorEngines.FirstOrDefault(item => item.IsCurrent)
+                        ?? SaveEditorEngines.FirstOrDefault();
+                    SaveEditorSelectedTransmission =
+                        SaveEditorTransmissions.FirstOrDefault(item => item.IsCurrent)
+                        ?? SaveEditorTransmissions.FirstOrDefault();
+                }
+                catch (ScsSaveEditException)
+                {
+                    if (!IsCurrent()) return;
+                    SaveEditorEnginePath = string.Empty;
+                    SaveEditorTransmissionPath = string.Empty;
+                    SaveEditorEngines.Clear();
+                    SaveEditorTransmissions.Clear();
+                    SaveEditorSelectedEngine = null;
+                    SaveEditorSelectedTransmission = null;
+                }
             }
 
             SaveEditorStatusText =

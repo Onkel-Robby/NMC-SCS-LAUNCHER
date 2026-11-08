@@ -289,7 +289,7 @@ public sealed class SaveEditorPowertrainDiscoveryTests
 
     private static SaveEditorTestHarness CreateHarness(GameType game = GameType.Ets2)
     {
-        var harness = new SaveEditorTestHarness
+        var harness = new SaveEditorTestHarness(powertrainEnabled: true)
         {
             Powertrain = _ => Task.FromResult(new ScsActiveTruckPowertrain(CurrentEngine.DataPath, CurrentTransmission.DataPath)),
             PowertrainCatalog = _ => Task.FromResult(new ScsActiveTruckPowertrainCatalog(ModelRoot, [CurrentEngine, OtherEngine], [CurrentTransmission, OtherTransmission]))

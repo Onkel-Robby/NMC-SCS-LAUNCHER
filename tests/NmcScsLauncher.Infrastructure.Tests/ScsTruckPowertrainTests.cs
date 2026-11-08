@@ -15,7 +15,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
     public async Task InspectPowertrainResolvesExactlyOneEngineAndTransmission()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         var powertrain = await editor.GetActiveTruckPowertrainAsync(save);
 
@@ -31,7 +31,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
     public async Task SetEngineChangesOnlyEngineAccessory()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         var result = await editor.SetActiveTruckEngineAsync(
             save,
@@ -58,7 +58,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
     public async Task SetTransmissionChangesOnlyTransmissionAccessory()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         var result = await editor.SetActiveTruckTransmissionAsync(
             save,
@@ -79,7 +79,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
     public async Task SetEngineRejectsTransmissionPathWithoutWriting()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
         var before = await File.ReadAllTextAsync(save.GameSiiPath);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -118,7 +118,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
             """);
 
         var (save, codec, saveEdit) = await CreateAsync(source);
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         var exception = await Assert.ThrowsAsync<ScsSaveEditException>(() =>
             editor.GetActiveTruckPowertrainAsync(save));
@@ -133,7 +133,7 @@ public sealed class ScsTruckPowertrainTests : IDisposable
     public async Task SetTransmissionRejectsAmbiguousDefinitionPath()
     {
         var (save, codec, saveEdit) = await CreateAsync(CreateSave());
-        var editor = new ScsVehicleEditService(codec, saveEdit);
+        var editor = new ScsVehicleEditService(codec, saveEdit, new LauncherFeatureFlags(true));
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             editor.SetActiveTruckTransmissionAsync(

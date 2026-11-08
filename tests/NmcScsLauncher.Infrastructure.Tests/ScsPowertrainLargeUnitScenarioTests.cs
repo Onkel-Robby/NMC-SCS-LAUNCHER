@@ -32,7 +32,7 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
 
         var backups = Path.Combine(fixture.Root, "managed-backups");
         var editService = new ScsSaveEditService(new ScsPlainTextSaveCodec(), new LargeUnitStoppedGuard(), backups);
-        var installer = new ScsTruckPowertrainInstaller(service, editService);
+        var installer = new ScsTruckPowertrainInstaller(service, editService, new LauncherFeatureFlags(true));
         var result = await installer.InstallAsync(new(fixture.Request, originalSha, preview.Snapshot.TruckId,
             NewEngine, NewTransmission));
         var expectedText = original.Replace(Model + "/engine/old.sii", NewEngine, StringComparison.Ordinal)
@@ -91,7 +91,7 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
         var backupRoot = Path.Combine(fixture.Root, "managed-backups");
         var service = fixture.Service();
         var installer = new ScsTruckPowertrainInstaller(service,
-            new ScsSaveEditService(new ScsPlainTextSaveCodec(), new LargeUnitStoppedGuard(), backupRoot));
+            new ScsSaveEditService(new ScsPlainTextSaveCodec(), new LargeUnitStoppedGuard(), backupRoot), new LauncherFeatureFlags(true));
         await Assert.ThrowsAsync<ScsSaveEditException>(() => service.InspectAsync(fixture.Request));
         await Assert.ThrowsAsync<ScsSaveEditException>(() => installer.InstallAsync(new(fixture.Request, originalSha,
             ".truck", NewEngine, NewTransmission)));

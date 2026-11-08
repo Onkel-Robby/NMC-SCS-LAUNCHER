@@ -306,7 +306,7 @@ public sealed class ScsPowertrainDiscoveryTests : IDisposable
         Service(install is null ? [] : new Dictionary<GameType, string> { [GameType.Ets2] = install }, workshop);
 
     private static ScsPowertrainDiscoveryService Service(Dictionary<GameType, string> installs, IWorkshopContentLocator? workshop = null) =>
-        new(new FakeDetector(installs), workshop ?? new FakeWorkshop([]));
+        new(new FakeDetector(installs), workshop ?? new FakeWorkshop([]), new LauncherFeatureFlags(true));
 
     private static ScsPowertrainDiscoveryRequest Request(GameType game = GameType.Ets2) => new(game, null, null, EmptySave);
     private string DirectoryFor(string path) { var result = Path.Combine(_root, path.Replace('/', Path.DirectorySeparatorChar)); Directory.CreateDirectory(result); return result; }

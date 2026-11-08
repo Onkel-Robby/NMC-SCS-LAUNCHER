@@ -140,7 +140,7 @@ public partial class MainViewModel
         ExportTruckPowertrainDiagnosticsCommand.NotifyCanExecuteChanged();
     }
 
-    private bool CanExportTruckPowertrainDiagnostics() => _truckPowertrainDiagnosticExport is not null &&
+    private bool CanExportTruckPowertrainDiagnostics() => PowertrainFeaturesEnabled && _truckPowertrainDiagnosticExport is not null &&
         _truckPowertrainPreview is not null && _truckPowertrainInstallContext is not null && !TruckPowertrainIsLoading &&
         !IsBusy && !SaveEditorIsInspecting && _truckPowertrainContextMatches?.Invoke() == true;
 

@@ -197,7 +197,7 @@ public sealed partial class TruckPowertrainSelectionTests
 
     private static SaveEditorTestHarness Harness(string home = "synthetic-home", Service? service = null)
     {
-        var harness = new SaveEditorTestHarness();
+        var harness = new SaveEditorTestHarness(powertrainEnabled: true);
         harness.Powertrain = _ => Task.FromResult(new ScsActiveTruckPowertrain(Model + "engine/current.sii", Model + "transmission/current.sii"));
         harness.PowertrainCatalog = _ => Task.FromResult(new ScsActiveTruckPowertrainCatalog(Model,
             [new(Model + "engine/current.sii", "truck", true)], [new(Model + "transmission/current.sii", "truck", true)]));

@@ -16,16 +16,20 @@ public sealed class ScsPowertrainDiscoveryService : IScsPowertrainDiscoveryServi
     private const int MaximumDiagnostics = 160;
     private readonly IGameInstallationDetector _installationDetector;
     private readonly IWorkshopContentLocator _workshopLocator;
+    private readonly LauncherFeatureFlags _featureFlags;
 
-    public ScsPowertrainDiscoveryService(IGameInstallationDetector installationDetector, IWorkshopContentLocator workshopLocator)
+    public ScsPowertrainDiscoveryService(IGameInstallationDetector installationDetector, IWorkshopContentLocator workshopLocator,
+        LauncherFeatureFlags? featureFlags = null)
     {
         _installationDetector = installationDetector ?? throw new ArgumentNullException(nameof(installationDetector));
         _workshopLocator = workshopLocator ?? throw new ArgumentNullException(nameof(workshopLocator));
+        _featureFlags = featureFlags ?? LauncherFeatureFlags.Current;
     }
 
     public Task<ScsPowertrainDiscoveryResult> DiscoverAsync(ScsPowertrainDiscoveryRequest request,
         CancellationToken cancellationToken = default)
     {
+        _featureFlags.RequirePowertrainEditing();
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.SaveCatalog);
         // Archive indexing and text reads are synchronous, bounded I/O. Keep them off the WPF thread.

@@ -74,15 +74,17 @@ public partial class MainViewModel
             QueueTruckPowertrainInspection();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(PowertrainFeaturesEnabled))]
     private void RefreshTruckPowertrain()
     {
+        if (!PowertrainFeaturesEnabled) return;
         ClearTruckPowertrainPreview();
         QueueTruckPowertrainInspection();
     }
 
     private void QueueTruckPowertrainInspection()
     {
+        if (!PowertrainFeaturesEnabled) return;
         if (_truckPowertrainInstallContextMatches?.Invoke() == false)
             _truckPowertrainInstallCancellation?.Cancel();
         if (_truckPowertrainService is null) return;
@@ -113,7 +115,7 @@ public partial class MainViewModel
         var generation = _truckPowertrainGeneration;
         var cancellation = new CancellationTokenSource();
         _truckPowertrainCancellation = cancellation;
-        bool Current() => generation == _truckPowertrainGeneration && !cancellation.IsCancellationRequested &&
+        bool Current() => PowertrainFeaturesEnabled && generation == _truckPowertrainGeneration && !cancellation.IsCancellationRequested &&
             !IsBusy && !SaveEditorIsInspecting && game == SaveEditorSelectedGame &&
             string.Equals(installPath, GetSavedPath(game), StringComparison.OrdinalIgnoreCase) &&
             inspectionGeneration == _saveEditorInspectionGeneration && selectionGeneration == _saveEditorSelectionGeneration &&
@@ -156,6 +158,7 @@ public partial class MainViewModel
     private async Task InspectTruckPowertrainAsync(ScsEffectiveContentRequest request, string truckId,
         string modelRoot, long generation, CancellationTokenSource cancellation, Func<bool> current)
     {
+        if (!PowertrainFeaturesEnabled) return;
         try
         {
             var service = _truckPowertrainService!;
@@ -240,6 +243,7 @@ public partial class MainViewModel
 
     private void ApplyTruckPowertrainFilters()
     {
+        if (!PowertrainFeaturesEnabled) return;
         Filter(TruckPowertrainEngines, _truckEngineOptions, TruckPowertrainEngineSearch);
         Filter(TruckPowertrainTransmissions, _truckTransmissionOptions, TruckPowertrainTransmissionSearch);
         NotifyTruckPowertrainCounts();
@@ -259,6 +263,7 @@ public partial class MainViewModel
     private void AssessTruckPowertrainPair()
     {
         TruckPowertrainPairVerified = false;
+        if (!PowertrainFeaturesEnabled) return;
         var engine = TruckPowertrainSelectedEngine;
         var transmission = TruckPowertrainSelectedTransmission;
         if (_truckPowertrainPreview is null || engine is null || transmission is null ||
@@ -291,6 +296,7 @@ public partial class MainViewModel
     {
         request = null;
         reason = "Motor und Getriebe aus der aktuellen, geprüften Vorschau auswählen.";
+        if (!PowertrainFeaturesEnabled) return false;
         var context = _truckPowertrainInstallContext;
         var engine = TruckPowertrainSelectedEngine;
         var transmission = TruckPowertrainSelectedTransmission;
@@ -344,6 +350,7 @@ public partial class MainViewModel
     [RelayCommand(CanExecute = nameof(CanInstallTruckPowertrain))]
     private async Task InstallTruckPowertrainAsync()
     {
+        if (!PowertrainFeaturesEnabled) return;
         if (!TryCreateTruckPowertrainInstallRequest(out var request, out var reason))
         {
             SaveEditorStatusText = reason;
@@ -376,7 +383,7 @@ public partial class MainViewModel
         var modset = SelectedModset;
         var selectionGeneration = _saveEditorSelectionGeneration;
         var inspectionGeneration = _saveEditorInspectionGeneration;
-        bool ContextMatches() => approvedRequest.Content.Profile.GameType == SaveEditorSelectedGame &&
+        bool ContextMatches() => PowertrainFeaturesEnabled && approvedRequest.Content.Profile.GameType == SaveEditorSelectedGame &&
             ReferenceEquals(approvedRequest.Content.Profile, SaveEditorSelectedProfile) &&
             ReferenceEquals(approvedRequest.Content.Save, SaveEditorSelectedSave) &&
             ReferenceEquals(truck, SaveEditorSelectedTruck) && ReferenceEquals(modset, SelectedModset) &&

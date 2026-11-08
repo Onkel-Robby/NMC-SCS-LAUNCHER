@@ -1,6 +1,20 @@
 <UserControl x:Class="NmcScsLauncher.App.Views.TruckPowertrainSelection"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Style>
+        <Style TargetType="UserControl">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="IsEnabled" Value="False" />
+            <Setter Property="KeyboardNavigation.TabNavigation" Value="None" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PowertrainFeaturesEnabled, FallbackValue=False}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Setter Property="IsEnabled" Value="True" />
+                    <Setter Property="KeyboardNavigation.TabNavigation" Value="Continue" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Style>
     <UserControl.Resources>
         <DataTemplate x:Key="PowertrainOptionTemplate">
             <StackPanel Margin="4,5" ToolTip="{Binding DataPath}">

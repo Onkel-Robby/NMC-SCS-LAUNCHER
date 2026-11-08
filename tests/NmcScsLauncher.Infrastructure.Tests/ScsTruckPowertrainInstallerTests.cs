@@ -117,8 +117,8 @@ public sealed class ScsTruckPowertrainInstallerTests : IDisposable
         var sha = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
         var source = new Source(game);
         var codec = new ScsPlainTextSaveCodec();
-        var service = new ScsTruckPowertrainService(new(codec), new Effective(source));
-        var installer = new ScsTruckPowertrainInstaller(service, new ScsSaveEditService(codec, new Guard(gameRunning), Path.Combine(_root, "backups")));
+        var service = new ScsTruckPowertrainService(new(codec), new Effective(source), new LauncherFeatureFlags(true));
+        var installer = new ScsTruckPowertrainInstaller(service, new ScsSaveEditService(codec, new Guard(gameRunning), Path.Combine(_root, "backups")), new LauncherFeatureFlags(true));
         return new(installer, new(new(profile, save, null), sha, ".truck", NewEngine, NewTransmission), original, source);
     }
 

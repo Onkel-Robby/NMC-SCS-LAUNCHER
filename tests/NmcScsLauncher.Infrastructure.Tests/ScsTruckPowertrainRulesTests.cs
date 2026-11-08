@@ -366,7 +366,7 @@ public sealed partial class ScsTruckPowertrainRulesTests
             var session = Source();
             session.Set("/def/vehicle/f_wheel/test.sii", "accessory_wheel_data", "standard.test.fwheel", "model: \"/model.pmd\"");
             var service = new ScsTruckPowertrainService(new(new ScsPlainTextSaveCodec()), new FakeService(session, unavailable,
-                saveChanges ? () => File.AppendAllText(path, "\n# concurrent save change\n") : null));
+                saveChanges ? () => File.AppendAllText(path, "\n# concurrent save change\n") : null), new LauncherFeatureFlags(true));
             var preview = await service.InspectAsync(new(profile, save, null));
             Assert.Equal(!unavailable, session.Disposed);
             if (unavailable || saveChanges)

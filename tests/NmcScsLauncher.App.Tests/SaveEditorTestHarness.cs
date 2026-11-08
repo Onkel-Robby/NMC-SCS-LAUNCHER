@@ -22,7 +22,7 @@ internal sealed class SaveEditorTestHarness
     public Func<string, string, bool> Confirm { get; set; } = (_, _) => true;
     public MainViewModel ViewModel { get; }
 
-    public SaveEditorTestHarness()
+    public SaveEditorTestHarness(bool? powertrainEnabled = null)
     {
         var constructor = typeof(MainViewModel).GetConstructors().Single();
         ViewModel = (MainViewModel)constructor.Invoke(constructor.GetParameters()
@@ -32,6 +32,8 @@ internal sealed class SaveEditorTestHarness
                 method.ReturnType == typeof(bool) ? true :
                 throw new InvalidOperationException($"Unexpected dependency call: {method.Name}")))
             .ToArray());
+        if (powertrainEnabled is { } enabled)
+            ViewModel.ConfigureFeatureFlags(new LauncherFeatureFlags(enabled));
         ViewModel.ConfigureSaveEditorServices(
             Proxy<IScsProfileSaveLocator>((method, args) => method.Name switch
             {

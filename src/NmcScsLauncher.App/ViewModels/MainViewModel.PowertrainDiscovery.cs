@@ -36,7 +36,7 @@ public partial class MainViewModel
         DiscoverSaveEditorPowertrainCommand.NotifyCanExecuteChanged();
     }
 
-    private bool CanDiscoverSaveEditorPowertrain() => _powertrainDiscoveryService is not null &&
+    private bool CanDiscoverSaveEditorPowertrain() => PowertrainFeaturesEnabled && _powertrainDiscoveryService is not null &&
         _saveEditorPowertrainCatalog is not null && SaveEditorSelectedSave is not null &&
         !SaveEditorIsInspecting && !IsBusy && !SaveEditorIsDiscoveringPowertrain;
 
@@ -71,7 +71,7 @@ public partial class MainViewModel
         var request = new ScsPowertrainDiscoveryRequest(
             game, GetSavedPath(game), profile?.GameType == game ? profile.GameHomeDirectory : null,
             catalog, modDirectories.ToArray());
-        bool IsCurrent() => generation == _powertrainDiscoveryGeneration &&
+        bool IsCurrent() => PowertrainFeaturesEnabled && generation == _powertrainDiscoveryGeneration &&
             inspectionGeneration == _saveEditorInspectionGeneration &&
             selectionGeneration == _saveEditorSelectionGeneration &&
             game == SaveEditorSelectedGame && ReferenceEquals(save, SaveEditorSelectedSave) &&
@@ -117,11 +117,12 @@ public partial class MainViewModel
         }
     }
 
-    private bool CanCancelSaveEditorPowertrainDiscovery() => SaveEditorIsDiscoveringPowertrain;
+    private bool CanCancelSaveEditorPowertrainDiscovery() => PowertrainFeaturesEnabled && SaveEditorIsDiscoveringPowertrain;
 
     [RelayCommand(CanExecute = nameof(CanCancelSaveEditorPowertrainDiscovery))]
     private void CancelSaveEditorPowertrainDiscovery()
     {
+        if (!PowertrainFeaturesEnabled) return;
         CancelPowertrainDiscovery();
         SaveEditorPowertrainStatusText = "Komponentensuche abgebrochen. Die Auswahl aus dem Save bleibt verfügbar.";
     }
@@ -151,6 +152,7 @@ public partial class MainViewModel
 
     private void SetSaveEditorPowertrainCatalog(ScsActiveTruckPowertrainCatalog catalog)
     {
+        if (!PowertrainFeaturesEnabled) return;
         // Keep a private snapshot; mutable UI collections cannot extend write authorization.
         _saveEditorPowertrainCatalog = catalog with
         {
@@ -168,6 +170,7 @@ public partial class MainViewModel
 
     private void ApplySaveEditorPowertrainFilter()
     {
+        if (!PowertrainFeaturesEnabled) return;
         var selected = SaveEditorSelectedDiscoveredPowertrain;
         var query = SaveEditorPowertrainSearch.Trim();
         var filtered = _allDiscoveredPowertrains.Where(item =>
@@ -195,6 +198,7 @@ public partial class MainViewModel
     private bool CanSetSaveEditorTransmission() => CanSetSaveEditorPowertrain(true);
     private bool CanSetSaveEditorPowertrain(bool transmission)
     {
+        if (!PowertrainFeaturesEnabled) return false;
         if (_truckPowertrainInstaller is not null || !SaveEditorCanEditPlates || _saveEditorPowertrainCatalog is null) return false;
         var selected = transmission ? SaveEditorSelectedTransmission : SaveEditorSelectedEngine;
         var choices = transmission ? _saveEditorPowertrainCatalog.Transmissions : _saveEditorPowertrainCatalog.Engines;
