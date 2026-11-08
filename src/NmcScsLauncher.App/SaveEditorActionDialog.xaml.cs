@@ -32,11 +32,20 @@ public partial class SaveEditorActionDialog : Window
         DialogTitle.Text = action.Title;
         DialogDescription.Text = action.Description;
 
-        // Images are purely decorative. The dialog remains usable if a resource cannot be decoded.
+        // Pack URI is absolute: a relative BitmapImage Uri can be resolved as a
+        // filesystem path during deferred WPF rendering, terminating the process.
+        // Decode eagerly so even a missing/corrupt decorative image fails here
+        // rather than asynchronously in the composition/render dispatcher.
         try
         {
-            var atlas = new BitmapImage(new Uri(
-                "/NmcScsLauncher.App;component/Assets/SaveEditorPreviews.png", UriKind.Relative));
+            var atlas = new BitmapImage();
+            atlas.BeginInit();
+            atlas.UriSource = new Uri(
+                "pack://application:,,,/NmcScsLauncher.App;component/Assets/SaveEditorPreviews.png",
+                UriKind.Absolute);
+            atlas.CacheOption = BitmapCacheOption.OnLoad;
+            atlas.EndInit();
+            atlas.Freeze();
             PreviewBanner.Background = new ImageBrush(atlas)
             {
                 Viewbox = action.PreviewViewbox,
@@ -46,11 +55,15 @@ public partial class SaveEditorActionDialog : Window
         }
         catch (IOException)
         {
-            // Keep the original solid-color banner.
+            // Decorative art is optional: keep the solid-color banner.
         }
         catch (NotSupportedException)
         {
-            // An unsupported image never affects the editor's safety or commands.
+            // Malformed or unsupported images never affect save commands.
+        }
+        catch (System.Windows.Markup.XamlParseException)
+        {
+            // A broken pack-resource lookup must not terminate the editor.
         }
 
         FrameworkElement panel = action.ActionId switch
