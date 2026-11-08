@@ -122,7 +122,10 @@ public static class TruckPowertrainDiagnosticReport
             sources = sources.Take(limit).Select(source => new { source = Alias(source.PhysicalPath), kind = EnumName(source.Kind),
                 packageId = Label(source.PackageIdentity, identity: true), packageVersion = Version(source.PackageVersion),
                 priority = source.Priority, availabilityVerified = source.AvailabilityVerified,
-                dlcMetadataVerified = source.DlcMetadataVerified }).ToArray(),
+                dlcMetadataVerified = source.DlcMetadataVerified,
+                // Public manifest identity only, never ownership or activation evidence.
+                dlcSteamAppId = source.Kind == ScsPowertrainSourceKind.Dlc && source.DlcMetadataVerified && source.DlcSteamAppId > 0
+                    ? source.DlcSteamAppId : null }).ToArray(),
             issues = issues.OrderBy(DiagnosticPriority).Take(limit).Select(Issue).ToArray(),
             selectedPair = selectedPair is null ? null : new
             {

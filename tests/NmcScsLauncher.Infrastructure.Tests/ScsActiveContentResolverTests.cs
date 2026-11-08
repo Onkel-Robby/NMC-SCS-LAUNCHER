@@ -421,8 +421,32 @@ public sealed class ScsActiveContentResolverTests : IDisposable
         var layer = Assert.Single(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Dlc);
         Assert.Equal("eut2_balkane", layer.PackageIdentity);
         Assert.True(layer.DlcMetadataVerified);
+        Assert.Equal(1056760u, layer.DlcSteamAppId);
         Assert.False(layer.AvailabilityVerified);
         Assert.Equal(100, layer.Priority);
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("4294967296")]
+    [InlineData("+1")]
+    [InlineData("1.0")]
+    [InlineData("\"private-invalid-value\"")]
+    [InlineData("private-invalid-value")]
+    [InlineData("(1, 2)")]
+    public async Task InvalidDlcSteamAppIdDoesNotValidateManifestOrExposeItsValue(string value)
+    {
+        Zip(_installation.InstallPath, "dlc_invalid.scs", ("dlc_invalid.manifest.sii",
+            $"SiiNunit {{ dlc_package : .private_unit_name {{ id: eut2_test game_id: eut2 steam_app_id: {value} }} }}"));
+        var result = await Service().ResolveAsync(_request);
+        var layer = Assert.Single(result.Layers, layer => layer.Kind == ScsPowertrainSourceKind.Dlc);
+        Assert.False(layer.DlcMetadataVerified);
+        Assert.Null(layer.DlcSteamAppId);
+        Assert.False(layer.AvailabilityVerified);
+        var issue = Assert.Single(result.DiagnosticDetails!, issue => issue.Code == "dlc_metadata_invalid");
+        Assert.Contains("steam_app_id", issue.Message);
+        Assert.DoesNotContain(value, issue.Message);
+        Assert.DoesNotContain("private_unit_name", issue.Message);
     }
 
     [Fact]
@@ -438,7 +462,7 @@ public sealed class ScsActiveContentResolverTests : IDisposable
         Assert.Equal(300, layers.Length);
         Assert.True(invalidIssues.Length < layers.Length); // Exercise the real report cap.
         Assert.Contains(layers, layer => !invalidIssues.Any(issue => issue.PhysicalPath == layer.PhysicalPath));
-        Assert.All(layers, layer => { Assert.False(layer.DlcMetadataVerified); Assert.False(layer.AvailabilityVerified); });
+        Assert.All(layers, layer => { Assert.False(layer.DlcMetadataVerified); Assert.Null(layer.DlcSteamAppId); Assert.False(layer.AvailabilityVerified); });
         Assert.False(result.ConfigurationVerified);
     }
 

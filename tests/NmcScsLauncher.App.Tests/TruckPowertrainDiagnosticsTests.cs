@@ -15,6 +15,37 @@ public sealed partial class TruckPowertrainSelectionTests
         "Das aktive Paket fehlt.", "workshop.1234567890", "Example Truck", @"C:\Private\mod.scs", "1.2",
         TechnicalDetails: "Lokale technische Details", BlocksConfiguration: true);
 
+    [Theory]
+    [InlineData(ScsPowertrainSourceKind.Dlc, true, 2720080, true)]
+    [InlineData(ScsPowertrainSourceKind.Dlc, true, 0, false)]
+    [InlineData(ScsPowertrainSourceKind.Dlc, true, null, false)]
+    [InlineData(ScsPowertrainSourceKind.Dlc, false, 2720080, false)]
+    [InlineData(ScsPowertrainSourceKind.Game, true, 2720080, false)]
+    [InlineData(ScsPowertrainSourceKind.Workshop, true, 2720080, false)]
+    public void ExportRetainsOnlyValidatedPublicDlcAppIdentityWithoutGrantingAvailability(
+        ScsPowertrainSourceKind kind, bool metadataVerified, int? appId, bool expectedIdentity)
+    {
+        var request = new ScsEffectiveContentRequest(SaveEditorTestHarness.Profile("PRIVATE_PROFILE"),
+            SaveEditorTestHarness.Save("PRIVATE_SAVE"), null);
+        var layer = new ScsContentLayer(@"C:\PRIVATE_USER\Game\dlc_truck.scs", "/", kind,
+            "ats_t680_22", "1.62.1.1", 100, false, "PRIVATE_REASON", metadataVerified,
+            appId is null ? null : (uint)appId.Value);
+        var preview = new Preview(request)
+        {
+            InspectionReport = new("1.62.1.1", true, true, [], [layer], [])
+        };
+
+        var text = TruckPowertrainDiagnosticReport.Create(request, preview);
+        using var json = JsonDocument.Parse(text);
+        var source = Assert.Single(json.RootElement.GetProperty("sources").EnumerateArray());
+        var exportedId = source.GetProperty("dlcSteamAppId");
+        if (expectedIdentity) Assert.Equal(2720080u, exportedId.GetUInt32());
+        else Assert.Equal(JsonValueKind.Null, exportedId.ValueKind);
+        Assert.False(source.GetProperty("availabilityVerified").GetBoolean());
+        Assert.DoesNotContain("PRIVATE", text);
+        Assert.DoesNotContain("secret_key", text);
+    }
+
     [Fact]
     public void SelectedProfileChangeUpdatesDisplayedGameHome()
     {

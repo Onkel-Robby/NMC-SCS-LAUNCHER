@@ -19,7 +19,9 @@ public sealed record ScsContentLayer(
     bool AvailabilityVerified,
     string AvailabilityReason,
     // Identity/game metadata only; never proof of entitlement or activation.
-    bool DlcMetadataVerified = false);
+    bool DlcMetadataVerified = false,
+    // Public manifest identity only; null/zero/positive IDs imply neither price nor availability.
+    uint? DlcSteamAppId = null);
 
 /// <summary>VirtualPath identifies archive text hashed as UTF-8; otherwise Sha256 hashes physical bytes.</summary>
 public sealed record ScsEvidenceFile(string Path, long Length, DateTimeOffset LastWriteTimeUtc, string Sha256,
