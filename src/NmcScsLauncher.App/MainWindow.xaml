@@ -702,43 +702,53 @@
             <TextBlock Text="Wähle eine Funktion. Änderungen erfolgen erst im jeweiligen Editor nach Bestätigung."
                        Foreground="{StaticResource SecondaryTextBrush}" FontSize="13" TextWrapping="Wrap"
                        Margin="0,6,0,18" />
-            <ItemsControl ItemsSource="{Binding SaveEditorOverviewActions}">
+            <ItemsControl ItemsSource="{Binding SaveEditorOverviewActions}"
+                          MaxWidth="1160" HorizontalAlignment="Stretch">
+                <!-- Three equal, readable columns instead of an unrestricted eight-column WrapPanel.
+                     The existing 1080 DIP minimum window width still leaves room for all three cards. -->
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel />
+                        <UniformGrid Columns="3" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Width="244" Height="234" Margin="0,0,14,14" Padding="12"
+                        <Border Height="288" Margin="0,0,16,16" Padding="14"
                                 Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="13">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="80" />
+                                    <RowDefinition Height="130" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <Border Grid.Row="0" Background="#1A2D44" CornerRadius="9">
-                                    <Grid Margin="12,9">
-                                        <TextBlock Text="{Binding Category}" FontSize="11" FontWeight="Bold"
+                                <Border Grid.Row="0" Background="#182D44" CornerRadius="9"
+                                        ClipToBounds="True">
+                                    <Grid Margin="14,11">
+                                        <Border Background="{Binding Accent}" Opacity="0.12"
+                                                Width="104" Height="104" CornerRadius="52"
+                                                HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                        <Border Background="{Binding Accent}" Opacity="0.08"
+                                                Width="64" Height="64" CornerRadius="32"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,76,-25" />
+                                        <TextBlock Text="{Binding Category}" FontSize="12" FontWeight="Bold"
                                                    Foreground="{StaticResource SecondaryTextBrush}"
                                                    HorizontalAlignment="Left" VerticalAlignment="Top" />
-                                        <TextBlock Text="{Binding Symbol}" FontSize="36" FontWeight="Bold"
+                                        <TextBlock Text="{Binding Symbol}" FontSize="54" FontWeight="Bold"
                                                    Foreground="{Binding Accent}" HorizontalAlignment="Right"
-                                                   VerticalAlignment="Center" Opacity="0.96" />
-                                        <Border Height="3" Width="36" CornerRadius="2" HorizontalAlignment="Left"
+                                                   VerticalAlignment="Center" Margin="0,0,14,0" />
+                                        <Border Height="4" Width="48" CornerRadius="2" HorizontalAlignment="Left"
                                                 VerticalAlignment="Bottom" Background="{Binding Accent}" />
                                     </Grid>
                                 </Border>
-                                <TextBlock Grid.Row="1" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
-                                           Margin="2,11,0,5" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Grid.Row="2" Text="{Binding Description}" FontSize="12" TextWrapping="Wrap"
-                                           Foreground="{StaticResource SecondaryTextBrush}" Margin="2,0,0,8"
-                                           MaxHeight="50" />
-                                <Button Grid.Row="3" Content="Öffnen" Padding="18,7" HorizontalAlignment="Left"
-                                        Style="{StaticResource PrimaryButtonStyle}"
+                                <TextBlock Grid.Row="1" Text="{Binding Title}" FontSize="18" FontWeight="SemiBold"
+                                           Margin="2,11,0,6" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Row="2" Text="{Binding Description}" FontSize="13" TextWrapping="Wrap"
+                                           Foreground="{StaticResource SecondaryTextBrush}" Margin="2,0,0,5"
+                                           MaxHeight="60" />
+                                <Button Grid.Row="3" Content="Öffnen" Padding="22,8" HorizontalAlignment="Center"
+                                        MinWidth="112" Style="{StaticResource PrimaryButtonStyle}"
                                         Command="{Binding DataContext.OpenSaveEditorSectionCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
                                         CommandParameter="{Binding Section}" />
                             </Grid>
