@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:NmcScsLauncher.App.Views"
         Title="NMC SCS LAUNCHER – Save-Editor"
-        Width="620" MinWidth="520" MaxHeight="740"
-        SizeToContent="Height" WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize" ShowInTaskbar="False"
+        Width="620" MinWidth="520" Height="600" MinHeight="430" MaxHeight="740"
+        SizeToContent="Manual" WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize" ShowInTaskbar="False"
         Background="{DynamicResource WindowBackgroundBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}">
     <Window.Resources>
@@ -14,7 +14,15 @@
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="0,8,0,5" />
         </Style>
-        <Style x:Key="EditorField" TargetType="TextBox">
+        <!-- Retain the application-wide dark TextBox template. Without BasedOn
+             an explicitly styled editor field falls back to white Windows controls. -->
+        <Style x:Key="EditorField" TargetType="TextBox"
+               BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="MinHeight" Value="40" />
         </Style>
@@ -25,7 +33,7 @@
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <StackPanel Grid.Row="0" Margin="0,0,0,18">
@@ -35,8 +43,9 @@
                 <Border x:Name="PreviewBanner" Height="112" Margin="0,15,0,0" CornerRadius="9"
                         ClipToBounds="True" Background="#162D42"/>
             </StackPanel>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          MaxHeight="360">
+            <ScrollViewer x:Name="EditorFieldsScrollViewer" Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          CanContentScroll="False">
                 <StackPanel Margin="0,0,8,0">
                     <StackPanel x:Name="MoneyPanel" Visibility="Collapsed">
                         <TextBlock Text="Geld im ausgewählten Profil" Style="{StaticResource EditorFieldLabel}"/>
@@ -65,9 +74,6 @@
                         <TextBox Text="{Binding SaveEditorUrgentDeliveryText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
                         <TextBlock Text="Eco-Driving (0–6)" Style="{StaticResource EditorFieldLabel}"/>
                         <TextBox Text="{Binding SaveEditorEcoDrivingText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
-                        <Button Content="Skills übernehmen" Margin="0,16,0,0" HorizontalAlignment="Left"
-                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
-                                Command="{Binding SetSaveEditorCareerSkillsCommand}"/>
                     </StackPanel>
                     <StackPanel x:Name="TruckSwitchPanel" Visibility="Collapsed">
                         <TextBlock Text="Aktiver Truck" Style="{StaticResource EditorFieldLabel}"/>
@@ -161,16 +167,27 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
-            <StackPanel Grid.Row="2" Margin="0,18,0,0">
+            <!-- Fixed footer: save status and close/submit are always accessible,
+                 independently of long Skills or plate forms. -->
+            <StackPanel Grid.Row="2" Margin="0,16,0,0">
                 <Border Background="#14263A" CornerRadius="8" Padding="12">
                     <StackPanel>
                         <TextBlock Text="Save-Status" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                        <TextBlock Text="{Binding SaveEditorStatusText}" FontSize="12" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      MaxHeight="68">
+                            <TextBlock Text="{Binding SaveEditorStatusText}" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        </ScrollViewer>
                     </StackPanel>
                 </Border>
-                <Button Content="Schließen" HorizontalAlignment="Right" Margin="0,14,0,0"
-                        Padding="18,8" Click="CloseClick"/>
+                <Grid Margin="0,14,0,0">
+                    <Button x:Name="SkillsApplyFooterButton" Content="Skills übernehmen"
+                            Visibility="Collapsed" HorizontalAlignment="Left"
+                            Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding SetSaveEditorCareerSkillsCommand}"/>
+                    <Button Content="Schließen" HorizontalAlignment="Right"
+                            Padding="18,8" Click="CloseClick"/>
+                </Grid>
             </StackPanel>
         </Grid>
     </Border>
