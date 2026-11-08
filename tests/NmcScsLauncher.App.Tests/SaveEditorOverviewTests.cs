@@ -9,11 +9,11 @@ namespace NmcScsLauncher.App.Tests;
 public sealed class SaveEditorOverviewTests
 {
     [Theory]
-    [InlineData("profile", 1)]
-    [InlineData("truck", 2)]
-    [InlineData("trailer", 4)]
-    [InlineData("plates", 5)]
-    [InlineData("backup", 6)]
+    [InlineData("profile", 0)]
+    [InlineData("truck", 1)]
+    [InlineData("trailer", 3)]
+    [InlineData("plates", 4)]
+    [InlineData("backup", 5)]
     [InlineData("unknown", 0)]
     public void QuickAccessCardsNavigateToExistingEditorSections(string section, int expectedIndex)
     {
@@ -45,11 +45,30 @@ public sealed class SaveEditorOverviewTests
             .Select(element => (string?)element.Attribute("ItemsSource"))
             .Where(value => value is not null && value.Contains("SaveEditor", StringComparison.Ordinal))
             .ToArray();
-        Assert.Contains("{Binding SaveEditorCategories}", sources);
+        Assert.DoesNotContain("{Binding SaveEditorCategories}", sources);
         Assert.DoesNotContain("{Binding SaveEditorOverviewActions}", sources);
         foreach (var name in new[] { "SaveEditorProfileActions", "SaveEditorTruckActions",
             "SaveEditorTrailerActions", "SaveEditorPlateActions", "SaveEditorBackupActions" })
             Assert.Contains("{Binding " + name + "}", sources);
+    }
+
+    [Fact]
+    public void SaveEditorStartsInProfileWithoutRedundantOverviewNavigation()
+    {
+        using var stream = typeof(SaveEditorOverviewTests).Assembly
+            .GetManifestResourceStream("NmcScsLauncher.Tests.MainWindow.xaml")!;
+        var document = XDocument.Load(stream);
+        XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var tabs = document.Descendants(p + "TabControl").Single(element =>
+            ((string?)element.Attribute("SelectedIndex"))?.Contains("SaveEditorSectionIndex", StringComparison.Ordinal) == true);
+        var headers = tabs.Elements(p + "TabItem")
+            .Select(item => (string?)item.Attribute("Header")).ToArray();
+        Assert.Equal(new[] { "Profil & Karriere", "Truck", "Komponentenkatalog", "Trailer", "Kennzeichen", "Sicherungen" },
+            headers);
+        Assert.DoesNotContain("Übersicht", headers);
+        Assert.Equal(0, new SaveEditorTestHarness().ViewModel.SaveEditorSectionIndex);
+        Assert.DoesNotContain(document.Descendants(p + "ItemsControl"), element =>
+            ((string?)element.Attribute("ItemsSource"))?.Contains("SaveEditorCategories", StringComparison.Ordinal) == true);
     }
 
     [Fact]
@@ -65,7 +84,6 @@ public sealed class SaveEditorOverviewTests
             (Section: "backup", Actions: vm.SaveEditorBackupActions, Count: 1)
         };
         Assert.Equal(11, collections.Sum(category => category.Actions.Count));
-        Assert.Equal(5, vm.SaveEditorCategories.Count);
         var allAssignedIds = collections.SelectMany(c => c.Actions.Select(a => a.ActionId)).ToArray();
         Assert.Equal(allAssignedIds.Length, allAssignedIds.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(vm.SaveEditorOverviewActions.Select(a => a.ActionId).OrderBy(x => x),
@@ -74,10 +92,8 @@ public sealed class SaveEditorOverviewTests
         {
             Assert.Equal(c.Count, c.Actions.Count);
             Assert.All(c.Actions, action => Assert.Equal(c.Section, action.Section));
-            var category = Assert.Single(vm.SaveEditorCategories.Where(category => category.Section == c.Section));
-            Assert.Equal(c.Count, category.Count);
-            vm.OpenSaveEditorSectionCommand.Execute(category.Section);
-            Assert.Contains(vm.SaveEditorSectionIndex, new[] { 1, 2, 4, 5, 6 });
+            vm.OpenSaveEditorSectionCommand.Execute(c.Section);
+            Assert.Contains(vm.SaveEditorSectionIndex, new[] { 0, 1, 3, 4, 5 });
         }
         Assert.False(vm.PowertrainFeaturesEnabled);
     }
@@ -95,7 +111,7 @@ public sealed class SaveEditorOverviewTests
             Assert.False(string.IsNullOrWhiteSpace(action.Title));
             Assert.False(string.IsNullOrWhiteSpace(action.Description));
             vm.OpenSaveEditorSectionCommand.Execute(action.Section);
-            Assert.Contains(vm.SaveEditorSectionIndex, new[] { 1, 2, 4, 5, 6 });
+            Assert.Contains(vm.SaveEditorSectionIndex, new[] { 0, 1, 3, 4, 5 });
         }
         Assert.False(vm.PowertrainFeaturesEnabled);
     }
