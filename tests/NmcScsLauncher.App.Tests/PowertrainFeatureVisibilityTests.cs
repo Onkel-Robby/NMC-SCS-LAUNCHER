@@ -94,11 +94,22 @@ public sealed class PowertrainFeatureVisibilityTests
         var truck = document.Descendants(presentation + "TabItem").Single(item => (string?)item.Attribute("Header") == "Truck");
         var sourceTabs = truck.Parent!;
         var catalog = sourceTabs.Elements(presentation + "TabItem").Single(item => (string?)item.Attribute("Header") == "Komponentenkatalog");
+        // Category cards now wrap the old vehicle editor in an Expander. Exercise
+        // that same production Grid directly so release-gate tests stay focused
+        // on powertrain visibility rather than requiring a full themed launcher.
+        var legacyTruck = truck.Descendants(presentation + "Expander").Single()
+            .Elements(presentation + "Grid").Single();
+        var truckLegacyTab = new XElement(presentation + "TabItem",
+            new XAttribute("Header", "Truck"), new XElement(legacyTruck));
         var resources = new XElement(sourceTabs.Element(presentation + "TabControl.Resources")!);
+        // Category card templates contain App-scoped visuals not needed in this test.
+        resources.Elements().Where(e => e.Name == presentation + "DataTemplate" ||
+            e.Name == presentation + "ItemsPanelTemplate" ||
+            (string?)e.Attribute(x + "Key") == "SaveEditorActionCardsStyle").Remove();
         foreach (var name in new[] { "SecondaryTextBrush", "CardBrush", "BorderBrush", "AccentBrush", "PrimaryTextBrush", "SuccessBrush" })
             resources.AddFirst(new XElement(presentation + "SolidColorBrush", new XAttribute(x + "Key", name), new XAttribute("Color", "Gray")));
         var root = new XElement(presentation + "TabControl", new XAttribute(XNamespace.Xmlns + "x", x.NamespaceName), resources,
-            new XElement(truck), new XElement(catalog));
+            truckLegacyTab, new XElement(catalog));
         var catalogControl = root.Descendants().Single(element => element.Name.LocalName == nameof(PowertrainCatalog));
         catalogControl.ReplaceWith(CatalogMarkup());
         foreach (var element in root.Descendants().Where(element => element.Name.NamespaceName == "clr-namespace:NmcScsLauncher.App.Views"))
