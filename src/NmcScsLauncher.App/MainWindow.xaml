@@ -761,7 +761,7 @@
     <TabItem Header="Übersicht">
         <StackPanel Margin="0,4,0,20">
             <TextBlock Text="Was möchtest du bearbeiten?" FontSize="22" FontWeight="SemiBold" />
-            <TextBlock Text="Wähle eine Funktion. Änderungen erfolgen erst im jeweiligen Editor nach Bestätigung."
+            <TextBlock Text="Wähle eine Kategorie. Dort öffnest du die passende Funktion direkt im Bearbeitungsdialog."
                        Foreground="{StaticResource SecondaryTextBrush}" FontSize="13" TextWrapping="Wrap"
                        Margin="0,6,0,18" />
             <!-- Overview navigates categories. All eleven actual edit cards live in their matching category. -->
