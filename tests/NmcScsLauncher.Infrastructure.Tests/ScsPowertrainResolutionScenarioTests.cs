@@ -7,7 +7,7 @@ using Xunit;
 namespace NmcScsLauncher.Infrastructure.Tests;
 
 /// <summary>Scenarios A–D exercise actual metadata, ZIP, VFS, snapshot and rule services.</summary>
-public sealed class ScsPowertrainResolutionScenarioTests
+public sealed partial class ScsPowertrainResolutionScenarioTests
 {
     private const string Model = "/def/vehicle/truck/test";
     private const string NewEngine = Model + "/engine/new.sii";

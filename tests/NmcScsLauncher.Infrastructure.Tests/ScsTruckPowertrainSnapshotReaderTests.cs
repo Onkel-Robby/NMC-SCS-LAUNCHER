@@ -5,7 +5,7 @@ using Xunit;
 
 namespace NmcScsLauncher.Infrastructure.Tests;
 
-public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
+public sealed partial class ScsTruckPowertrainSnapshotReaderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "nmc-truck-snapshot-tests", Guid.NewGuid().ToString("N"));
     private readonly ScsSaveReference _save;

@@ -3,11 +3,17 @@ namespace NmcScsLauncher.Core;
 public sealed record ScsTruckAccessorySnapshot(
     string UnitId, string UnitType, string DataPath, IReadOnlyList<string> UnsupportedReasons);
 
+public enum ScsSaveUnitReadPhase { StructureValidation, FieldProjection }
+
+/// <summary>Local diagnostic counts for LF-normalized unit text. Contains no unit ID or field values.</summary>
+public sealed record ScsSaveUnitReadDiagnostic(string UnitType, int Characters, int Utf8Bytes, ScsSaveUnitReadPhase Phase);
+
 public sealed record ScsTruckPowertrainSnapshot(
     GameType Game, string SaveFilePath, string SaveSha256, string TruckId, string TruckModelRoot,
     string TruckDataAccessoryId, string EngineAccessoryId, string TransmissionAccessoryId,
     string CurrentEnginePath, string CurrentTransmissionPath,
-    IReadOnlyList<ScsTruckAccessorySnapshot> Accessories);
+    IReadOnlyList<ScsTruckAccessorySnapshot> Accessories,
+    IReadOnlyList<ScsSaveUnitReadDiagnostic>? UnitReadDiagnostics = null);
 
 public sealed record ScsTruckPowertrainOption(
     ScsPowertrainKind Kind, string DataPath, string Name, bool IsCurrent,

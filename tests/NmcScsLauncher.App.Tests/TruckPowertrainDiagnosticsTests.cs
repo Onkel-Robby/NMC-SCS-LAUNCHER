@@ -44,6 +44,60 @@ public sealed partial class TruckPowertrainSelectionTests
         Assert.Contains("zuletzt im Spiel verwendeter Save nicht bestätigt", details);
     }
 
+    [Fact]
+    public async Task LocalUnitReadDiagnosticsShowSuccessfulUnitSizesAndReadPhases()
+    {
+        var (harness, _) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request,
+            unitReadDiagnostics:
+            [new("player", 1357911, 1357923, ScsSaveUnitReadPhase.StructureValidation),
+             new("vehicle", 2468102, 2468124, ScsSaveUnitReadPhase.FieldProjection)])));
+        await Loaded(harness.ViewModel);
+        var details = harness.ViewModel.TruckPowertrainSourceDetails;
+        Assert.Contains("SII-Units im Save (nur lokal)", details);
+        Assert.Contains("player · 1357911 Zeichen · 1357923 UTF-8-Bytes · Strukturprüfung", details);
+        Assert.Contains("vehicle · 2468102 Zeichen · 2468124 UTF-8-Bytes · Feldauswahl", details);
+        Assert.Contains("Zeilenenden auf LF normalisiert", details);
+    }
+
+    [Fact]
+    public async Task LocalUnitReadDiagnosticsLimitRowsAndRejectUnsafeTypeText()
+    {
+        var diagnostics = new[]
+        {
+            new ScsSaveUnitReadDiagnostic("player: _nameless.PRIVATE_UNIT { content }", 1101, 1102,
+                ScsSaveUnitReadPhase.StructureValidation),
+            new ScsSaveUnitReadDiagnostic(@"C:\PRIVATE_CONTENT\game.sii", 1201, 1202,
+                ScsSaveUnitReadPhase.FieldProjection)
+        }.Concat(Enumerable.Range(0, 40).Select(index => new ScsSaveUnitReadDiagnostic("vehicle", 2000 + index,
+            2100 + index, ScsSaveUnitReadPhase.StructureValidation))).ToArray();
+        var (harness, _) = Create((request, _) => Task.FromResult<IScsTruckPowertrainPreview>(new Preview(request,
+            unitReadDiagnostics: diagnostics)));
+        await Loaded(harness.ViewModel);
+        var details = harness.ViewModel.TruckPowertrainSourceDetails;
+        Assert.DoesNotContain("PRIVATE_UNIT", details);
+        Assert.DoesNotContain("PRIVATE_CONTENT", details);
+        Assert.Equal(32, details.Split('\n').Count(line => line.Contains("UTF-8-Bytes", StringComparison.Ordinal)));
+        Assert.Contains("Weitere Units werden nicht angezeigt", details);
+        Assert.DoesNotContain("2039 Zeichen", details);
+    }
+
+    [Fact]
+    public void UnitReadDiagnosticsDoNotChangeExportOrLeakTheirContext()
+    {
+        var request = new ScsEffectiveContentRequest(SaveEditorTestHarness.Profile("PRIVATE_PROFILE"),
+            SaveEditorTestHarness.Save("PRIVATE_SAVE"), null);
+        var withoutDiagnostics = TruckPowertrainDiagnosticReport.Create(request, new Preview(request));
+        var withDiagnostics = TruckPowertrainDiagnosticReport.Create(request, new Preview(request,
+            unitReadDiagnostics:
+            [new("PRIVATE_UNIT_TYPE", 1357911, 1357923, ScsSaveUnitReadPhase.StructureValidation),
+             new("vehicle", 2468102, 2468124, ScsSaveUnitReadPhase.FieldProjection)]));
+        Assert.Equal(withoutDiagnostics, withDiagnostics);
+        Assert.DoesNotContain("PRIVATE", withDiagnostics);
+        Assert.DoesNotContain("1357911", withDiagnostics);
+        Assert.DoesNotContain("2468124", withDiagnostics);
+        Assert.DoesNotContain("unitReadDiagnostics", withDiagnostics, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

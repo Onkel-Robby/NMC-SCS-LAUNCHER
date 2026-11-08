@@ -12,9 +12,8 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
 {
     private const int MaximumSaveBytes = 128 * 1024 * 1024;
     private const int MaximumAccessories = 4096;
-    private static readonly Regex UnitHeader = new(@"^(?<type>[A-Za-z0-9_]+)\s*:\s*(?<id>[A-Za-z0-9_.]+)\s*\{$", RegexOptions.Compiled);
+    private static readonly Regex UnitHeader = new(@"^(?<type>[A-Za-z_][A-Za-z0-9_]{0,127})[ \t]*:[ \t]*(?<id>[A-Za-z0-9_.]+)[ \t]*\{$", RegexOptions.Compiled);
     private static readonly Regex Reference = new(@"^\.?[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$", RegexOptions.Compiled);
-    private static readonly Regex AccessoryArrayField = new(@"^\s*accessories\s*(?:\[|:)", RegexOptions.Compiled);
     private static readonly IReadOnlyDictionary<string, HashSet<string>> KnownAccessoryFields = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
     {
         ["vehicle_accessory"] = Fields("data_path", "refund"),
@@ -61,7 +60,7 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
                     throw Changed();
             }
             cancellationToken.ThrowIfCancellationRequested();
-            return new(Parse(save, sha, decoded.Content), decoded.Content);
+            return new(Parse(save, sha, decoded.Content, cancellationToken), decoded.Content);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)
         {
@@ -75,7 +74,8 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
         }
     }
 
-    public static ScsTruckPowertrainSnapshot Parse(ScsSaveReference save, string sha256, string content)
+    public static ScsTruckPowertrainSnapshot Parse(ScsSaveReference save, string sha256, string content,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(save);
         ArgumentNullException.ThrowIfNull(content);
@@ -85,7 +85,7 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
         ValidateTextSize(content);
         try
         {
-            var index = new SaveIndex(content);
+            var index = new SaveIndex(content, cancellationToken);
             var economy = index.SingleType("economy");
             var player = index.Required(RequiredReference(economy, "player"), "player");
             var trucks = ReadReferences(player, "trucks");
@@ -132,7 +132,7 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
             ValidateComponentPath(transmissions[0].DataPath, root, "transmission");
             return new(save.GameType, path, sha256.ToUpperInvariant(), active, root, data[0].UnitId,
                 engines[0].UnitId, transmissions[0].UnitId, engines[0].DataPath, transmissions[0].DataPath,
-                Array.AsReadOnly(accessories));
+                Array.AsReadOnly(accessories), Array.AsReadOnly(index.Diagnostics.ToArray()));
         }
         catch (Exception exception) when (exception is InvalidDataException or NotSupportedException)
         {
@@ -183,7 +183,7 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
 
     private static ScsTruckAccessorySnapshot ReadAccessory(ScsDefinitionUnit unit)
     {
-        var path = unit.GetString("data_path") ?? throw new InvalidDataException("Eine Zubehör-Unit hat keinen eindeutigen data_path.");
+        var path = ReadField(unit, "data_path", () => unit.GetString("data_path")) ?? throw new InvalidDataException("Eine Zubehör-Unit hat keinen eindeutigen data_path.");
         ValidateDefinitionPath(path);
         var reasons = new List<string>();
         if (!KnownAccessoryFields.TryGetValue(unit.Type, out var fields))
@@ -200,11 +200,12 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
         {
             // Actual saves use unquoted slot tokens and quoted hookup IDs. Preserve both
             // typed representations while the nonempty relationship remains unsupported.
-            var slots = unit.GetValues("slot_name");
-            var hookups = unit.GetValues("slot_hookup");
+            var slots = ReadField(unit, "slot_name", () => unit.GetValues("slot_name"));
+            var hookups = ReadField(unit, "slot_hookup", () => unit.GetValues("slot_hookup"));
             if (slots.Count != hookups.Count || slots.Count > 0 || hookups.Count > 0)
                 reasons.Add("Nicht leere Slot-/Hookup-Zuordnungen können noch nicht vollständig geprüft werden.");
-            if (unit.GetDeclaredArrayCount("slot_name") is null || unit.GetDeclaredArrayCount("slot_hookup") is null)
+            if (ReadField(unit, "slot_name", () => unit.GetDeclaredArrayCount("slot_name")) is null ||
+                ReadField(unit, "slot_hookup", () => unit.GetDeclaredArrayCount("slot_hookup")) is null)
                 reasons.Add("Slot-/Hookup-Zuordnungen haben keine eindeutige deklarierte Anzahl.");
         }
         return new(unit.Id, unit.Type, path, reasons.AsReadOnly());
@@ -212,9 +213,9 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
 
     private static IReadOnlyList<string> ReadReferences(ScsDefinitionUnit unit, string field)
     {
-        if (unit.GetDeclaredArrayCount(field) is not { } count || count > 10000)
+        if (ReadField(unit, field, () => unit.GetDeclaredArrayCount(field)) is not { } count || count > 10000)
             throw new InvalidDataException($"Referenzliste '{field}' benötigt eine begrenzte deklarierte Anzahl.");
-        var references = unit.GetTokens(field);
+        var references = ReadField(unit, field, () => unit.GetTokens(field));
         if (references.Count != count || references.Any(value => !IsReference(value)) || references.Distinct(StringComparer.Ordinal).Count() != count)
             throw new InvalidDataException($"Referenzliste '{field}' ist unvollständig, doppelt oder ungültig.");
         return references;
@@ -224,12 +225,22 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
         throw new InvalidDataException($"Die aktive Referenz '{field}' fehlt.");
     private static string? OptionalReference(ScsDefinitionUnit unit, string field)
     {
-        var token = unit.GetToken(field);
+        var token = ReadField(unit, field, () => unit.GetToken(field));
         if (token is null or "null") return null;
         if (!IsReference(token)) throw new InvalidDataException($"Referenz '{field}' ist ungültig.");
         return token;
     }
     private static bool IsReference(string value) => value != "null" && value.Length <= 256 && Reference.IsMatch(value);
+    private static T ReadField<T>(ScsDefinitionUnit unit, string field, Func<T> read)
+    {
+        try { return read(); }
+        catch (InvalidDataException)
+        {
+            // Typed metadata errors include unit IDs by default. The save diagnostic must not.
+            // field is always a fixed schema name from this reader, never a value from the save.
+            throw new InvalidDataException($"Ungültiger Typ für benötigtes Feld '{field}' (Unit-Typ {unit.Type}, Prüfphase Truck-Zuordnung).");
+        }
+    }
     private static HashSet<string> Fields(params string[] values) => new(values, StringComparer.Ordinal);
     private static bool IsTruckDataPath(string path) => path.StartsWith("/def/vehicle/truck/", StringComparison.Ordinal) &&
         path.EndsWith("/data.sii", StringComparison.Ordinal) && path.Count(character => character == '/') == 5;
@@ -294,52 +305,52 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
     }
 
     /// <summary>
-    /// The existing save parser handles the large document. A cheap structural pass prevents
-    /// ignored/duplicate unit headers; only relevant individual units use the strict metadata AST.
+    /// Shares the save parser's immutable lines. Every unit and field is validated; only
+    /// bounded projections of required fields reach the separate metadata AST parser.
     /// </summary>
     private sealed class SaveIndex
     {
-        private readonly string[] _lines;
-        private readonly Dictionary<string, ScsSiiUnit> _units = new(StringComparer.Ordinal);
+        private readonly ScsSiiUnitDocument _document;
+        private readonly CancellationToken _cancellation;
+        private readonly Dictionary<string, IndexedUnit> _units = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ScsDefinitionUnit> _parsed = new(StringComparer.Ordinal);
         internal List<ScsSiiUnit> AccessoryOwners { get; } = [];
+        internal List<ScsSaveUnitReadDiagnostic> Diagnostics { get; } = [];
 
-        internal SaveIndex(string content)
+        internal SaveIndex(string content, CancellationToken cancellation)
         {
-            _ = ScsSiiUnitDocument.Parse(content);
-            _lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+            _cancellation = cancellation;
+            _document = ScsSiiUnitDocument.Parse(content);
+            var lines = _document.Lines;
             var state = 0;
             ScsSiiUnit? current = null;
-            var ownsAccessories = false;
-            for (var number = 0; number < _lines.Length; number++)
+            for (var number = 0; number < lines.Length; number++)
             {
-                var line = _lines[number].Trim().TrimStart('\uFEFF');
-                if (line.Length == 0 || line.StartsWith('#') || line.StartsWith("//", StringComparison.Ordinal)) continue;
-                if (state == 0 && line is "SiiNunit" or "SiiNunit {") { state = line.EndsWith('{') ? 2 : 1; continue; }
-                if (state == 1 && line == "{") { state = 2; continue; }
+                if ((number & 1023) == 0) cancellation.ThrowIfCancellationRequested();
+                var line = lines[number].AsSpan().Trim(" \t\r".AsSpan());
+                if (number == 0) line = line.TrimStart('\uFEFF');
+                if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith("//", StringComparison.Ordinal)) continue;
+                if (state == 0 && line is "SiiNunit" or "SiiNunit {") { state = line.EndsWith("{", StringComparison.Ordinal) ? 2 : 1; continue; }
+                if (state == 1 && line is "{") { state = 2; continue; }
                 if (state == 2)
                 {
-                    if (line == "}") { state = 4; continue; }
-                    var match = UnitHeader.Match(line);
+                    if (line is "}") { state = 4; continue; }
+                    if (line.Length > 512) throw new InvalidDataException("SII-Unit-Deklaration überschreitet das Leselimit.");
+                    var match = UnitHeader.Match(line.ToString());
                     if (!match.Success || !IsReference(match.Groups["id"].Value)) throw new InvalidDataException("Nicht unterstützte oder uneindeutige SII-Unit-Deklaration.");
                     current = new(match.Groups["type"].Value, match.Groups["id"].Value, number, -1);
-                    ownsAccessories = false;
                     state = 3;
                     continue;
                 }
                 if (state == 3)
                 {
-                    if (line == "}")
+                    if (line is "}")
                     {
                         current = current! with { EndLine = number };
-                        if (_units.Count >= 500000 || !_units.TryAdd(current.Id, current)) throw new InvalidDataException("Doppelte SII-Unit oder Unit-Leselimit überschritten.");
-                        if (ownsAccessories) AccessoryOwners.Add(current);
+                        var indexed = Measure(current);
+                        if (_units.Count >= 500000 || !_units.TryAdd(current.Id, indexed)) throw new InvalidDataException("Doppelte SII-Unit oder Unit-Leselimit überschritten.");
+                        if (Project(indexed, capture: false).HasAccessories) AccessoryOwners.Add(current);
                         state = 2;
-                    }
-                    else
-                    {
-                        ValidateBodyLine(line);
-                        ownsAccessories |= AccessoryArrayField.IsMatch(line);
                     }
                     continue;
                 }
@@ -350,36 +361,63 @@ public sealed class ScsTruckPowertrainSnapshotReader(IScsSaveCodec codec)
 
         internal ScsDefinitionUnit SingleType(string type)
         {
-            var matches = _units.Values.Where(unit => unit.Type == type).Take(2).ToArray();
+            var matches = _units.Values.Where(unit => unit.Unit.Type == type).Take(2).ToArray();
             if (matches.Length != 1) throw new InvalidDataException($"Unit-Typ '{type}' ist nicht eindeutig.");
-            return Required(matches[0].Id, type);
+            return Required(matches[0].Unit.Id, type);
         }
         internal ScsDefinitionUnit Required(string id, string? type = null)
         {
-            if (!_units.TryGetValue(id, out var unit) || type is not null && unit.Type != type)
+            if (!_units.TryGetValue(id, out var unit) || type is not null && unit.Unit.Type != type)
                 throw new InvalidDataException("Eine benötigte Referenz fehlt oder zeigt auf einen falschen Unit-Typ.");
             if (!_parsed.TryGetValue(id, out var parsed))
             {
-                var text = "SiiNunit\n{\n" + string.Join('\n', _lines, unit.StartLine, unit.EndLine - unit.StartLine + 1) + "\n}";
-                parsed = ScsDefinitionDocument.Parse(text).Units.Single();
+                var projection = Project(unit, capture: true);
+                try { parsed = projection.ToDefinition(); }
+                catch (InvalidDataException exception)
+                { throw UnitFailure(unit, ScsSaveUnitReadPhase.FieldProjection, exception.Message); }
                 _parsed.Add(id, parsed);
             }
             return parsed;
         }
-        private static void ValidateBodyLine(string line)
+        private IndexedUnit Measure(ScsSiiUnit unit)
         {
-            var quoted = false;
-            for (var index = 0; index < line.Length; index++)
+            var characters = unit.EndLine - unit.StartLine;
+            var bytes = characters; // One LF between the original unit lines.
+            for (var number = unit.StartLine; number <= unit.EndLine; number++)
             {
-                var character = line[index];
-                if (quoted && character == '\\') { index++; continue; }
-                if (character == '"') { quoted = !quoted; continue; }
-                if (quoted) continue;
-                if (character == '#' || character == '/' && index + 1 < line.Length && line[index + 1] == '/') break;
-                if (character is '{' or '}' or '@' || character == '/' && index + 1 < line.Length && line[index + 1] == '*')
-                    throw new InvalidDataException("Nicht unterstützte verschachtelte SII-Struktur oder Direktive.");
+                if ((number & 1023) == 0) _cancellation.ThrowIfCancellationRequested();
+                characters = checked(characters + _document.Lines[number].Length);
+                bytes = checked(bytes + Encoding.UTF8.GetByteCount(_document.Lines[number]));
             }
-            if (quoted) throw new InvalidDataException("Mehrzeilige oder unvollständige SII-Zeichenfolge wird nicht unterstützt.");
+            return new(unit, characters, bytes);
         }
+
+        private ScsSaveUnitProjection Project(IndexedUnit indexed, bool capture)
+        {
+            var phase = capture ? ScsSaveUnitReadPhase.FieldProjection : ScsSaveUnitReadPhase.StructureValidation;
+            var unit = indexed.Unit;
+            try
+            {
+                var projection = new ScsSaveUnitProjection(unit, capture);
+                for (var number = unit.StartLine + 1; number < unit.EndLine; number++)
+                {
+                    if ((number & 1023) == 0) _cancellation.ThrowIfCancellationRequested();
+                    projection.AddLine(_document.Lines[number]);
+                }
+                projection.Complete();
+                if (indexed.Characters > 8 * 1024 * 1024 && Diagnostics.Count < 32)
+                    Diagnostics.Add(new(unit.Type, indexed.Characters, indexed.Utf8Bytes, phase));
+                return projection;
+            }
+            catch (InvalidDataException exception)
+            {
+                throw UnitFailure(indexed, phase, exception.Message);
+            }
+        }
+
+        private static InvalidDataException UnitFailure(IndexedUnit unit, ScsSaveUnitReadPhase phase, string reason) =>
+            new($"Unit-Typ {unit.Unit.Type} · {unit.Characters} Zeichen / {unit.Utf8Bytes} UTF-8-Bytes (LF) · Prüfphase {phase}: {reason}");
+
+        private sealed record IndexedUnit(ScsSiiUnit Unit, int Characters, int Utf8Bytes);
     }
 }

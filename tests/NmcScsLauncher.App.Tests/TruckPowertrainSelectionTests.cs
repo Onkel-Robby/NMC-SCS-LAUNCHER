@@ -232,9 +232,10 @@ public sealed partial class TruckPowertrainSelectionTests
     {
         public bool PairAllowed { get; set; } = true;
         public ScsTruckPowertrainInspectionReport? InspectionReport { get; set; }
-        public Preview(ScsEffectiveContentRequest request, string currentName = "Current engine")
+        public Preview(ScsEffectiveContentRequest request, string currentName = "Current engine",
+            IReadOnlyList<ScsSaveUnitReadDiagnostic>? unitReadDiagnostics = null)
         {
-            Snapshot = new(request.Profile.GameType, request.Save.GameSiiPath, new string('A', 64), request.Save.DisplayName, Model, "data", "engine", "transmission", Model + "engine/current.sii", Model + "transmission/current.sii", []);
+            Snapshot = new(request.Profile.GameType, request.Save.GameSiiPath, new string('A', 64), request.Save.DisplayName, Model, "data", "engine", "transmission", Model + "engine/current.sii", Model + "transmission/current.sii", [], UnitReadDiagnostics: unitReadDiagnostics);
             Engines = [new(ScsPowertrainKind.Engine, Snapshot.CurrentEnginePath, currentName, true, "Game", "420 hp", true, []),
                 new(ScsPowertrainKind.Engine, Model + "engine/boost.sii", "Boost engine", false, "Workshop source", "700 hp", true, []),
                 new(ScsPowertrainKind.Engine, Model + "engine/unknown.sii", "Unknown engine", false, "DLC", "", false, ["DLC-Berechtigung ungeklärt"])];
