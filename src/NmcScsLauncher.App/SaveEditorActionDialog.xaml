@@ -1,0 +1,194 @@
+<Window x:Class="NmcScsLauncher.App.SaveEditorActionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:NmcScsLauncher.App.Views"
+        Title="NMC SCS LAUNCHER – Save-Editor"
+        Width="620" MinWidth="520" Height="600" MinHeight="430" MaxHeight="740"
+        SizeToContent="Manual" WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize" ShowInTaskbar="False"
+        Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}">
+    <Window.Resources>
+        <Style x:Key="EditorFieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,8,0,5" />
+        </Style>
+        <!-- Retain the application-wide dark TextBox template. Without BasedOn
+             an explicitly styled editor field falls back to white Windows controls. -->
+        <Style x:Key="EditorField" TargetType="TextBox"
+               BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource ControlForegroundBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="MinHeight" Value="40" />
+        </Style>
+    </Window.Resources>
+    <Border Margin="16" Padding="20"
+            Background="{DynamicResource CardBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Margin="0,0,0,18">
+                <TextBlock x:Name="DialogTitle" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock x:Name="DialogDescription" Foreground="{DynamicResource SecondaryTextBrush}"
+                           Margin="0,6,0,0" FontSize="13" TextWrapping="Wrap"/>
+                <Border x:Name="PreviewBanner" Height="112" Margin="0,15,0,0" CornerRadius="9"
+                        ClipToBounds="True" Background="#162D42"/>
+            </StackPanel>
+            <ScrollViewer x:Name="EditorFieldsScrollViewer" Grid.Row="1"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          CanContentScroll="False">
+                <StackPanel Margin="0,0,8,0">
+                    <StackPanel x:Name="MoneyPanel" Visibility="Collapsed">
+                        <TextBlock Text="Geld im ausgewählten Profil" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorMoneyText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <Button Content="Geld übernehmen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorMoneyCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="ExperiencePanel" Visibility="Collapsed">
+                        <TextBlock Text="Erfahrungspunkte (XP)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorExperienceText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <Button Content="Erfahrung übernehmen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorExperienceCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="SkillsPanel" Visibility="Collapsed">
+                        <TextBlock Text="ADR-Maske (0–63)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorAdrMaskText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="Fernfahrten (0–6)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorLongDistanceText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="Hochwertige Fracht (0–6)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorHighValueCargoText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="Zerbrechliche Fracht (0–6)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorFragileCargoText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="Eilaufträge (0–6)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorUrgentDeliveryText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="Eco-Driving (0–6)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorEcoDrivingText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="TruckSwitchPanel" Visibility="Collapsed">
+                        <TextBlock Text="Aktiver Truck" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTruckText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Eigenen Truck auswählen" Style="{StaticResource EditorFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding SaveEditorTrucks}" SelectedItem="{Binding SaveEditorSelectedTruck}"
+                                  DisplayMemberPath="DisplayName" Height="42" Padding="9,6"/>
+                        <Button Content="Truck wechseln" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SwitchSaveEditorTruckCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="TruckRepairPanel" Visibility="Collapsed">
+                        <TextBlock Text="Truck" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTruckText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,12"/>
+                        <TextBlock Text="Die Reparatur verwendet die bereits vorhandenen Prüf- und Bestätigungsabläufe."
+                                   Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                        <Button Content="Truck reparieren" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding RepairSaveEditorTruckCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="FuelPanel" Visibility="Collapsed">
+                        <TextBlock Text="Aktiver Truck" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTruckText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Kraftstoffwert (0 bis 1)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorFuelText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <TextBlock Text="1 = voll, 0,5 = halber Tank. Die vorhandene Werteprüfung bleibt aktiv."
+                                   Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        <Button Content="Kraftstoff setzen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorFuelCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="MileagePanel" Visibility="Collapsed">
+                        <TextBlock Text="Kilometerstand (Tacho und Truck-Manager)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTruckText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,0,0,10"/>
+                        <TextBox Text="{Binding SaveEditorMileageText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <Button Content="Kilometerstand setzen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorMileageCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="TrailerPanel" Visibility="Collapsed">
+                        <TextBlock Text="Aktiver Trailer" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTrailerText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Eigenen Trailer auswählen" Style="{StaticResource EditorFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding SaveEditorTrailers}" SelectedItem="{Binding SaveEditorSelectedTrailer}"
+                                  DisplayMemberPath="DisplayName" Height="42" Padding="9,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <Button Content="Trailer wechseln" Style="{StaticResource PrimaryButtonStyle}" Padding="16,9"
+                                    Command="{Binding SwitchSaveEditorTrailerCommand}" Margin="0,0,10,0"/>
+                            <Button Content="Trailer reparieren" Padding="16,9"
+                                    Command="{Binding RepairSaveEditorTrailerCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel x:Name="CargoPanel" Visibility="Collapsed">
+                        <TextBlock Text="Aktiver Trailer" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorActiveTrailerText}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,10"/>
+                        <TextBlock Text="Frachtgewicht (cargo_mass)" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBox Text="{Binding SaveEditorCargoMassText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditorField}"/>
+                        <Button Content="Frachtgewicht übernehmen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorCargoMassCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="PlatesPanel" Visibility="Collapsed">
+                        <TextBlock Text="Truck-Kennzeichen" FontWeight="SemiBold" FontSize="17" Margin="0,0,0,10"/>
+                        <views:LicensePlateEditor DataContext="{Binding SaveEditorTruckPlate}" IsEnabled="{Binding SaveEditorCanEditPlates}"/>
+                        <Button Content="Truck-Kennzeichen setzen" Margin="0,12,0,20" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorTruckPlateCommand}"/>
+                        <Border Background="{DynamicResource BorderBrush}" Height="1" Margin="0,0,0,18"/>
+                        <TextBlock Text="Trailer-Kennzeichen" FontWeight="SemiBold" FontSize="17" Margin="0,0,0,10"/>
+                        <views:LicensePlateEditor DataContext="{Binding SaveEditorTrailerPlate}" IsEnabled="{Binding SaveEditorCanEditPlates}"/>
+                        <TextBlock Text="Gilt für die aktive Trailer-Kette."
+                                   Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
+                        <Button Content="Trailer-Kennzeichen setzen" Margin="0,12,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SetSaveEditorTrailerPlateCommand}"/>
+                    </StackPanel>
+                    <StackPanel x:Name="BackupPanel" Visibility="Collapsed">
+                        <TextBlock Text="Letztes Sicherheits-Backup" Style="{StaticResource EditorFieldLabel}"/>
+                        <TextBlock Text="{Binding SaveEditorLastBackupPath}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                        <TextBlock Text="Es wird ausschließlich die bestehende abgesicherte Wiederherstellung ausgeführt."
+                                   Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+                        <Button Content="Letztes Backup wiederherstellen" Margin="0,16,0,0" HorizontalAlignment="Left"
+                                Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding RestoreSaveEditorLastBackupCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+            <!-- Fixed footer: save status and close/submit are always accessible,
+                 independently of long Skills or plate forms. -->
+            <StackPanel Grid.Row="2" Margin="0,16,0,0">
+                <Border Background="#14263A" CornerRadius="8" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="Save-Status" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      MaxHeight="68">
+                            <TextBlock Text="{Binding SaveEditorStatusText}" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SecondaryTextBrush}"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+                <Grid Margin="0,14,0,0">
+                    <Button x:Name="SkillsApplyFooterButton" Content="Skills übernehmen"
+                            Visibility="Collapsed" HorizontalAlignment="Left"
+                            Padding="16,9" Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding SetSaveEditorCareerSkillsCommand}"/>
+                    <Button Content="Schließen" HorizontalAlignment="Right"
+                            Padding="18,8" Click="CloseClick"/>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
