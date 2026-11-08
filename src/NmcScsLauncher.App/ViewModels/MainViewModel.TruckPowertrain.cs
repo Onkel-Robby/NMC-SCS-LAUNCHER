@@ -11,6 +11,11 @@ public partial class MainViewModel
 {
     private IScsTruckPowertrainService? _truckPowertrainService;
     private IScsTruckPowertrainPreview? _truckPowertrainPreview;
+    private IScsTruckPowertrainInstaller? _truckPowertrainInstaller;
+    private IScsGameProcessGuard? _truckPowertrainProcessGuard;
+    private ScsTruckPowertrainInstallRequest? _truckPowertrainInstallContext;
+    private CancellationTokenSource? _truckPowertrainInstallCancellation;
+    private Func<bool>? _truckPowertrainInstallContextMatches;
     private TruckPowertrainOptionViewModel[] _truckEngineOptions = [];
     private TruckPowertrainOptionViewModel[] _truckTransmissionOptions = [];
     private CancellationTokenSource? _truckPowertrainCancellation;
@@ -18,14 +23,20 @@ public partial class MainViewModel
     private long _truckPowertrainGeneration;
     private bool _truckPowertrainEventsWired;
 
-    [ObservableProperty] private bool _truckPowertrainIsLoading;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallTruckPowertrainCommand))]
+    private bool _truckPowertrainIsLoading;
     [ObservableProperty] private string _truckPowertrainStatus = "Spielstand mit aktivem Truck auswählen.";
     [ObservableProperty] private string _truckPowertrainContext = string.Empty;
     [ObservableProperty] private string _truckPowertrainDiagnostics = string.Empty;
     [ObservableProperty] private string _truckPowertrainEngineSearch = string.Empty;
     [ObservableProperty] private string _truckPowertrainTransmissionSearch = string.Empty;
-    [ObservableProperty] private TruckPowertrainOptionViewModel? _truckPowertrainSelectedEngine;
-    [ObservableProperty] private TruckPowertrainOptionViewModel? _truckPowertrainSelectedTransmission;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallTruckPowertrainCommand))]
+    private TruckPowertrainOptionViewModel? _truckPowertrainSelectedEngine;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(InstallTruckPowertrainCommand))]
+    private TruckPowertrainOptionViewModel? _truckPowertrainSelectedTransmission;
     [ObservableProperty] private bool _truckPowertrainPairVerified;
     [ObservableProperty] private string _truckPowertrainPairStatus = "Motor und Getriebe auswählen.";
 
@@ -33,6 +44,14 @@ public partial class MainViewModel
     public ObservableCollection<TruckPowertrainOptionViewModel> TruckPowertrainTransmissions { get; } = new();
     public string TruckPowertrainEngineCount => $"{TruckPowertrainEngines.Count} Motoren";
     public string TruckPowertrainTransmissionCount => $"{TruckPowertrainTransmissions.Count} Getriebe";
+
+    public void ConfigureTruckPowertrainInstaller(IScsTruckPowertrainInstaller installer, IScsGameProcessGuard processGuard)
+    {
+        _truckPowertrainInstaller = installer ?? throw new ArgumentNullException(nameof(installer));
+        _truckPowertrainProcessGuard = processGuard ?? throw new ArgumentNullException(nameof(processGuard));
+        InstallTruckPowertrainCommand.NotifyCanExecuteChanged();
+        NotifySaveEditorPowertrainAvailability();
+    }
 
     public void ConfigureTruckPowertrainService(IScsTruckPowertrainService service)
     {
@@ -63,6 +82,8 @@ public partial class MainViewModel
 
     private void QueueTruckPowertrainInspection()
     {
+        if (_truckPowertrainInstallContextMatches?.Invoke() == false)
+            _truckPowertrainInstallCancellation?.Cancel();
         if (_truckPowertrainService is null) return;
         if (IsBusy || SaveEditorIsInspecting || _saveEditorPowertrainCatalog is null ||
             SaveEditorSelectedSave is null || SaveEditorSelectedProfile is null ||
@@ -139,19 +160,24 @@ public partial class MainViewModel
             var service = _truckPowertrainService!;
             var preview = await Task.Run(() => service.InspectAsync(request, cancellation.Token), cancellation.Token);
             if (!current()) return;
-            if (preview.Snapshot.Game != request.Profile.GameType ||
-                !SameTruckPowertrainPath(preview.Snapshot.SaveFilePath, request.Save.GameSiiPath) ||
-                preview.Snapshot.TruckId != truckId ||
-                !string.Equals(preview.Snapshot.TruckModelRoot.TrimEnd('/'), modelRoot.TrimEnd('/'), StringComparison.Ordinal))
+            var snapshot = preview.Snapshot;
+            if (snapshot.Game != request.Profile.GameType ||
+                !SameTruckPowertrainPath(snapshot.SaveFilePath, request.Save.GameSiiPath) ||
+                snapshot.TruckId != truckId ||
+                !string.Equals(snapshot.TruckModelRoot.TrimEnd('/'), modelRoot.TrimEnd('/'), StringComparison.Ordinal))
                 throw new ScsSaveEditException("Die Vorschau gehört nicht mehr zum ausgewählten Truck. Bitte den Spielstand neu laden.");
             _truckPowertrainPreview = preview;
+            // Keep the inspected identity and roots private; UI collections and later selections cannot replace them.
+            _truckPowertrainInstallContext = new(request with
+                { ModDirectories = request.ModDirectories is null ? null : Array.AsReadOnly(request.ModDirectories.ToArray()) },
+                snapshot.SaveSha256, snapshot.TruckId, snapshot.CurrentEnginePath, snapshot.CurrentTransmissionPath);
             _truckEngineOptions = Options(preview.Engines, ScsPowertrainKind.Engine);
             _truckTransmissionOptions = Options(preview.Transmissions, ScsPowertrainKind.Transmission);
             ApplyTruckPowertrainFilters();
             TruckPowertrainSelectedEngine = _truckEngineOptions.FirstOrDefault(item => item.IsCurrent);
             TruckPowertrainSelectedTransmission = _truckTransmissionOptions.FirstOrDefault(item => item.IsCurrent);
             TruckPowertrainDiagnostics = string.Join(Environment.NewLine, preview.Diagnostics);
-            TruckPowertrainStatus = $"Vorschau · {_truckEngineOptions.Length} Motoren und {_truckTransmissionOptions.Length} Getriebe. Änderungen werden noch nicht gespeichert.";
+            TruckPowertrainStatus = $"Vorschau · {_truckEngineOptions.Length} Motoren und {_truckTransmissionOptions.Length} Getriebe. Vor dem Einbau werden Spielstand und Quellen erneut geprüft.";
             AssessTruckPowertrainPair();
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
@@ -185,6 +211,7 @@ public partial class MainViewModel
         _truckPowertrainCancellation = null;
         _truckPowertrainContextMatches = null;
         _truckPowertrainPreview = null;
+        _truckPowertrainInstallContext = null;
         _truckEngineOptions = [];
         _truckTransmissionOptions = [];
         TruckPowertrainEngineSearch = string.Empty;
@@ -200,6 +227,7 @@ public partial class MainViewModel
         TruckPowertrainPairVerified = false;
         TruckPowertrainPairStatus = "Motor und Getriebe auswählen.";
         NotifyTruckPowertrainCounts();
+        InstallTruckPowertrainCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnTruckPowertrainEngineSearchChanged(string value) => ApplyTruckPowertrainFilters();
@@ -252,6 +280,126 @@ public partial class MainViewModel
                 : string.Join(Environment.NewLine, assessment.Reasons);
         }
         catch (ScsSaveEditException exception) { TruckPowertrainPairStatus = exception.Message; }
+    }
+
+    private bool CanInstallTruckPowertrain() => TryCreateTruckPowertrainInstallRequest(out _, out _);
+
+    private bool TryCreateTruckPowertrainInstallRequest(out ScsTruckPowertrainInstallRequest? request, out string reason)
+    {
+        request = null;
+        reason = "Motor und Getriebe aus der aktuellen, geprüften Vorschau auswählen.";
+        var context = _truckPowertrainInstallContext;
+        var engine = TruckPowertrainSelectedEngine;
+        var transmission = TruckPowertrainSelectedTransmission;
+        if (_truckPowertrainInstaller is null || _truckPowertrainProcessGuard is null || _truckPowertrainPreview is null ||
+            context is null || IsBusy || SaveEditorIsInspecting || TruckPowertrainIsLoading ||
+            _truckPowertrainContextMatches?.Invoke() != true || engine is null || transmission is null ||
+            !_truckEngineOptions.Contains(engine) || !_truckTransmissionOptions.Contains(transmission) ||
+            !engine.IsSelectable || !transmission.IsSelectable)
+            return false;
+        try
+        {
+            if (context.Content.Profile.StorageKind == ScsProfileStorageKind.SteamCloudRemote ||
+                ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(context.Content.Profile.GameType, context.Content.Profile.ProfileDirectory))
+            {
+                reason = "Das Steam-Cloud-Profil ist für direkte Änderungen gesperrt.";
+                return false;
+            }
+            if (_truckPowertrainProcessGuard.IsAnyScsGameRunning())
+            {
+                reason = "Für den Antriebseinbau müssen Euro Truck Simulator 2 und American Truck Simulator beendet sein.";
+                return false;
+            }
+            if (context.ExpectedSaveSha256.Length != 64 || !context.ExpectedSaveSha256.All(Uri.IsHexDigit) ||
+                string.IsNullOrWhiteSpace(context.ExpectedTruckId))
+            {
+                reason = "Die Identität des geprüften Spielstands ist unvollständig. Bitte erneut laden.";
+                return false;
+            }
+            if (engine.DataPath == context.EngineDataPath && transmission.DataPath == context.TransmissionDataPath)
+            {
+                reason = "Diese Kombination ist bereits eingebaut.";
+                return false;
+            }
+            var assessment = _truckPowertrainPreview.AssessPair(engine.DataPath, transmission.DataPath);
+            if (!assessment.IsVerified || assessment.EngineDataPath != engine.DataPath || assessment.TransmissionDataPath != transmission.DataPath)
+            {
+                reason = assessment.Reasons.Count > 0 ? string.Join(Environment.NewLine, assessment.Reasons)
+                    : "Die gewählte Kombination ist nicht vollständig geprüft.";
+                return false;
+            }
+            request = context with { EngineDataPath = engine.DataPath, TransmissionDataPath = transmission.DataPath };
+            return true;
+        }
+        catch (Exception exception)
+        {
+            reason = $"Die Einbauprüfung konnte nicht abgeschlossen werden: {exception.Message}";
+            return false;
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanInstallTruckPowertrain))]
+    private async Task InstallTruckPowertrainAsync()
+    {
+        if (!TryCreateTruckPowertrainInstallRequest(out var request, out var reason))
+        {
+            SaveEditorStatusText = reason;
+            return;
+        }
+        var installer = _truckPowertrainInstaller!;
+        var generation = _truckPowertrainGeneration;
+        var engine = TruckPowertrainSelectedEngine!;
+        var transmission = TruckPowertrainSelectedTransmission!;
+        const string title = "Motor & Getriebe einbauen";
+        if (!_confirmationService.ConfirmSaveEdit(title,
+                $"Motor: {engine.Name}\nGetriebe: {transmission.Name}\n\nDiese Kombination in den ausgewählten Truck einbauen? " +
+                "Der Spielstand und die wirksamen Quellen werden erneut geprüft. Vor dem Speichern wird ein Sicherheits-Backup erstellt. " +
+                "Beide Spiele müssen beendet bleiben."))
+            return;
+        if (generation != _truckPowertrainGeneration || !ReferenceEquals(installer, _truckPowertrainInstaller) ||
+            !ReferenceEquals(engine, TruckPowertrainSelectedEngine) || !ReferenceEquals(transmission, TruckPowertrainSelectedTransmission) ||
+            _truckPowertrainContextMatches?.Invoke() != true)
+        {
+            SaveEditorStatusText = "Die Auswahl wurde während der Bestätigung geändert. Auswahl bitte erneut prüfen.";
+            return;
+        }
+        if (!TryCreateTruckPowertrainInstallRequest(out var currentRequest, out reason) || currentRequest != request)
+        {
+            SaveEditorStatusText = reason;
+            return;
+        }
+        var approvedRequest = request!;
+        var truck = SaveEditorSelectedTruck;
+        var modset = SelectedModset;
+        var selectionGeneration = _saveEditorSelectionGeneration;
+        var inspectionGeneration = _saveEditorInspectionGeneration;
+        bool ContextMatches() => approvedRequest.Content.Profile.GameType == SaveEditorSelectedGame &&
+            ReferenceEquals(approvedRequest.Content.Profile, SaveEditorSelectedProfile) &&
+            ReferenceEquals(approvedRequest.Content.Save, SaveEditorSelectedSave) &&
+            ReferenceEquals(truck, SaveEditorSelectedTruck) && ReferenceEquals(modset, SelectedModset) &&
+            selectionGeneration == _saveEditorSelectionGeneration && inspectionGeneration == _saveEditorInspectionGeneration &&
+            string.Equals(approvedRequest.Content.PreferredInstallPath, GetSavedPath(approvedRequest.Content.Profile.GameType), StringComparison.OrdinalIgnoreCase);
+        using var cancellation = new CancellationTokenSource();
+        _truckPowertrainInstallCancellation = cancellation;
+        _truckPowertrainInstallContextMatches = ContextMatches;
+        try
+        {
+            // IsBusy clears the preview, so the installation has its own context and cancellation lifetime.
+            await ExecuteSaveEditorEditAsync(title, async () =>
+            {
+                try { return await installer.InstallAsync(approvedRequest, cancellation.Token); }
+                finally
+                {
+                    _truckPowertrainInstallCancellation = null;
+                    _truckPowertrainInstallContextMatches = null;
+                }
+            }, selectionIsCurrent: ContextMatches);
+        }
+        finally
+        {
+            _truckPowertrainInstallCancellation = null;
+            _truckPowertrainInstallContextMatches = null;
+        }
     }
 
     private void NotifyTruckPowertrainCounts()

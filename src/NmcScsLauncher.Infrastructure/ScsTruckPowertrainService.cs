@@ -52,9 +52,13 @@ public sealed class ScsTruckPowertrainService(
         { ObjectDisposedException.ThrowIf(_disposed, this); return Preview.AssessPair(enginePath, transmissionPath); }
         public async Task VerifyUnchangedAsync(CancellationToken cancellationToken = default)
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
-            await session.VerifyUnchangedAsync(cancellationToken).ConfigureAwait(false);
+            await VerifySourcesUnchangedAsync(cancellationToken).ConfigureAwait(false);
             await VerifySaveUnchangedAsync(Snapshot, cancellationToken).ConfigureAwait(false);
+        }
+        public Task VerifySourcesUnchangedAsync(CancellationToken cancellationToken = default)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return session.VerifyUnchangedAsync(cancellationToken);
         }
         public string BuildUpdatedContent(string enginePath, string transmissionPath)
         {

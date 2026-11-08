@@ -13,6 +13,8 @@ public sealed class ScsSaveEditService : IScsSaveEditService
     };
 
     private static readonly UTF8Encoding Utf8NoBom = new(false);
+    private static readonly UTF8Encoding StrictUtf8NoBom = new(false, true);
+    private const int MaximumGuardedBytes = 128 * 1024 * 1024;
     private readonly IScsSaveCodec _codec;
     private readonly IScsGameProcessGuard _processGuard;
     private readonly string _backupRoot;
@@ -32,6 +34,9 @@ public sealed class ScsSaveEditService : IScsSaveEditService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (request.TransactionValidation is not null)
+            return await ApplyGuardedAsync(request, cancellationToken).ConfigureAwait(false);
 
         var targetPath = ValidateTargetPath(request.FilePath);
         var isLiveWrite = EnsureWriteAllowed(
@@ -119,6 +124,246 @@ public sealed class ScsSaveEditService : IScsSaveEditService
             TryDelete(tempPath);
             TryDelete(rollbackPath);
         }
+    }
+
+    private async Task<ScsSaveEditResult> ApplyGuardedAsync(ScsSaveEditRequest request, CancellationToken token)
+    {
+        var validation = request.TransactionValidation!;
+        var targetPath = ValidateTargetPath(request.FilePath);
+        var operation = string.IsNullOrWhiteSpace(request.Operation) ? "Save edit" : request.Operation.Trim();
+        var tempPath = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-edit-{Guid.NewGuid():N}.tmp");
+        var rollbackPath = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-rollback-{Guid.NewGuid():N}.tmp");
+        string? backupPath = null;
+        string? capturedOriginalSha = null;
+        string? outputSha = null;
+        var replaced = false;
+        var removeRollback = false;
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            ValidateGuardedTarget(targetPath);
+            EnsureGameStopped();
+            var expectedSha = validation.ExpectedOriginalSha256;
+            if (expectedSha is null || expectedSha.Length != 64 || expectedSha.Any(character => !Uri.IsHexDigit(character)) ||
+                validation.ValidateBeforeCommitAsync is null || validation.ValidateWrittenAsync is null)
+                throw new ScsSaveEditException("Die verifizierte Transaktion benötigt einen gültigen Original-SHA-256 und beide Prüfungen.");
+            await RequireGuardedHashAsync(targetPath, expectedSha, token).ConfigureAwait(false);
+            if (request.UpdatedContent.Length > MaximumGuardedBytes || StrictUtf8NoBom.GetByteCount(request.UpdatedContent) > MaximumGuardedBytes)
+                throw new ScsSaveEditException("Der geänderte Save überschreitet das Prüflimit von 128 MiB.");
+            _ = ScsSiiTextDocument.Parse(request.UpdatedContent);
+            var output = StrictUtf8NoBom.GetBytes(request.UpdatedContent);
+            outputSha = Convert.ToHexString(SHA256.HashData(output));
+
+            await validation.ValidateBeforeCommitAsync(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            ValidateGuardedTarget(targetPath);
+            EnsureGameStopped();
+            await RequireGuardedHashAsync(targetPath, expectedSha, token).ConfigureAwait(false);
+            EnsureGameStopped();
+            CheckExistingAncestry(_backupRoot);
+            var backupDirectory = Path.Combine(_backupRoot, DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fff"), Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(backupDirectory);
+            ScsDefinitionSource.CheckNoReparsePoints(backupDirectory);
+            backupPath = Path.Combine(backupDirectory, Path.GetFileName(targetPath));
+            await CopyGuardedFileAsync(targetPath, backupPath, token).ConfigureAwait(false);
+            await RequireGuardedHashAsync(backupPath, expectedSha, token).ConfigureAwait(false);
+
+            await using (var temporary = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
+            {
+                await temporary.WriteAsync(output, token).ConfigureAwait(false);
+                await temporary.FlushAsync(token).ConfigureAwait(false);
+                temporary.Flush(flushToDisk: true);
+            }
+            var prepared = await ReadGuardedTextAsync(tempPath, outputSha, token).ConfigureAwait(false);
+            if (!string.Equals(prepared, request.UpdatedContent, StringComparison.Ordinal))
+                throw new ScsSaveEditException("Die vorbereiteten Save-Bytes stimmen nicht mit der geprüften Änderung überein.");
+
+            await validation.ValidateBeforeCommitAsync(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            ValidateGuardedTarget(targetPath);
+            EnsureGameStopped();
+            await RequireGuardedHashAsync(backupPath, expectedSha, token).ConfigureAwait(false);
+            await RequireGuardedHashAsync(tempPath, outputSha, token).ConfigureAwait(false);
+            await RequireGuardedHashAsync(targetPath, expectedSha, token).ConfigureAwait(false);
+            EnsureGameStopped();
+            ValidateGuardedTarget(targetPath);
+            token.ThrowIfCancellationRequested();
+            // A single atomic replacement, with no copy/delete fallback. Its captured preimage
+            // closes the last hash-to-replace race: a newer preimage must be restored, not discarded.
+            File.Replace(tempPath, targetPath, rollbackPath, ignoreMetadataErrors: true);
+            replaced = true;
+            capturedOriginalSha = await GuardedHashAsync(rollbackPath, CancellationToken.None).ConfigureAwait(false);
+            if (!HashEquals(capturedOriginalSha, expectedSha))
+                throw new ScsSaveEditException("Die tatsächlich ersetzte Save-Datei war bereits neuer als der geprüfte Originalstand.");
+            var written = await ReadGuardedTextAsync(targetPath, outputSha, token).ConfigureAwait(false);
+            await validation.ValidateWrittenAsync(written, token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            ValidateGuardedTarget(targetPath);
+            await RequireGuardedHashAsync(backupPath, expectedSha, token).ConfigureAwait(false);
+            await RequireGuardedHashAsync(targetPath, outputSha, token).ConfigureAwait(false);
+            EnsureGameStopped();
+            token.ThrowIfCancellationRequested();
+            removeRollback = true;
+            return new(targetPath, backupPath, operation, expectedSha.ToLowerInvariant(), outputSha.ToLowerInvariant(), DateTimeOffset.UtcNow);
+        }
+        catch (Exception exception)
+        {
+            // ReplaceFile can fail after producing a rollback file. Treat that as a possible
+            // completed replacement and preserve/recover its actual captured bytes as well.
+            if ((replaced || File.Exists(rollbackPath)) && outputSha is not null)
+            {
+                try { capturedOriginalSha ??= await GuardedHashAsync(rollbackPath, CancellationToken.None).ConfigureAwait(false); }
+                catch (Exception captureFailure) when (captureFailure is IOException or UnauthorizedAccessException or ScsSaveEditException or InvalidDataException)
+                {
+                    throw RecoveryFailure(operation, backupPath, rollbackPath, "Der erfasste Originalstand konnte nicht geprüft werden.", exception);
+                }
+                var recoveryError = await TryRecoverGuardedAsync(targetPath, rollbackPath, capturedOriginalSha, outputSha).ConfigureAwait(false);
+                if (recoveryError is not null)
+                    throw RecoveryFailure(operation, backupPath, rollbackPath, recoveryError, exception);
+                removeRollback = true;
+                if (exception is OperationCanceledException) throw;
+                throw new ScsSaveEditException($"SII-Änderung '{operation}' wurde abgebrochen; der tatsächlich ersetzte Dateistand wurde atomar wiederhergestellt. Backup: {backupPath}", exception);
+            }
+            if (exception is ScsSaveEditException or OperationCanceledException) throw;
+            throw new ScsSaveEditException($"SII-Änderung '{operation}' konnte nicht sicher angewendet werden.", exception);
+        }
+        finally
+        {
+            TryDelete(tempPath);
+            if (removeRollback) TryDelete(rollbackPath);
+        }
+    }
+
+    private static async Task<string?> TryRecoverGuardedAsync(string targetPath, string rollbackPath, string originalSha, string proposedSha)
+    {
+        var restoration = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-recovery-{Guid.NewGuid():N}.tmp");
+        var displaced = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-recovery-displaced-{Guid.NewGuid():N}.tmp");
+        var recovered = false;
+        try
+        {
+            ValidateGuardedTarget(targetPath);
+            await RequireGuardedHashAsync(targetPath, proposedSha, CancellationToken.None).ConfigureAwait(false);
+            await RequireGuardedHashAsync(rollbackPath, originalSha, CancellationToken.None).ConfigureAwait(false);
+            await CopyGuardedFileAsync(rollbackPath, restoration, CancellationToken.None).ConfigureAwait(false);
+            await RequireGuardedHashAsync(restoration, originalSha, CancellationToken.None).ConfigureAwait(false);
+            ValidateGuardedTarget(targetPath);
+            await RequireGuardedHashAsync(targetPath, proposedSha, CancellationToken.None).ConfigureAwait(false);
+            File.Replace(restoration, targetPath, displaced, ignoreMetadataErrors: true);
+            var displacedSha = await GuardedHashAsync(displaced, CancellationToken.None).ConfigureAwait(false);
+            if (!HashEquals(displacedSha, proposedSha))
+            {
+                var externalResult = await ReturnConcurrentSaveAsync(targetPath, displaced, displacedSha, originalSha).ConfigureAwait(false);
+                return "Während der Wiederherstellung wurde ein weiterer externer Save erkannt. " + externalResult + " Erfasste externe Datei: " + displaced;
+            }
+            await RequireGuardedHashAsync(targetPath, originalSha, CancellationToken.None).ConfigureAwait(false);
+            recovered = true;
+            return null;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ScsSaveEditException or InvalidDataException or NotSupportedException)
+        {
+            return "Automatische Wiederherstellung ausgesetzt; die Ziel- oder Wiederherstellungsdatei ist verändert, gesperrt oder nicht prüfbar. " +
+                exception.Message + (File.Exists(displaced) ? " Erfasste Datei: " + displaced : string.Empty);
+        }
+        finally
+        {
+            TryDelete(restoration);
+            if (recovered) TryDelete(displaced);
+        }
+    }
+
+    private static async Task<string> ReturnConcurrentSaveAsync(string targetPath, string externalPath, string externalSha, string restoredSha)
+    {
+        var temporary = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-external-recovery-{Guid.NewGuid():N}.tmp");
+        var captured = Path.Combine(Path.GetDirectoryName(targetPath)!, $".nmc-save-external-captured-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            ValidateGuardedTarget(targetPath);
+            await RequireGuardedHashAsync(targetPath, restoredSha, CancellationToken.None).ConfigureAwait(false);
+            await CopyGuardedFileAsync(externalPath, temporary, CancellationToken.None).ConfigureAwait(false);
+            await RequireGuardedHashAsync(temporary, externalSha, CancellationToken.None).ConfigureAwait(false);
+            await RequireGuardedHashAsync(targetPath, restoredSha, CancellationToken.None).ConfigureAwait(false);
+            File.Replace(temporary, targetPath, captured, ignoreMetadataErrors: true);
+            await RequireGuardedHashAsync(captured, restoredSha, CancellationToken.None).ConfigureAwait(false);
+            await RequireGuardedHashAsync(targetPath, externalSha, CancellationToken.None).ConfigureAwait(false);
+            TryDelete(captured);
+            return "Der externe Dateistand wurde wieder eingesetzt.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ScsSaveEditException or InvalidDataException or NotSupportedException)
+        {
+            return "Der externe Stand muss anhand der erhaltenen Dateien manuell geprüft werden. " + exception.Message +
+                (File.Exists(captured) ? " Zusätzlich erfasste Datei: " + captured : string.Empty);
+        }
+        finally { TryDelete(temporary); }
+    }
+
+    private static ScsSaveEditException RecoveryFailure(string operation, string? backup, string rollback, string reason, Exception inner) =>
+        new($"SII-Änderung '{operation}' ist fehlgeschlagen. {reason} Ziel nicht weiter verändern. Backup: {backup ?? "nicht erstellt"}; Wiederherstellungsdatei: {rollback}", inner);
+
+    private void EnsureGameStopped()
+    {
+        if (_processGuard.IsAnyScsGameRunning())
+            throw new ScsSaveEditException("Die verifizierte Änderung erfordert vollständig beendetes ETS2 und ATS.");
+    }
+
+    private static void ValidateGuardedTarget(string path)
+    {
+        ScsDefinitionSource.CheckNoReparsePoints(path);
+        for (var directory = new DirectoryInfo(Path.GetDirectoryName(path)!); directory is not null; directory = directory.Parent)
+            if (ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(GameType.Ets2, directory.FullName) ||
+                ScsProfileSaveLocator.IsSteamCloudRemoteProfileDirectory(GameType.Ats, directory.FullName))
+                throw new ScsSaveEditException("Saves in Steam-userdata sind schreibgeschützt; eine direkte Transaktion darf diese Sperre nicht umgehen.");
+    }
+
+    private static void CheckExistingAncestry(string path)
+    {
+        for (var current = Path.GetFullPath(path); !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
+            if (File.Exists(current) || Directory.Exists(current)) ScsDefinitionSource.CheckNoReparsePoints(current);
+    }
+
+    private static bool HashEquals(string left, string right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+    private static async Task RequireGuardedHashAsync(string path, string expected, CancellationToken token)
+    {
+        if (!HashEquals(await GuardedHashAsync(path, token).ConfigureAwait(false), expected))
+            throw new ScsSaveEditException("Die Dateiprüfsumme hat sich geändert; die verifizierte Transaktion wird abgebrochen.");
+    }
+    private static async Task<string> GuardedHashAsync(string path, CancellationToken token)
+    {
+        ScsDefinitionSource.CheckNoReparsePoints(path);
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        GuardedSize(stream.Length);
+        return Convert.ToHexString(await SHA256.HashDataAsync(stream, token).ConfigureAwait(false));
+    }
+    private static async Task<string> ReadGuardedTextAsync(string path, string expectedSha, CancellationToken token)
+    {
+        ScsDefinitionSource.CheckNoReparsePoints(path);
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        GuardedSize(stream.Length);
+        var bytes = new byte[(int)stream.Length];
+        await stream.ReadExactlyAsync(bytes, token).ConfigureAwait(false);
+        if (stream.ReadByte() != -1 || !HashEquals(Convert.ToHexString(SHA256.HashData(bytes)), expectedSha))
+            throw new ScsSaveEditException("Der tatsächlich geschriebene Save entspricht nicht den vorbereiteten Bytes.");
+        var content = StrictUtf8NoBom.GetString(bytes);
+        _ = ScsSiiTextDocument.Parse(content);
+        return content;
+    }
+    private static async Task CopyGuardedFileAsync(string sourcePath, string destinationPath, CancellationToken token)
+    {
+        ScsDefinitionSource.CheckNoReparsePoints(sourcePath);
+        ScsDefinitionSource.CheckNoReparsePoints(Path.GetDirectoryName(destinationPath)!);
+        await using var source = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        GuardedSize(source.Length);
+        await using var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await source.CopyToAsync(destination, token).ConfigureAwait(false);
+        await destination.FlushAsync(token).ConfigureAwait(false);
+        destination.Flush(flushToDisk: true);
+    }
+    private static void GuardedSize(long length)
+    {
+        if (length is <= 0 or > MaximumGuardedBytes) throw new ScsSaveEditException("Die Save-Datei ist leer oder überschreitet das Prüflimit von 128 MiB.");
     }
 
     public async Task RestoreBackupAsync(

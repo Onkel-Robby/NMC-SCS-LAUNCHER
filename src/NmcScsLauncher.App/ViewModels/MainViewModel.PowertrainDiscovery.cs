@@ -195,7 +195,7 @@ public partial class MainViewModel
     private bool CanSetSaveEditorTransmission() => CanSetSaveEditorPowertrain(true);
     private bool CanSetSaveEditorPowertrain(bool transmission)
     {
-        if (!SaveEditorCanEditPlates || _saveEditorPowertrainCatalog is null) return false;
+        if (_truckPowertrainInstaller is not null || !SaveEditorCanEditPlates || _saveEditorPowertrainCatalog is null) return false;
         var selected = transmission ? SaveEditorSelectedTransmission : SaveEditorSelectedEngine;
         var choices = transmission ? _saveEditorPowertrainCatalog.Transmissions : _saveEditorPowertrainCatalog.Engines;
         return selected is not null && choices.Any(item => ReferenceEquals(item, selected));

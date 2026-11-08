@@ -65,10 +65,41 @@ Der vollständige Original-Volvo-FH16 aus `truck_desktop` wurde nur außerhalb d
 
 D2 wurde mit fehlerfreiem Release-Build und 110 zusätzlichen Tests geprüft. Lokal bestehen 646/649 Tests; ausschließlich die drei bekannten Steam-Erkennungskonflikte bleiben. Die gesamte App-Suite besteht mit 205 Tests. Die Truck-Oberfläche wurde offline bei 1080, 1320 und 1600 Pixeln geprüft. Der neue Bereich ist in D2 eine Vorschau; die vorhandenen Save-basierten Einzelaktionen stehen vorübergehend in einer eingeklappten separaten Gruppe. D3 ersetzt diesen Übergang durch den erneut geprüften gemeinsamen Einbau.
 
+## D3 – Gemeinsamer Einbau und Transaktionsschutz
+
+Der Truck-Reiter verwendet einen gemeinsamen Einbau für das ausgewählte Motor-/Getriebepaar. Die bisherigen einzelnen Save-basierten Motor-/Getriebeaktionen sind in der produktiven Oberfläche ersetzt. Eine bekannte Verwendung in einem anderen Truck ist weiterhin eine Fundinformation, aber kein Ersatz für die vollständige Prüfung der aktuellen Konfiguration.
+
+Der Einbaudienst liest den Save frisch und prüft den erwarteten SHA-256 sowie die aktive Truck-ID. Er öffnet die wirksamen Quellen erneut und bewertet das vollständige Paar. Die freigegebenen Änderungen betreffen ausschließlich die zwei bestehenden `data_path`-Felder. Zubehörreferenzen, Kennzeichen, Verschleiß und sämtliche übrigen gespeicherten Werte bleiben erhalten. Auch ein Wechsel nur einer Komponente nutzt diese gemeinsame Prüfung; unveränderte Paare werden nicht erneut geschrieben.
+
+Die bestehende `ScsSaveEditService`-Pipeline erhält dafür einen optionalen strengen Transaktionsvertrag. Sie verlangt ein beendetes ETS2 und ATS, blockiert Steam-userdata sowie verknüpfte Zielpfade und bindet Backup und Austausch an den erwarteten Originalhash. Quellen und Original werden vor dem Backup und vor dem atomaren Austausch erneut geprüft. Nach dem Austausch werden tatsächliche Dateibytes, der gelesene Truck und die Quellen validiert. Das eine automatische Backup bewahrt die Originalbytes.
+
+Der Rücksetzpfad bleibt bis zum Ende der Nachprüfung erhalten. Scheitert diese, stellt die Pipeline die vorherige Datei atomar wieder her, sofern die Zieldatei noch ihren eigenen geschriebenen Inhalt besitzt. Eine zwischenzeitlich fremd geänderte Datei wird nicht überschrieben; Backup und Rücksetzdatei bleiben dann mit ihren Wiederherstellungspfaden erhalten. Abbruch nach dem Austausch überspringt diese Wiederherstellung nicht. Ein nicht unterstützter atomarer Austausch hat keinen ungesicherten Kopier-Fallback.
+
+Der unterstützte Wechsel erhält die bekannten Steuerungsbereiche der Definitionen: Diesel-Motortyp, Vorwärts-/Rückwärts- und Kriechgänge, Motorbrems- und Retarder-Stufen, zugehörige Hilfsbremszuordnungen sowie Getriebeklasse und Wandlersteuerung. Unterschiede in diesen Bereichen bleiben gesperrt. Leistungs- und Übersetzungswerte dürfen sich innerhalb eines ansonsten bestätigten Paars unterscheiden. Die aktuelle Definition muss dafür ebenso lesbar und unterstützt sein wie die neue.
+
+Die Bedeutung und Speicherung sämtlicher interner Laufzeitzustände ist nicht öffentlich vollständig spezifiziert. Insbesondere wird kein Bitlayout von `stored_actor_state` behauptet oder verändert. D3 implementiert keine Zustandsmigration und setzt keine vermuteten Gang-/Bremswerte zurück. Die Kontrolle erhält die bekannten Definitionsbereiche und sämtliche übrigen Save-Felder; die praktische Lade- und Fahrprüfung im jeweiligen Spiel bleibt Teil der Feldabnahme.
+
+### Verbleibender Umfang und Feldabnahme
+
+Ungeklärte DLC-Berechtigung, fehlende aktive Pakete, nicht unterstützte Archive, unbekannte Definitionseigenschaften, Hookups, zusätzliche notwendige Zubehörumbauten und Änderungen der genannten Steuerungsbereiche bleiben ohne Einbaufreigabe. Elektro-/Benzinwechsel sowie automatische Badge-/Zubehörumbauten sind nicht Bestandteil des verifizierten Teilumfangs. Diese Grenzen werden nicht durch bloße Modellgleichheit oder eine Save-Fundstelle umgangen.
+
+Für ETS2 und ATS jeweils an einem kopierten manuellen Save prüfen:
+
+1. Spiel beenden, vorgesehenes Profil und Start-Modset auswählen und den aktiven Truck laden. Aktuelle Komponenten, Herkunft und Sperrgründe mit der Konfiguration vergleichen.
+2. Ein freigegebenes, tatsächlich anderes Paar wählen. Gemeinsamen Einbau bestätigen; ein Backup und aktualisierte aktuelle Komponenten erwarten.
+3. Den bearbeiteten Save im passenden Spiel laden. Motorstart, Vorwärts-/Rückwärtsgänge, Schaltung, Motorbremse und Retarder prüfen. Zubehör und Kennzeichen müssen erhalten bleiben; das Log darf keine neuen fehlenden oder ungültigen Zubehördefinitionen melden.
+4. Mit dem bereitgestellten Backup wiederherstellen und den Ausgangszustand prüfen. Bei bewusst fehlenden Quellen, einem geänderten Save oder laufendem Spiel muss der Einbau gesperrt bzw. abgebrochen werden.
+
+Automatische Tests und synthetische Saves ersetzen diese spielseitige Abnahme nicht. Bei der Entwicklung werden keine tatsächlichen Benutzer-Saves geschrieben und keine Spiele mit ihnen gestartet.
+
 ## Stand
 
 D1: implementiert und unabhängig geprüft. Der .NET-10-Release-Build läuft ohne Warnungen und Fehler; alle 106 neuen D1-Tests bestehen. Die vollständige lokale Suite umfasst 539 Tests: 536 bestehen, drei bereits vor D1 reproduzierte Steam-Erkennungstests kollidieren mit der real registrierten ETS2-Installation. Registry und Tests wurden dafür nicht verändert; der vollständige Windows-CI-Lauf wird im D1-PR dokumentiert.
 
 D1 wurde als [PR #90](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/pull/90) veröffentlicht. [Windows-CI #265](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/actions/runs/42403512660) besteht mit allen 539 Tests; [NMC Custom Installer #135](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/actions/runs/42403512761) besteht einschließlich Upgrade bei gleicher öffentlicher Version und Uninstall-Smoke-Test. Kein Merge durchgeführt.
 
-D2: Auswahl und Kompatibilitätsprüfung implementiert. D3: verifizierter Einbau folgt; nicht sicher prüfbare Fälle bleiben gesperrt. Version 1.0.0 bleibt unverändert.
+D2 wurde als [PR #91](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/pull/91) veröffentlicht. [Windows-CI #266](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/actions/runs/42406175744) besteht mit allen 649 Tests; [NMC Custom Installer #136](https://github.com/Onkel-Robby/NMC-SCS-LAUNCHER/actions/runs/42406175788) besteht einschließlich Upgrade bei gleicher öffentlicher Version und Deinstallation. Kein Merge durchgeführt.
+
+D3: der verifizierte Einbau ist implementiert. Der Release-Build läuft ohne Warnungen und Fehler. Alle 100 zusätzlichen D3-Tests bestehen; die vollständige lokale Suite besteht mit 746/749 Tests einschließlich 232 App-Tests. Die drei übrigen Fehler sind dieselben vor D1 reproduzierten Steam-Erkennungskonflikte. Unabhängige Prüfungen von Transaktion, Quellenbindung und UI ergaben keine weiteren konkreten Befunde. Die Oberfläche wurde bei 1080 und 1320 Pixeln einschließlich Einbauknopf und Backup-Bereich geprüft. Version 1.0.0 bleibt unverändert.
+
+Der vollständige synthetische Original-Volvo-FH16 mit 44 Zubehörteilen liefert weiterhin 16 gültige Komponentendefinitionen. Mit den zusätzlichen D3-Zustandsgrenzen bleiben zwei Paare frei: der aktuelle Antrieb und derselbe D16G750 mit dem alternativen 12-Gang-Retardergetriebe ohne Overdrive. Dieser tatsächliche Getriebewechsel wurde gegen die echten installierten Definitionen über die vollständige Pipeline ausgeführt: ausschließlich der erwartete Pfad geändert, genau ein bytegleiches Backup, erneute Save-/Quellenprüfung und bytegleiche Wiederherstellung. Originalarchive blieben unverändert. Automatisierte ETS2-/ATS-Fixtures prüfen zusätzlich den gleichzeitigen Wechsel von Motor und Getriebe. Ein echter Ingame-Ladetest ist noch offen.

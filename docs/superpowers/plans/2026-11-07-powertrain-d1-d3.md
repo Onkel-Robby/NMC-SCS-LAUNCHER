@@ -50,14 +50,16 @@ Files: new powertrain compatibility contracts/service and strict truck snapshot 
 - [x] Test full accessory count/index/reference integrity and independent truck `data.sii` model proof.
 - [x] Resolve all retained definitions; verify require/conflict/suitable/default/override rules for the final pair. Reject unsupported cascades, hookups, engine-type changes and unknown syntax.
 - [x] Show names/locale where proven, source, current parts and reliable torque/gear facts directly in searchable Truck choices. Keep technical details optional and retain existing save-derived actions.
-- [ ] Release build, full suite, visual review, docs and D2 PR with Windows CI/installer result.
+- [x] Release build, full suite, visual review, docs and D2 PR with Windows CI/installer result. PR91; CI266 all649 passing; NMC installer136 upgrade/uninstall passed.
 
 ## D3 – Verified pair installation
 
 Files: existing save request/pipeline and vehicle service, new verified installation service, existing Truck command, transaction regression tests.
 
-- [ ] Add opt-in expected original SHA, precommit validation and post-write validation to the existing pipeline; preserve old callers.
-- [ ] Reacquire and verify D1/D2 evidence for the selected save, truck and pair. Block Steam userdata and running games at service and commit boundaries.
-- [ ] Apply both paths in one transaction/backup; validate written graph and restore on failed postvalidation without deleting needed recovery evidence.
-- [ ] Test changed bytes with unchanged timestamps, changed source/include/order, late game start, forged approval, successful pair and rollback cases.
-- [ ] Release build, full suite, independent review, docs and D3 PR with Windows CI/installer result; report supported subset and field tests.
+- [x] Add opt-in expected original SHA, precommit validation and post-write validation to the existing pipeline; preserve old callers.
+- [x] Reacquire and verify D1/D2 evidence for the selected save, truck and pair. Block Steam userdata and running games at service and commit boundaries.
+- [x] Apply both paths in one transaction/backup; validate written graph and restore on failed postvalidation without deleting needed recovery evidence.
+- [x] Test changed bytes with unchanged timestamps, changed source/include/order, late game start, forged approval, successful pair and rollback cases.
+- [x] Release build, full suite, independent review, docs and supported subset/field tests. All100 added D3 tests pass; local746/749 with the same three pre-existing Steam detector conflicts. Actual-source synthetic Volvo installation and exact backup restore passed.
+
+D3 is published separately on `feat/powertrain-verified-install`, based on D2. Windows CI and installer results are recorded in the pull request after their runs finish; no merge is authorized.

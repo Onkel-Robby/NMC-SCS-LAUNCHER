@@ -791,41 +791,6 @@
     <Grid Grid.Column="2"><Border Background="{StaticResource CardBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="20">
     <StackPanel>
         <views:TruckPowertrainSelection />
-        <Expander Header="Bisherige Auswahl aus dem Spielstand" Margin="0,14,0,0">
-        <StackPanel>
-        <TextBlock Text="Vorhandene Komponenten anderer Trucks desselben Modells im aktuellen Save." Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,5,0,16" />
-        <TextBlock Text="Motor · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
-        <Grid Margin="0,4,0,10">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <ComboBox ItemsSource="{Binding SaveEditorEngines}" SelectedItem="{Binding SaveEditorSelectedEngine}" Height="40" Padding="8,5"
-                                                           ToolTip="{Binding SaveEditorSelectedEngine.DataPath}">
-                                                       <ComboBox.ItemTemplate>
-                                                           <DataTemplate>
-                                                               <TextBlock Text="{Binding DataPath}" TextTrimming="CharacterEllipsis"
-                                                                          MaxWidth="490" ToolTip="{Binding DataPath}" />
-                                                           </DataTemplate>
-                                                       </ComboBox.ItemTemplate>
-                                                   </ComboBox>
-            <Button Grid.Column="1" Content="Motor setzen" Command="{Binding SetSaveEditorEngineCommand}" Margin="8,0,0,0" />
-        </Grid>
-
-        <TextBlock Text="Getriebe · im aktuellen Save für dieses Truck-Modell beobachtet" Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" />
-        <Grid Margin="0,4,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <ComboBox ItemsSource="{Binding SaveEditorTransmissions}" SelectedItem="{Binding SaveEditorSelectedTransmission}" Height="40" Padding="8,5"
-                                                           ToolTip="{Binding SaveEditorSelectedTransmission.DataPath}">
-                                                       <ComboBox.ItemTemplate>
-                                                           <DataTemplate>
-                                                               <TextBlock Text="{Binding DataPath}" TextTrimming="CharacterEllipsis"
-                                                                          MaxWidth="490" ToolTip="{Binding DataPath}" />
-                                                           </DataTemplate>
-                                                       </ComboBox.ItemTemplate>
-                                                   </ComboBox>
-            <Button Grid.Column="1" Content="Getriebe setzen" Command="{Binding SetSaveEditorTransmissionCommand}" Margin="8,0,0,0" />
-        </Grid>
-        <TextBlock Text="Die Auswahl stammt nur aus bereits vorhandenen Trucks desselben Modells im aktuellen Save. Dadurch werden keine unbekannten Definitionen geraten." Foreground="{StaticResource SecondaryTextBrush}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
-        </StackPanel>
-        </Expander>
     </StackPanel>
 </Border></Grid>
 </Grid></TabItem>

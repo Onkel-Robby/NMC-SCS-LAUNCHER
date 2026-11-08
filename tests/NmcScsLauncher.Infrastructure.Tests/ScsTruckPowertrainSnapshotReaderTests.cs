@@ -152,6 +152,25 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
     }
 
     [Fact]
+    public void MixedLineEndingsRemainReadableButCannotBeNormalizedByAnInstall()
+    {
+        var text = ValidSave().Replace("SiiNunit\n", "SiiNunit\r\n", StringComparison.Ordinal);
+        var read = new ScsTruckPowertrainReadResult(Parse(text), text);
+        var exception = Assert.Throws<ScsSaveEditException>(() => ScsTruckPowertrainSnapshotReader.BuildUpdatedContent(read,
+            "/def/vehicle/truck/test/engine/new.sii", "/def/vehicle/truck/test/transmission/new.sii"));
+        Assert.Contains("Zeilenenden", exception.Message);
+    }
+
+    [Fact]
+    public void UniformWindowsLineEndingsAndUnrelatedTextArePreserved()
+    {
+        var text = ValidSave().Replace("\n", "\r\n", StringComparison.Ordinal);
+        var read = new ScsTruckPowertrainReadResult(Parse(text), text);
+        Assert.Equal(text.Replace("engine/old.sii", "engine/new.sii", StringComparison.Ordinal),
+            ScsTruckPowertrainSnapshotReader.BuildUpdatedContent(read, "/def/vehicle/truck/test/engine/new.sii", read.Snapshot.CurrentTransmissionPath));
+    }
+
+    [Fact]
     public async Task FreshTemporaryCopyDefeatsCodecCacheWithSameSizeAndTimestamp()
     {
         var original = ValidSave();
@@ -209,6 +228,7 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
     private ScsTruckPowertrainSnapshot Parse(string text) => ScsTruckPowertrainSnapshotReader.Parse(_save, Sha, text);
     private static string AddUnit(string text, string unit) => text[..text.LastIndexOf('}')] + unit + "\n}\n";
 
+    // Raw literals inherit source-file line endings; fixture mutations intentionally use LF.
     internal static string ValidSave() => """
         SiiNunit
         {
@@ -246,7 +266,7 @@ public sealed class ScsTruckPowertrainSnapshotReaderTests : IDisposable
          paint_color: (0, 0, 0)
         }
         }
-        """;
+        """.ReplaceLineEndings("\n");
 
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
 

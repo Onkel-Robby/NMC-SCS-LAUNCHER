@@ -25,7 +25,14 @@ public sealed record ScsSaveEditRequest(
     string Operation,
     string UpdatedContent,
     ScsSaveWriteMode WriteMode = ScsSaveWriteMode.RequireGameStopped,
-    DateTimeOffset? ExpectedLastWriteTimeUtc = null);
+    DateTimeOffset? ExpectedLastWriteTimeUtc = null,
+    ScsSaveTransactionValidation? TransactionValidation = null);
+
+/// <summary>Optional strict checks for a stopped-game transaction using freshly verified sources.</summary>
+public sealed record ScsSaveTransactionValidation(
+    string ExpectedOriginalSha256,
+    Func<CancellationToken, Task> ValidateBeforeCommitAsync,
+    Func<string, CancellationToken, Task> ValidateWrittenAsync);
 
 public sealed record ScsSaveEditResult(
     string FilePath,
