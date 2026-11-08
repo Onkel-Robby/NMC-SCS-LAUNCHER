@@ -136,6 +136,7 @@ public partial class MainViewModel
 
     private void ClearSaveEditorPowertrainDiscovery()
     {
+        ClearTruckPowertrainPreview();
         CancelPowertrainDiscovery();
         _saveEditorPowertrainCatalog = null;
         _allDiscoveredPowertrains = [];
@@ -159,6 +160,7 @@ public partial class MainViewModel
         SaveEditorPowertrainStatusText = "Komponenten aus Spiel, DLCs und lokalen Mods können jetzt gesucht werden.";
         OnPropertyChanged(nameof(SaveEditorPowertrainModel));
         NotifySaveEditorPowertrainAvailability();
+        QueueTruckPowertrainInspection();
     }
 
     partial void OnSaveEditorPowertrainSearchChanged(string value) => ApplySaveEditorPowertrainFilter();

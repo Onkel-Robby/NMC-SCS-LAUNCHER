@@ -51,7 +51,7 @@ Diese Punkte benötigen eine reale Zielumgebung und werden nicht als durch CI au
 
 ## Nach 1.0.0
 - [x] Auftrag 4 / D1: aktive Profil-Mods, eindeutige lokale Pakete und Workshop-Versionen, effektive Definitionen und erneute Quellenprüfung implementiert; unbekannte DLC-Aktivierung und widersprüchliche Quellen bleiben gesperrt. [Vertrag und Feldtest](POWERTRAIN_INSTALLATION.md).
-- [ ] Auftrag 4 / D2: vollständige Konfigurationsprüfung und suchbare Auswahl direkt im Truck-Editor.
+- [x] Auftrag 4 / D2: suchbare Auswahl direkt im Truck-Editor, SHA-gebundener vollständiger Truck-Snapshot und gemeinsame Zubehörprüfung für das Paar; nicht unterstützte Regeln, Hookups und weitere erforderliche Zubehöränderungen bleiben gesperrt. Externe Einbauaktion folgt in D3.
 - [ ] Auftrag 4 / D3: verifizierte Motor-/Getriebepaare über die bestehende Backup-/SHA-Schreibpipeline einbauen und den geschriebenen Save nachprüfen.
 - [x] Kennzeichen-Länderauswahl aus PR #86: 36 ETS2-Länder / 21 ATS-Bundesstaaten plus Custom-RGB und manuelle Map-Mod-Codes; bestehende Werte getrennt für aktiven Truck/Trailer laden, Entwürfe bei Kontextwechseln leeren und veraltete Leseantworten verwerfen; Regressionstests für Parser, Schreib-/Lese-Rundläufe, ViewModel-Zustände und WPF-Bindings
 - [x] Nutzerbestätigung vom 07.11.2026: Kennzeichen-Auswahl und vereinheitlichte Save-Editor-Oberfläche nach PR #87/#88 in ETS2 und ATS erfolgreich getestet. Externe Rückmeldung, kein vom Entwicklungsagenten durchgeführter Ingame-Test; keine Einzelprotokolle für sämtliche Sonderfälle.

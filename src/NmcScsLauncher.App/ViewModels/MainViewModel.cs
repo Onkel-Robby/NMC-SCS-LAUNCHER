@@ -622,6 +622,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (gameType == GameType.Ets2) _settings.Ets2InstallPath = path;
         else _settings.AtsInstallPath = path;
+        QueueTruckPowertrainInspection();
     }
 
     private static string BuildSummary(GameInstallation? ets2, GameInstallation? ats)
