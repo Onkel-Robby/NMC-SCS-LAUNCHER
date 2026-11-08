@@ -11,6 +11,7 @@ public partial class MainWindow : Window
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowsTitleBarTheme.Apply(this);
         DataContext = viewModel;
     }
 
