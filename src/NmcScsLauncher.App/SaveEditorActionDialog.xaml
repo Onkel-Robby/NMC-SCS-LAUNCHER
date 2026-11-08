@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:NmcScsLauncher.App.Views"
         Title="NMC SCS LAUNCHER – Save-Editor"
-        Width="620" MinWidth="520" MaxHeight="800"
+        Width="620" MinWidth="520" MaxHeight="740"
         SizeToContent="Height" WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize" ShowInTaskbar="False"
         Background="{DynamicResource WindowBackgroundBrush}"
@@ -32,9 +32,11 @@
                 <TextBlock x:Name="DialogTitle" FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap"/>
                 <TextBlock x:Name="DialogDescription" Foreground="{DynamicResource SecondaryTextBrush}"
                            Margin="0,6,0,0" FontSize="13" TextWrapping="Wrap"/>
+                <Border x:Name="PreviewBanner" Height="112" Margin="0,15,0,0" CornerRadius="9"
+                        ClipToBounds="True" Background="#162D42"/>
             </StackPanel>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          MaxHeight="540">
+                          MaxHeight="360">
                 <StackPanel Margin="0,0,8,0">
                     <StackPanel x:Name="MoneyPanel" Visibility="Collapsed">
                         <TextBlock Text="Geld im ausgewählten Profil" Style="{StaticResource EditorFieldLabel}"/>
