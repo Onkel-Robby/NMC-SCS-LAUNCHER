@@ -15,6 +15,7 @@
     <Resource Include="..\..\branding\nmc-scs-launcher-logo.png" Link="Assets\nmc-scs-launcher-logo.png" />
     <Resource Include="..\..\branding\nmc-it-service-logo.png" Link="Assets\nmc-it-service-logo.png" />
     <Resource Include="..\..\branding\nmc-scs-launcher.ico" Link="Assets\nmc-scs-launcher.ico" />
+    <Resource Include="Assets\SaveEditorPreviews.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NmcScsLauncher.Core\NmcScsLauncher.Core.csproj" />
