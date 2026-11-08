@@ -27,6 +27,12 @@ public partial class SaveEditorActionDialog : Window
             throw new ArgumentOutOfRangeException(nameof(action), "Unbekannte Save-Editor-Funktion.");
 
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowsTitleBarTheme.Apply(this);
+        // The viewport may be shorter than the designed dialog. Keep the fixed
+        // footer visible and let the middle editor fields scroll independently.
+        Height = Math.Min(
+            action.ActionId is "skills" or "plates" ? 710d : 585d,
+            Math.Max(MinHeight, SystemParameters.WorkArea.Height - 56d));
         DataContext = viewModel;
         Title = $"{action.Title} – NMC SCS LAUNCHER";
         DialogTitle.Text = action.Title;
@@ -82,6 +88,9 @@ public partial class SaveEditorActionDialog : Window
             _ => throw new InvalidOperationException("Unerreichbare Dialogfunktion.")
         };
         panel.Visibility = Visibility.Visible;
+        SkillsApplyFooterButton.Visibility =
+            action.ActionId == "skills" ? Visibility.Visible : Visibility.Collapsed;
+        EditorFieldsScrollViewer.ScrollToTop();
     }
 
     private void CloseClick(object sender, RoutedEventArgs e) => Close();
