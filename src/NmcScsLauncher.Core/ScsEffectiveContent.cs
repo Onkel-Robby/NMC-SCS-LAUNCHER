@@ -30,7 +30,8 @@ public sealed record ScsActiveContentEvidence(
     IReadOnlyList<ScsActiveMod> ActiveMods,
     IReadOnlyList<ScsContentLayer> Layers,
     IReadOnlyList<ScsEvidenceFile> Files,
-    IReadOnlyList<string> Diagnostics);
+    IReadOnlyList<string> Diagnostics,
+    IReadOnlyList<ScsPowertrainDiagnostic>? DiagnosticDetails = null);
 
 public sealed record ScsResolvedDefinition(
     string VirtualPath,

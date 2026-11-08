@@ -1,5 +1,7 @@
 # Auftrag 4: wirksame Quellen und geprüfter Motor-/Getriebewechsel
 
+Fortsetzung: [Auftrag 5 – Quellenfehler, gezielte Formatkorrekturen und Diagnose](POWERTRAIN_DIAGNOSTICS.md). Die folgenden lokalen D1-Ergebnisse dokumentieren den damaligen Stand; die aktualisierte Ursachenanalyse steht in der Fortsetzung.
+
 Version 1.0.0; Umsetzung in D1, D2 und D3 mit eigenen Pull Requests. Kein Merge ohne Nutzerfreigabe. Der bestehende Lesekatalog aus PR89 wird weiterverwendet. Das Produktziel bleibt die direkte Auswahl im Truck-Editor.
 
 ## D1 – Quellenvertrag

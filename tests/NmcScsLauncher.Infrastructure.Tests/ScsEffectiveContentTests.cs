@@ -49,7 +49,10 @@ public sealed class ScsEffectiveContentTests : IDisposable
             Assert.True(identical.ReadDefinition(Definition).AvailabilityVerified);
         File.WriteAllText(Physical(second.PhysicalPath, Definition), "different");
         using var conflicting = await Open(first, second);
-        Assert.Throws<ScsSaveEditException>(() => conflicting.ReadDefinition(Definition));
+        var error = Assert.Throws<ScsPowertrainDiagnosticException>(() => conflicting.ReadDefinition(Definition));
+        Assert.Equal("definition_priority_ambiguous", error.Diagnostic.Code);
+        Assert.Equal(Definition, error.Diagnostic.VirtualPath);
+        Assert.Equal(second.PhysicalPath, error.Diagnostic.PhysicalPath);
     }
 
     [Fact]
@@ -145,7 +148,9 @@ public sealed class ScsEffectiveContentTests : IDisposable
         var time = File.GetLastWriteTimeUtc(metadata);
         File.WriteAllText(metadata, "after!");
         File.SetLastWriteTimeUtc(metadata, time);
-        await Assert.ThrowsAsync<ScsSaveEditException>(() => Service(evidence).OpenAsync(Request()));
+        var error = await Assert.ThrowsAsync<ScsPowertrainDiagnosticException>(() => Service(evidence).OpenAsync(Request()));
+        Assert.Equal(evidence.GameVersion, error.Evidence!.GameVersion);
+        Assert.Equal("source_snapshot_invalid", error.Diagnostic.Code);
     }
 
     [Fact]
@@ -179,8 +184,11 @@ public sealed class ScsEffectiveContentTests : IDisposable
         var corrupt = Path.Combine(_root, "corrupt.scs");
         File.WriteAllText(corrupt, "invalid");
         using var session = await Open(baseLayer, Layer(corrupt, 100, false));
-        Assert.Throws<ScsSaveEditException>(() => session.GetFiles("/def"));
-        Assert.Throws<ScsSaveEditException>(() => session.ReadDefinition(Definition));
+        var listingError = Assert.Throws<ScsPowertrainDiagnosticException>(() => session.GetFiles("/def"));
+        var readError = Assert.Throws<ScsPowertrainDiagnosticException>(() => session.ReadDefinition(Definition));
+        Assert.Equal("source_unreadable", listingError.Diagnostic.Code);
+        Assert.Equal(corrupt, readError.Diagnostic.PhysicalPath);
+        Assert.True(readError.Diagnostic.BlocksConfiguration);
     }
 
     [Fact]

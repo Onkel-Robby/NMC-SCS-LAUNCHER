@@ -40,6 +40,7 @@ public partial class App : Application
         services.AddSingleton<ScsTruckPowertrainService>();
         services.AddSingleton<IScsTruckPowertrainService>(provider => provider.GetRequiredService<ScsTruckPowertrainService>());
         services.AddSingleton<IScsTruckPowertrainInstaller, ScsTruckPowertrainInstaller>();
+        services.AddSingleton<ITruckPowertrainDiagnosticExportService, TruckPowertrainDiagnosticExportService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
@@ -101,6 +102,8 @@ public partial class App : Application
         viewModel.ConfigureTruckPowertrainInstaller(
             _serviceProvider.GetRequiredService<IScsTruckPowertrainInstaller>(),
             _serviceProvider.GetRequiredService<IScsGameProcessGuard>());
+        viewModel.ConfigureTruckPowertrainDiagnosticExport(
+            _serviceProvider.GetRequiredService<ITruckPowertrainDiagnosticExportService>());
 
         try
         {

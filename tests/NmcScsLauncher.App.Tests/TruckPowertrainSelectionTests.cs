@@ -231,6 +231,7 @@ public sealed partial class TruckPowertrainSelectionTests
     private sealed class Preview : IScsTruckPowertrainPreview
     {
         public bool PairAllowed { get; set; } = true;
+        public ScsTruckPowertrainInspectionReport? InspectionReport { get; set; }
         public Preview(ScsEffectiveContentRequest request, string currentName = "Current engine")
         {
             Snapshot = new(request.Profile.GameType, request.Save.GameSiiPath, new string('A', 64), request.Save.DisplayName, Model, "data", "engine", "transmission", Model + "engine/current.sii", Model + "transmission/current.sii", []);
