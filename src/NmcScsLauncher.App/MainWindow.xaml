@@ -749,8 +749,8 @@
                                            MaxHeight="60" />
                                 <Button Grid.Row="3" Content="Öffnen" Padding="22,8" HorizontalAlignment="Center"
                                         MinWidth="112" Style="{StaticResource PrimaryButtonStyle}"
-                                        Command="{Binding DataContext.OpenSaveEditorSectionCommand, RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
-                                        CommandParameter="{Binding Section}" />
+                                        Click="OpenSaveEditorActionClick"
+                                        ToolTip="{Binding Description}" />
                             </Grid>
                         </Border>
                     </DataTemplate>
