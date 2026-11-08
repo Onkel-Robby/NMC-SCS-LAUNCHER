@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using NmcScsLauncher.App.ViewModels;
 
 namespace NmcScsLauncher.App;
@@ -29,6 +31,27 @@ public partial class SaveEditorActionDialog : Window
         Title = $"{action.Title} – NMC SCS LAUNCHER";
         DialogTitle.Text = action.Title;
         DialogDescription.Text = action.Description;
+
+        // Images are purely decorative. The dialog remains usable if a resource cannot be decoded.
+        try
+        {
+            var atlas = new BitmapImage(new Uri(
+                "/NmcScsLauncher.App;component/Assets/SaveEditorPreviews.png", UriKind.Relative));
+            PreviewBanner.Background = new ImageBrush(atlas)
+            {
+                Viewbox = action.PreviewViewbox,
+                ViewboxUnits = BrushMappingMode.RelativeToBoundingBox,
+                Stretch = Stretch.Fill
+            };
+        }
+        catch (IOException)
+        {
+            // Keep the original solid-color banner.
+        }
+        catch (NotSupportedException)
+        {
+            // An unsupported image never affects the editor's safety or commands.
+        }
 
         FrameworkElement panel = action.ActionId switch
         {
