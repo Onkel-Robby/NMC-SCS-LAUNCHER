@@ -34,6 +34,8 @@ public partial class App : Application
         services.AddSingleton<IScsProfileEditService, ScsProfileEditService>();
         services.AddSingleton<IScsVehicleEditService, ScsVehicleEditService>();
         services.AddSingleton<IScsPowertrainDiscoveryService, ScsPowertrainDiscoveryService>();
+        services.AddSingleton<IScsActiveContentResolver, ScsActiveContentResolver>();
+        services.AddSingleton<IScsEffectiveContentService, ScsEffectiveContentService>();
 
         services.AddSingleton(LicenseHubRuntimeConfiguration.FromEnvironment(LicenseEnforcementPolicy.RequiredByBuild));
         services.AddSingleton<HttpClient>();
