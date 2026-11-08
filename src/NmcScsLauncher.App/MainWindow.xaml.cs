@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Effects;
@@ -21,23 +22,39 @@ public partial class MainWindow : Window
 
         // The modal freezes the parent selection while editing. All mutations still
         // use the original commands with their unchanged confirmation/backup checks.
-        var dialog = new SaveEditorActionDialog(viewModel, action) { Owner = this };
-        if (Content is not UIElement root)
-        {
-            dialog.ShowDialog();
-            return;
-        }
-
-        // Temporary visual treatment only; modality keeps profile and save selection fixed.
-        var priorEffect = root.Effect;
         try
         {
-            root.Effect = new BlurEffect { Radius = 5 };
-            dialog.ShowDialog();
+            var dialog = new SaveEditorActionDialog(viewModel, action) { Owner = this };
+            if (Content is not UIElement root)
+            {
+                dialog.ShowDialog();
+                return;
+            }
+
+            // Always restore the main view, even if the dialog raises an exception.
+            var priorEffect = root.Effect;
+            try
+            {
+                root.Effect = new BlurEffect { Radius = 5 };
+                dialog.ShowDialog();
+            }
+            finally
+            {
+                root.Effect = priorEffect;
+            }
         }
-        finally
+        catch (Exception exception)
         {
-            root.Effect = priorEffect;
+            // UI-boundary fallback: do not terminate the launcher because a modal
+            // view fails. Do not execute any edit command or alter a save here.
+            Trace.TraceError("NMC Save Editor modal failed for {0}: {1}", action.ActionId, exception);
+            viewModel.OpenSaveEditorSectionCommand.Execute(action.Section);
+            MessageBox.Show(this,
+                "Das Bearbeitungsfenster konnte nicht geöffnet werden. " +
+                "Der bisherige Save-Editor wurde stattdessen geöffnet. " +
+                "Es wurde kein Spielstand durch diesen Fehlerdialog verändert.",
+                "NMC SCS LAUNCHER – Darstellungsfehler",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
