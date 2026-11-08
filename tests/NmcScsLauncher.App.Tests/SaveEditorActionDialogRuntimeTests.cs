@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using NmcScsLauncher.App.ViewModels;
@@ -34,6 +35,22 @@ public sealed class SaveEditorActionDialogRuntimeTests
             Assert.True(image.PixelWidth > 0, action.ActionId);
             Assert.True(image.IsFrozen);
             Assert.Equal(action.PreviewViewbox, brush.Viewbox);
+
+            // Check the actual compiled styles, not only the XAML strings:
+            // an explicitly styled TextBox must not revert to white controls.
+            var moneyPanel = Assert.IsType<StackPanel>(dialog.FindName("MoneyPanel"));
+            var moneyField = Assert.Single(moneyPanel.Children.OfType<TextBox>());
+            var fieldColor = Assert.IsType<SolidColorBrush>(moneyField.Background).Color;
+            Assert.Equal(Color.FromRgb(0x11, 0x1B, 0x28), fieldColor);
+            Assert.NotEqual(Colors.Black, Assert.IsType<SolidColorBrush>(moneyField.Foreground).Color);
+
+            var editorScroll = Assert.IsType<ScrollViewer>(dialog.FindName("EditorFieldsScrollViewer"));
+            Assert.Equal(1, Grid.GetRow(editorScroll));
+            Assert.Equal(ScrollBarVisibility.Auto, editorScroll.VerticalScrollBarVisibility);
+            var footer = Assert.IsType<Button>(dialog.FindName("SkillsApplyFooterButton"));
+            Assert.Equal(action.ActionId == "skills" ? Visibility.Visible : Visibility.Collapsed,
+                footer.Visibility);
+            Assert.InRange(dialog.Height, dialog.MinHeight, dialog.MaxHeight);
             // Do not call Show(), ShowDialog(), or create an HWND inside the test host:
             // those can require a real interactive message pump on hosted CI runners.
             dialog.Close();
