@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Windows.Media.Imaging;
 using NmcScsLauncher.App;
 using NmcScsLauncher.App.ViewModels;
 using Xunit;
@@ -129,6 +130,17 @@ public sealed class SaveEditorOverviewTests
             ((string?)e.Attribute("ImageSource"))?.Contains("SaveEditorPreviews.png", StringComparison.Ordinal) == true);
         Assert.Equal("{Binding PreviewViewbox}", (string?)brush.Attribute("Viewbox"));
         Assert.Equal("RelativeToBoundingBox", (string?)brush.Attribute("ViewboxUnits"));
+    }
+
+    [Fact]
+    public void OriginalPreviewAtlasIsValidDecodablePng()
+    {
+        using var stream = typeof(SaveEditorOverviewTests).Assembly
+            .GetManifestResourceStream("NmcScsLauncher.Tests.SaveEditorPreviews.png")!;
+        var decoder = new PngBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+        var frame = Assert.Single(decoder.Frames);
+        Assert.Equal(1080, frame.PixelWidth);
+        Assert.Equal(640, frame.PixelHeight);
     }
 
 }
