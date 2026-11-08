@@ -263,6 +263,63 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
     }
 
     private static string Unit(string type, string id, string attributes) => $"SiiNunit {{ {type} : {id} {{ {attributes} }} }}";
+
+    [Theory]
+    [InlineData(GameType.Ats, "ats_t680_22", "2720080", 2720080u, true)]
+    [InlineData(GameType.Ats, "ats_oversize", "962750", 962750u, true)]
+    [InlineData(GameType.Ets2, "eut2_vlvfh6", "3323360", 3323360u, true)]
+    [InlineData(GameType.Ets2, "eut2_balkane", "1056760", 1056760u, true)]
+    [InlineData(GameType.Ats, "ats_test", "0", null, true)]
+    [InlineData(GameType.Ets2, "eut2_test", "0", null, true)]
+    [InlineData(GameType.Ats, "ats_test", null, null, true)]
+    [InlineData(GameType.Ets2, "eut2_test", null, null, true)]
+    [InlineData(GameType.Ats, "ats_test", "-1", null, false)]
+    [InlineData(GameType.Ets2, "eut2_test", "4294967296", null, false)]
+    public async Task ModFreeDlcManifestAppIdentityNeverAuthorizesItsPowertrain(GameType game, string identity,
+        string? manifestAppId, uint? expectedAppId, bool metadataVerified)
+    {
+        using var fixture = new Fixture(game);
+        fixture.Dlc("dlc_truck.scs", identity, "Synthetic public package", manifestAppId,
+            (NewEngine, Engine("DLC engine", 2500)), (NewTransmission, Gearbox("new.test.transmission", "ratios_forward[]: 4 ratios_forward[]: 1")));
+        fixture.WriteDependencies($"rdlc|{identity}|Synthetic public package");
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        var report = Assert.IsType<ScsTruckPowertrainInspectionReport>(preview.InspectionReport);
+        var layer = Assert.Single(report.Sources, layer => layer.Kind == ScsPowertrainSourceKind.Dlc);
+        Assert.Equal(expectedAppId, layer.DlcSteamAppId);
+        Assert.Equal(metadataVerified, layer.DlcMetadataVerified);
+        Assert.False(layer.AvailabilityVerified);
+        Assert.True(report.ConfigurationVerified);
+        Assert.Empty(report.ActiveMods);
+        Assert.Equal(0, fixture.WorkshopScanCalls);
+        Assert.False(Assert.Single(preview.Engines, option => option.DataPath == NewEngine).DefinitionVerified);
+        Assert.False(Assert.Single(preview.Transmissions, option => option.DataPath == NewTransmission).DefinitionVerified);
+        Assert.False(preview.AssessPair(NewEngine, NewTransmission).IsVerified);
+        Assert.Equal(!metadataVerified, report.Issues.Any(issue => issue.Code == "dlc_metadata_invalid"));
+    }
+
+    [Theory]
+    [InlineData(GameType.Ats, "1.62.1.0")]
+    [InlineData(GameType.Ats, "1.61.0.0")]
+    [InlineData(GameType.Ets2, "1.62.1.0")]
+    [InlineData(GameType.Ets2, "1.61.0.0")]
+    public async Task SteamDepotInstallationAndClaimedGameMountDoNotAuthorizeDlc(GameType game, string loggedVersion)
+    {
+        using var fixture = new Fixture(game);
+        var identity = game == GameType.Ats ? "ats_t680_22" : "eut2_vlvfh6";
+        var appId = game == GameType.Ats ? "2720080" : "3323360";
+        fixture.Dlc("dlc_truck.scs", identity, "Synthetic public package", appId, (NewEngine, Engine("DLC engine", 2500)));
+        fixture.WriteUntrustedDlcHints(loggedVersion);
+        var originals = fixture.HashFiles();
+
+        var preview = await fixture.Service().InspectAsync(fixture.Request);
+        var layer = Assert.Single(preview.InspectionReport!.Sources, layer => layer.Kind == ScsPowertrainSourceKind.Dlc);
+        Assert.True(layer.DlcMetadataVerified);
+        Assert.False(layer.AvailabilityVerified);
+        Assert.False(preview.AssessPair(NewEngine, NewTransmission).IsVerified);
+        Assert.Equal(originals, fixture.HashFiles());
+    }
+
     private static string Engine(string name, int torque) => Unit("accessory_engine_data", "new.test.engine", $"name: \"{name}\" torque: {torque}");
     private static string Gearbox(string id, string ratios) => Unit("accessory_transmission_data", id, ratios + " ratios_reverse[]: -4 differential_ratio: 2.85");
 
@@ -290,7 +347,7 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
             Request = new(new(game, ScsProfileStorageKind.Local, home, profile, "SCENARIO", "Synthetic", Path.Combine(profile, "profile.sii")),
                 new(game, profile, save, "1", "Synthetic", ScsSaveKind.Manual, gamePath, File.GetLastWriteTimeUtc(gamePath)), null);
             WriteMods();
-            var install = DirectoryFor("install");
+            var install = DirectoryFor("steamapps/common/" + GameDefinition.For(game).DefaultInstallDirectoryName);
             var executable = Path.Combine(install, GameDefinition.For(game).ExecutableRelativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
             File.WriteAllText(executable, "Synthetic installation; injected version reader");
@@ -333,9 +390,25 @@ public sealed partial class ScsPowertrainResolutionScenarioTests
             File.WriteAllText(_infoPath, Unit("save_container", ".save", $"dependencies: {values.Length}\n{dependencies}"));
         }
 
-        public void Dlc(string fileName, string? identity, string title, string steamAppId, params (string Path, string Content)[] entries) =>
+        public void Dlc(string fileName, string? identity, string title, string? steamAppId, params (string Path, string Content)[] entries) =>
             Zip(_installation.InstallPath, fileName, [("/" + Path.GetFileNameWithoutExtension(fileName) + ".manifest.sii",
-                Unit("dlc_package", ".package", $"{(identity is null ? "" : "id: " + identity)} game_id: ats display_name: \"{title}\" steam_app_id: {steamAppId}")), .. entries]);
+                Unit("dlc_package", ".package", $"{(identity is null ? "" : "id: " + identity)} game_id: {(_game == GameType.Ats ? "ats" : "eut2")} display_name: \"{title}\" " +
+                    (steamAppId is null ? "" : $"steam_app_id: {steamAppId}"))), .. entries]);
+
+        public void WriteUntrustedDlcHints(string loggedVersion)
+        {
+            var definition = GameDefinition.For(_game);
+            var appId = _game == GameType.Ats ? "2720080" : "3323360";
+            var depotId = _game == GameType.Ats ? "2720081" : "3323361";
+            File.WriteAllText(Path.Combine(Root, "steamapps", $"appmanifest_{definition.SteamAppId}.acf"),
+                $"\"AppState\" {{ \"appid\" \"{definition.SteamAppId}\" \"installdir\" \"{definition.DefaultInstallDirectoryName}\" " +
+                $"\"StateFlags\" \"4\" \"InstalledDepots\" {{ \"{depotId}\" {{ \"manifest\" \"123456789\" \"dlcappid\" \"{appId}\" }} }} }}");
+            var log = Path.Combine(Request.Profile.GameHomeDirectory, "game.log.txt");
+            File.WriteAllText(log, $"00:00:00.000 : {definition.DisplayName} init ver.{loggedVersion}\n" +
+                "00:00:00.100 : [hashfs] dlc_truck.scs: Created and validated, 1 entries (synthetic fixture)\n" +
+                $"00:00:00.200 : [fs] device {Path.Combine(_installation.InstallPath, "dlc_truck.scs").Replace('\\', '/')} mounted to scs pool.\n");
+            if (loggedVersion != "1.62.1.0") File.SetLastWriteTimeUtc(log, DateTime.UtcNow.AddDays(-30));
+        }
 
         public KeyValuePair<string, string>[] HashFiles() => Directory.GetFiles(Root, "*", SearchOption.AllDirectories)
             .Order(StringComparer.Ordinal).Select(path => new KeyValuePair<string, string>(path, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))))).ToArray();

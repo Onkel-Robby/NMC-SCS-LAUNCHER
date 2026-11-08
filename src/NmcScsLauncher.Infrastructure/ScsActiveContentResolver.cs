@@ -168,6 +168,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                 evidence.Physical(path);
                 var dlc = Path.GetFileName(path).StartsWith("dlc_", StringComparison.OrdinalIgnoreCase);
                 var dlcMetadataVerified = false;
+                uint? dlcSteamAppId = null;
                 var identity = Path.GetFileName(path);
                 var stock = StockArchives.Contains(identity);
                 var reason = dlc ? "DLC-Datei vorhanden; aktuelle Steam-Berechtigung und Aktivierung sind nicht verifiziert." :
@@ -184,6 +185,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                         identity = manifest.GetToken("id") ?? throw new InvalidDataException("DLC-ID fehlt.");
                         var expectedGame = game == GameType.Ets2 ? "eut2" : "ats";
                         if (manifest.GetToken("game_id") != expectedGame) throw new InvalidDataException("DLC-Metadaten gehören zu einem anderen Spiel.");
+                        dlcSteamAppId = ReadDlcSteamAppId(manifest);
                         dlcMetadataVerified = true;
                     }
                     catch (Exception ex) when (IsFailure(ex))
@@ -194,7 +196,7 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
                     }
                 }
                 AddLayer(layers, new(path, "/", dlc ? ScsPowertrainSourceKind.Dlc : ScsPowertrainSourceKind.Game,
-                    identity, gameVersion, dlc ? 100 : 0, !dlc && stock, reason, dlcMetadataVerified));
+                    identity, gameVersion, dlc ? 100 : 0, !dlc && stock, reason, dlcMetadataVerified, dlcSteamAppId));
                 if (dlc || !stock)
                     Unavailable(Issue(dlc ? "dlc_availability_unverified" : "installation_archive_activation_unknown", reason,
                         ScsPowertrainDiagnosticScope.Source, path, packageIdentity: identity, packageVersion: gameVersion));
@@ -632,6 +634,18 @@ public sealed class ScsActiveContentResolver : IScsActiveContentResolver
     }
     private static bool SamePath(string left, string right) => string.Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(left)),
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)), StringComparison.OrdinalIgnoreCase);
+    private static uint? ReadDlcSteamAppId(ScsDefinitionUnit manifest)
+    {
+        const string invalid = "DLC-Attribut 'steam_app_id' ist keine unquotierte vorzeichenlose 32-Bit-Zahl.";
+        string? value;
+        try { value = manifest.GetToken("steam_app_id"); }
+        catch (InvalidDataException) { throw new InvalidDataException(invalid); }
+        if (value is null) return null;
+        if (!uint.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var appId))
+            throw new InvalidDataException(invalid);
+        return appId == 0 ? null : appId;
+    }
+
     private static bool IsFailure(Exception ex) => ScsPowertrainDiscoveryService.IsSourceFailure(ex) || ex is ScsSaveEditException;
 
     private sealed class Evidence(CancellationToken token)

@@ -55,6 +55,39 @@ public sealed class ScsEffectiveContentTests : IDisposable
         Assert.Equal(second.PhysicalPath, error.Diagnostic.PhysicalPath);
     }
 
+    [Theory]
+    [InlineData(0, false, true)]
+    [InlineData(0, true, true)]
+    [InlineData(100, false, false)]
+    [InlineData(100, true, false)]
+    public async Task IdenticalUnknownDlcCannotBorrowAvailabilityFromLowerPriority(int priority, bool dlcFirst, bool expectedVerified)
+    {
+        var known = Layer(Folder("base", (Definition, "identical definition")));
+        var uncertain = Layer(Folder("dlc", (Definition, "identical definition")), priority, false) with
+        {
+            Kind = ScsPowertrainSourceKind.Dlc, DlcMetadataVerified = true, DlcSteamAppId = 2720080
+        };
+        using var session = await Open(dlcFirst ? [uncertain, known] : [known, uncertain]);
+        var resolved = session.ReadDefinition(Definition);
+        Assert.Equal(expectedVerified, resolved.AvailabilityVerified);
+        Assert.Equal(expectedVerified ? known : uncertain, resolved.Source);
+        await session.VerifyUnchangedAsync();
+    }
+
+    [Fact]
+    public async Task ChangedDlcIdentityEvidenceInvalidatesAnOpenSnapshot()
+    {
+        var layer = Layer(Folder("dlc", (Definition, "definition")), 100, false) with
+        {
+            Kind = ScsPowertrainSourceKind.Dlc, DlcMetadataVerified = true, DlcSteamAppId = 2720080
+        };
+        var resolver = new MutableResolver(Evidence(layer));
+        using var session = await new ScsEffectiveContentService(resolver).OpenAsync(Request());
+        Assert.False(session.ReadDefinition(Definition).AvailabilityVerified);
+        resolver.Evidence = Evidence(layer with { DlcSteamAppId = 1056760 });
+        await Assert.ThrowsAsync<ScsSaveEditException>(() => session.VerifyUnchangedAsync());
+    }
+
     [Fact]
     public async Task MountRootStripsOnlyItsOwnPrefix()
     {
