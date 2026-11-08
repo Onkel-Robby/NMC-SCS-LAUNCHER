@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using NmcScsLauncher.App;
 using NmcScsLauncher.App.ViewModels;
 using Xunit;
 
@@ -56,4 +57,51 @@ public sealed class SaveEditorOverviewTests
         }
         Assert.False(vm.PowertrainFeaturesEnabled);
     }
+    [Fact]
+    public void AllCardsOpenKnownModalActionsRatherThanOnlyNavigatingToTabs()
+    {
+        var vm = new SaveEditorTestHarness().ViewModel;
+        var actionIds = vm.SaveEditorOverviewActions.Select(action => action.ActionId).ToArray();
+        Assert.Equal(11, actionIds.Length);
+        Assert.Equal(actionIds.Length, actionIds.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(actionIds, actionId => Assert.Contains(actionId, SaveEditorActionDialog.SupportedActionIds));
+        Assert.DoesNotContain(actionIds, id => id is "powertrain" or "engine" or "transmission");
+
+        using var stream = typeof(SaveEditorOverviewTests).Assembly
+            .GetManifestResourceStream("NmcScsLauncher.Tests.MainWindow.xaml")!;
+        var document = XDocument.Load(stream);
+        XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        var cards = document.Descendants(p + "ItemsControl").Single(e =>
+            ((string?)e.Attribute("ItemsSource"))?.Contains("SaveEditorOverviewActions", StringComparison.Ordinal) == true);
+        var button = cards.Descendants(p + "Button").Single();
+        Assert.Equal("OpenSaveEditorActionClick", (string?)button.Attribute("Click"));
+        Assert.Null(button.Attribute("Command"));
+    }
+
+    [Fact]
+    public void ModalDialogsUseOriginalSaveEditCommandsWithoutDirectFileWrites()
+    {
+        using var stream = typeof(SaveEditorOverviewTests).Assembly
+            .GetManifestResourceStream("NmcScsLauncher.Tests.SaveEditorActionDialog.xaml")!;
+        var document = XDocument.Load(stream);
+        XNamespace p = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var panelNames = document.Descendants(p + "StackPanel")
+            .Select(e => (string?)e.Attribute(x + "Name")).Where(s => s is not null).ToArray();
+        foreach (var panel in new[] { "MoneyPanel", "ExperiencePanel", "SkillsPanel",
+            "TruckSwitchPanel", "TruckRepairPanel", "FuelPanel", "MileagePanel", "TrailerPanel",
+            "CargoPanel", "PlatesPanel", "BackupPanel" })
+            Assert.Contains(panel, panelNames);
+
+        var commandBindings = document.Descendants(p + "Button")
+            .Select(e => (string?)e.Attribute("Command")).Where(e => e is not null).ToArray();
+        foreach (var command in new[] {
+            "SetSaveEditorMoneyCommand", "SetSaveEditorExperienceCommand", "SetSaveEditorCareerSkillsCommand",
+            "SwitchSaveEditorTruckCommand", "RepairSaveEditorTruckCommand", "SetSaveEditorFuelCommand",
+            "SetSaveEditorMileageCommand", "SwitchSaveEditorTrailerCommand", "RepairSaveEditorTrailerCommand",
+            "SetSaveEditorCargoMassCommand", "SetSaveEditorTruckPlateCommand",
+            "SetSaveEditorTrailerPlateCommand", "RestoreSaveEditorLastBackupCommand" })
+            Assert.Contains(commandBindings, binding => binding!.Contains(command, StringComparison.Ordinal));
+    }
+
 }
