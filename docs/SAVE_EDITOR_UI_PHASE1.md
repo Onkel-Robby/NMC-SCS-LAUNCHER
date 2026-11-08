@@ -10,7 +10,7 @@ Eigenständiges WPF-Funktionskartenkonzept, inspiriert durch die vom Benutzer ge
 ## Umfang dieser ersten UI-Etappe
 
 - Neuer Einstieg `Übersicht` mit 11 direkt anklickbaren Funktionskarten.
-- Responsive Kartenanordnung per WPF-WrapPanel; Kategorien Profil, Karriere, LKW, Anhänger, Fahrzeuge und Sicherheit.
+- Drei gleich breite WPF-Kartenspalten mit größerer Bild-/Symbolfläche, besser lesbaren Texten und begrenzter Gesamtbreite. Die einzelnen Karten besitzen keine fixe Breite und bleiben bei der vorgegebenen Fenster-Mindestbreite 1080 DIP verwendbar. Kategorien: Profil, Karriere, LKW, Anhänger, Fahrzeuge und Sicherheit.
 - Navigation auf die **bereits vorhandenen** Eingabefelder und Kommandos; keine neuen Schreibfunktionen und kein verändertes SII-Mapping.
 - Innerhalb des Save-Editors vorhandene Register weiter zugänglich, bestehende Profil- und Spielstand-Auswahl bleibt bestehen.
 - Wiederherstellung des letzten geprüften Backups hat ein eigenes Register `Sicherungen`, ruft aber dasselbe vorhandene Restore-Kommando auf.
@@ -24,7 +24,7 @@ Es ist **noch keine** vollständige Dialogmigration einzelner Bearbeitungsfunkti
 
 ## Abnahme
 
-- 1080 px / 1320 px und maximierte Fenster prüfen: Karten müssen sauber umbrechen; keine horizontale Scrollbar.
+- Auf realen Windows-Rechnern bei 1080 und 1320 DIP Fensterbreite sowie maximiert prüfen: genau drei gleichmäßige Kartenspalten, gut lesbare Texte, keine horizontale Scrollbar oder überlaufenden Inhalte. Bei besonders hoher Anzeigeskalierung gesondert nachprüfen.
 - Profil, Spielstand, Geld, Skills, Truck, Trailer, Kennzeichen und Sicherungen über Karten öffnen.
 - Keine Motor-/Getriebebearbeitung sichtbar oder aufrufbar.
 - Bestehenden Save-Editor-Regressionstest und vollständige Windows-CI, klassischen Installer sowie NMC-Custom-Installer prüfen.
