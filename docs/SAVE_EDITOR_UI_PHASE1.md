@@ -43,3 +43,21 @@ Der Bildatlas `src/NmcScsLauncher.App/Assets/SaveEditorPreviews.png` wurde eigen
 - **Regression:** Der WPF-Test prüft an tatsächlich instanziierten Dialogen dunkle TextBox-Farben, Scrollbereich, Skills-Button und Höhenbegrenzung; der vorherige Pack-URI-Absturztest bleibt erhalten.
 
 Manuelle Abnahme: normale und lange Dialoge mit 100 %/125 % Windows-Skalierung sowie unterschiedlichen Fenster- und Bildschirmhöhen kontrollieren. Die Windows-CI verifiziert Implementierung und Laufzeitressourcen, aber keine vollständige Darstellung auf dem Anwenderbildschirm.
+
+## Kategorie-Navigation – Funktionskarten an die richtige Stelle
+
+Die Kategoriezuordnung wurde nach der Abnahme von PR #98 auf die vorhandenen Save-Editor-Bereiche umgestellt:
+
+| Kategorie | Funktionskarten |
+|---|---|
+| Profil & Karriere | Geld verwalten, Erfahrungspunkte, Fähigkeiten |
+| Truck | Truck wechseln, Truck reparieren, Kraftstoff, Kilometerstand |
+| Trailer | Trailer verwalten, Frachtgewicht |
+| Kennzeichen | Kennzeichen (Truck und Trailer im vorhandenen Dialog) |
+| Sicherungen | Backup wiederherstellen |
+
+Die Seite **Übersicht** zeigt jetzt ausschließlich fünf Kategorie-Navigationskacheln mit der jeweiligen Funktionsanzahl. Der Klick auf `Kategorie öffnen` wechselt zum bestehenden Reiter. Jede Kategorie zeigt nur ihre zugewiesenen 3-Spalten-Funktionskarten. Die Aktion `Öffnen` öffnet weiterhin die bereits getesteten modalen NMC-Dialoge.
+
+Die bisherigen Eingabemasken sind pro Bereich unter **Erweiterte Bearbeitung (bisheriger Editor)** weiter zugänglich. Das bestehende Tab-Index-Schema (0 Übersicht, 1 Profil, 2 Truck, 3 deaktivierter Komponentenkatalog, 4 Trailer, 5 Kennzeichen, 6 Sicherungen) bleibt unverändert. Insbesondere bleibt die Motor-/Getriebe-Sperre aktiv.
+
+Änderungsumfang: Präsentation, Kachelsortierung und Navigation. **Keine** neuen Save-Schreiboperationen, geänderten Datenmodelle, Lizenzprüfungen oder Update-Funktionen. Die WPF-Strukturtests prüfen die einmalige Zuordnung aller elf Karten und die bestehende Feature-Flag-Isolation.
