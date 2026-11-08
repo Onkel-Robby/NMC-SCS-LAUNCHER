@@ -1,20 +1,20 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using NmcScsLauncher.App.ViewModels;
 using Xunit;
 
 namespace NmcScsLauncher.App.Tests;
 
-/// <summary>Exercises the actual compiled WPF dialog, not only its raw XAML markup.
-/// No game process, LicenseHub startup, profile or save I/O is required.
-/// </summary>
+/// <summary>Exercise the compiled WPF dialog and force pack-image decoding.
+/// Does not show windows, start LicenseHub or open any actual saves.</summary>
 public sealed class SaveEditorActionDialogRuntimeTests
 {
     [Fact]
-    public Task AllElevenDialogsCanBeConstructedShownAndClosedWithoutASave() => OnStaThread(() =>
+    public Task AllElevenDialogsConstructAndDecodeTheirPackedImages() => OnStaThread(() =>
     {
-        // Initialize only WPF application resources. Do not call Run/OnStartup:
-        // that path would initialize LicenseHub and game detection.
         if (Application.Current is null)
         {
             var app = new NmcScsLauncher.App.App();
@@ -25,24 +25,20 @@ public sealed class SaveEditorActionDialogRuntimeTests
         var viewModel = new SaveEditorTestHarness().ViewModel;
         foreach (var action in viewModel.SaveEditorOverviewActions)
         {
-            using var _ = new DialogCloser();
             var dialog = new SaveEditorActionDialog(viewModel, action);
-            try
-            {
-                dialog.Show();
-                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.Loaded);
-                dialog.UpdateLayout();
-                Assert.True(dialog.IsLoaded, action.ActionId);
-                Assert.Equal(action.Title + " – NMC SCS LAUNCHER", dialog.Title);
-            }
-            finally { dialog.Close(); }
+            Assert.Equal(action.Title + " – NMC SCS LAUNCHER", dialog.Title);
+            var preview = Assert.IsType<Border>(dialog.FindName("PreviewBanner"));
+            var brush = Assert.IsType<ImageBrush>(preview.Background);
+            var image = Assert.IsType<BitmapImage>(brush.ImageSource);
+            Assert.Equal("pack", image.UriSource.Scheme);
+            Assert.True(image.PixelWidth > 0, action.ActionId);
+            Assert.True(image.IsFrozen);
+            Assert.Equal(action.PreviewViewbox, brush.Viewbox);
+            // Do not call Show(), ShowDialog(), or create an HWND inside the test host:
+            // those can require a real interactive message pump on hosted CI runners.
+            dialog.Close();
         }
     });
-
-    private sealed class DialogCloser : IDisposable
-    {
-        public void Dispose() { }
-    }
 
     private static Task OnStaThread(Action action)
     {
