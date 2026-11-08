@@ -33,3 +33,13 @@ Die ersten elf Bearbeitungsaktionen besitzen jetzt eigenständige Dialoginhalte.
 ## Bildrechte und Datenschutz
 
 Der Bildatlas `src/NmcScsLauncher.App/Assets/SaveEditorPreviews.png` wurde eigens für NMC als originelle stilisierte Illustration erstellt. Keine Truck-Tools-/SCS-/Steam-Grafiken oder GPLv3-Code übernommen. Die Vorschaubilder enthalten keine Nutzerprofile, Save-Daten oder fremde Kontoinformationen. Die 11 Bildausschnitte sind rein dekorativ und führen keine eigenständige Logik aus.
+
+## UI-Feinschliff nach der Feldabnahme (08.11.2026)
+
+- **Dunkle Eingabefelder:** Der explizite `EditorField`-Stil erbt nun den globalen NMC-TextBox-Stil (inkl. dunklem ControlTemplate, Fokusrahmen und Disabled-Zustand); das versehentliche Zurückfallen auf weiße Windows-TextBoxen wird per Windows-STA-Test geprüft.
+- **Dunkle native Titelleisten:** `WindowsTitleBarTheme` aktiviert nach `SourceInitialized` die dokumentierten DWM-Attribute für das Hauptfenster und die Save-Editor-Dialoge. Die Windows-Fensterfunktionen bleiben unangetastet; nicht unterstützte Systeme nutzen weiterhin die native Standardtitelleiste.
+- **Berechenbare Dialoggröße:** `SizeToContent=Manual`, mit einer an den verfügbaren Windows-Arbeitsbereich angepassten Höhe, nach Bedarf verschieb- und skalierbar. Der Formularinhalt befindet sich in der einzig scrollbaren mittleren Grid-Zeile; der Status und **Schließen** bleiben in der festen unteren Zeile.
+- **Skills:** `Skills übernehmen` sitzt im dauerhaft sichtbaren Abschlussbereich, nicht unterhalb der letzten Eingabefelder. In dieser UI-Phase wird **keine** fachliche Speicher-, Prüf- oder Backup-Logik verändert.
+- **Regression:** Der WPF-Test prüft an tatsächlich instanziierten Dialogen dunkle TextBox-Farben, Scrollbereich, Skills-Button und Höhenbegrenzung; der vorherige Pack-URI-Absturztest bleibt erhalten.
+
+Manuelle Abnahme: normale und lange Dialoge mit 100 %/125 % Windows-Skalierung sowie unterschiedlichen Fenster- und Bildschirmhöhen kontrollieren. Die Windows-CI verifiziert Implementierung und Laufzeitressourcen, aber keine vollständige Darstellung auf dem Anwenderbildschirm.
