@@ -125,7 +125,8 @@ public static class ScsTruckPowertrainRules
                 ScsPowertrainDiagnosticScope.Component, reason));
         var report = new ScsTruckPowertrainInspectionReport(session.Evidence.GameVersion, session.Evidence.ConfigurationVerified,
             definitionsAttempted, Array.AsReadOnly(session.Evidence.ActiveMods.ToArray()), Array.AsReadOnly(session.Evidence.Layers.ToArray()),
-            Array.AsReadOnly(issues.Distinct().ToArray()));
+            Array.AsReadOnly(issues.Distinct().ToArray()),
+            SaveDependencies: session.Evidence.SaveDependencies is null ? null : Array.AsReadOnly(session.Evidence.SaveDependencies.ToArray()));
         return new Preview(snapshot, definitions, failures, failureDetails, enginePaths, transmissionPaths, diagnostics,
             session.Evidence.Diagnostics, report);
     }

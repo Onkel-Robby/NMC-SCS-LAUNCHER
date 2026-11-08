@@ -85,7 +85,20 @@ public static class TruckPowertrainDiagnosticReport
         var mods = report?.ActiveMods ?? [];
         var sources = report?.Sources ?? [];
         var issues = report?.Issues ?? [];
+        var dependencies = report?.SaveDependencies ?? [];
+        object Dependency(ScsSaveDependency dependency)
+        {
+            var match = TruckPowertrainDependencyDiagnostics.Describe(dependency, report);
+            return new
+            {
+                kind = EnumName(dependency.Kind), packageId = Label(dependency.Identity, identity: true),
+                status = match.Status, matchingSourceCount = match.Sources.Count,
+                matchingSources = match.Sources.Take(16).Select(source => Alias(source.PhysicalPath)).ToArray()
+            };
+        }
         var truncated = mods.Count > MaximumItems || sources.Count > MaximumItems || issues.Count > MaximumItems ||
+            dependencies.Count > MaximumItems || dependencies.Take(MaximumItems).Any(dependency =>
+                TruckPowertrainDependencyDiagnostics.Describe(dependency, report).Sources.Count > 16) ||
             preview.Engines.Count > MaximumItems || preview.Transmissions.Count > MaximumItems ||
             selectedPair?.DiagnosticDetails?.Count > MaximumItems;
         object Document(int limit, bool shortened) => new
@@ -96,12 +109,20 @@ public static class TruckPowertrainDiagnosticReport
             storageKind = EnumName(request.Profile.StorageKind),
             saveKind = EnumName(request.Save.Kind), truckModel = VirtualPath(preview.Snapshot.TruckModelRoot),
             counts = new { activeMods = mods.Count, sources = sources.Count, issues = issues.Count,
-                engines = preview.Engines.Count, transmissions = preview.Transmissions.Count },
+                engines = preview.Engines.Count, transmissions = preview.Transmissions.Count,
+                saveDependencies = dependencies.Count,
+                gameSources = sources.Count(source => source.Kind == ScsPowertrainSourceKind.Game),
+                dlcSources = sources.Count(source => source.Kind == ScsPowertrainSourceKind.Dlc),
+                localModSources = sources.Count(source => source.Kind == ScsPowertrainSourceKind.LocalMod),
+                workshopSources = sources.Count(source => source.Kind == ScsPowertrainSourceKind.Workshop) },
             truncated = truncated || shortened,
             activeMods = mods.Take(limit).Select(mod => new { id = Label(mod.Identity, identity: true), name = Label(mod.DisplayName), loadOrder = mod.LoadOrder }).ToArray(),
+            saveDependenciesRead = report?.SaveDependencies is not null,
+            saveDependencies = dependencies.Take(limit).Select(Dependency).ToArray(),
             sources = sources.Take(limit).Select(source => new { source = Alias(source.PhysicalPath), kind = EnumName(source.Kind),
                 packageId = Label(source.PackageIdentity, identity: true), packageVersion = Version(source.PackageVersion),
-                priority = source.Priority, availabilityVerified = source.AvailabilityVerified }).ToArray(),
+                priority = source.Priority, availabilityVerified = source.AvailabilityVerified,
+                dlcMetadataVerified = source.DlcMetadataVerified }).ToArray(),
             issues = issues.OrderBy(DiagnosticPriority).Take(limit).Select(Issue).ToArray(),
             selectedPair = selectedPair is null ? null : new
             {

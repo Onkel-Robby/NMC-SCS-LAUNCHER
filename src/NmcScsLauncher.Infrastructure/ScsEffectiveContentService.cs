@@ -69,7 +69,8 @@ public sealed class ScsEffectiveContentService(IScsActiveContentResolver resolve
                 Layers = Array.AsReadOnly(evidence.Layers.ToArray()),
                 Files = Array.AsReadOnly(evidence.Files.ToArray()),
                 Diagnostics = Array.AsReadOnly(evidence.Diagnostics.ToArray()),
-                DiagnosticDetails = Array.AsReadOnly((evidence.DiagnosticDetails ?? []).ToArray())
+                DiagnosticDetails = Array.AsReadOnly((evidence.DiagnosticDetails ?? []).ToArray()),
+                SaveDependencies = evidence.SaveDependencies is null ? null : Array.AsReadOnly(evidence.SaveDependencies.ToArray())
             };
             _layers = Evidence.Layers.OrderByDescending(layer => layer.Priority).ToArray();
             _request = request;
